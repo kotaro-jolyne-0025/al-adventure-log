@@ -4,9 +4,10 @@
 
 <mapper namespace="com.dndadvlog.backend.mapper.CharacterMapper">
 
-    <!-- ResultMap：Character + classLevels JOIN -->
+    <!-- ResultMap：Character -->
     <resultMap id="characterMap" type="com.dndadvlog.backend.entity.Character">
         <id     property="id"            column="c_id"/>
+        <result property="userId"        column="user_id"/>
         <result property="characterName" column="character_name"/>
         <result property="playerName"    column="player_name"/>
         <result property="race"          column="race"/>
@@ -19,6 +20,7 @@
     <select id="findAll" resultMap="characterMap">
         SELECT
             c.id           AS c_id,
+            c.user_id,
             c.character_name,
             c.player_name,
             c.race,
@@ -30,9 +32,26 @@
         ORDER BY c.created_at ASC
     </select>
 
+    <select id="findByUserId" resultMap="characterMap">
+        SELECT
+            c.id           AS c_id,
+            c.user_id,
+            c.character_name,
+            c.player_name,
+            c.race,
+            c.faction,
+            c.current_classes_string,
+            c.created_at   AS c_created_at,
+            c.updated_at   AS c_updated_at
+        FROM "character" c
+        WHERE c.user_id = #{userId}::uuid
+        ORDER BY c.created_at ASC
+    </select>
+
     <select id="findById" resultMap="characterMap">
         SELECT
             c.id           AS c_id,
+            c.user_id,
             c.character_name,
             c.player_name,
             c.race,
@@ -44,10 +63,26 @@
         WHERE c.id = #{id}::uuid
     </select>
 
+    <select id="findByIdAndUserId" resultMap="characterMap">
+        SELECT
+            c.id           AS c_id,
+            c.user_id,
+            c.character_name,
+            c.player_name,
+            c.race,
+            c.faction,
+            c.current_classes_string,
+            c.created_at   AS c_created_at,
+            c.updated_at   AS c_updated_at
+        FROM "character" c
+        WHERE c.id = #{id}::uuid AND c.user_id = #{userId}::uuid
+    </select>
+
     <insert id="insert">
-        INSERT INTO "character" (id, character_name, player_name, race, faction, current_classes_string, created_at, updated_at)
+        INSERT INTO "character" (id, user_id, character_name, player_name, race, faction, current_classes_string, created_at, updated_at)
         VALUES (
             #{id}::uuid,
+            #{userId}::uuid,
             #{characterName},
             #{playerName},
             #{race},

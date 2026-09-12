@@ -1,9 +1,11 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   FormArray,
   FormBuilder,
   FormGroup,
+  FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
@@ -18,12 +20,15 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CharacterService } from '../../../core/services/character.service';
 import { CharacterRequest } from '../../../core/models/character.model';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-character-form',
   standalone: true,
   imports: [
+    CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
@@ -41,6 +46,7 @@ export class CharacterFormComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly characterService = inject(CharacterService);
+  private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
 
   protected readonly CLASS_OPTIONS = [
@@ -55,7 +61,7 @@ export class CharacterFormComponent implements OnInit {
 
   protected form: FormGroup = this.fb.group({
     characterName: ['', Validators.required],
-    playerName: ['可嵐', Validators.required],
+    playerName: [this.authService.currentUser()?.displayName || '', Validators.required],
     race: ['', Validators.required],
     faction: [''],
   });
@@ -104,6 +110,11 @@ export class CharacterFormComponent implements OnInit {
       this.isEditMode.set(true);
       this.characterId = id;
       this.loadCharacter(this.characterId);
+    } else {
+      const user = this.authService.currentUser();
+      if (user?.displayName && !this.form.get('playerName')?.value) {
+        this.form.patchValue({ playerName: user.displayName });
+      }
     }
   }
 

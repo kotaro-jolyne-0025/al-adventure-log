@@ -15,6 +15,53 @@
   flex: 1;
 }
 
+.user-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .user-avatar-placeholder {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .user-name {
+    font-weight: 500;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.btn-register-nav {
+  margin-left: 0.5rem;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  color: #fff !important;
+}
+
+.menu-user-header {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+
+  .menu-user-email {
+    color: #666;
+    font-size: 0.8rem;
+  }
+}
+
 .app-content {
   min-height: calc(100dvh - 64px);
 }
+

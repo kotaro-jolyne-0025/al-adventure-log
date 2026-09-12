@@ -50,7 +50,7 @@ public class AdventureEntryService {
             defaults.setStartingMagicItems(last.getMagicItemsTotal());
             defaults.setStartingClassesString(last.getEndingClassesString());
         } else {
-            Character character = characterService.findCharacter(characterId);
+            Character character = characterService.findCharacterInternal(characterId);
             defaults.setStartingGold(BigDecimal.ZERO);
             defaults.setStartingDowntime(0);
             defaults.setStartingMagicItems(0);
@@ -84,7 +84,7 @@ public class AdventureEntryService {
 
     @Transactional
     public AdventureEntryResponse createEntry(UUID characterId, AdventureEntryRequest request) {
-        Character character = characterService.findCharacter(characterId);
+        Character character = characterService.findCharacterInternal(characterId);
         AdventureEntry entry = new AdventureEntry();
         entry.setId(UUID.randomUUID());
         entry.setCharacterId(characterId);
@@ -118,7 +118,7 @@ public class AdventureEntryService {
         if (request.getEndingClassesString() != null) {
             entry.setEndingClassesString(request.getEndingClassesString());
             if (lastEntry.isPresent() && lastEntry.get().getId().equals(entryId)) {
-                Character character = characterService.findCharacter(characterId);
+                Character character = characterService.findCharacterInternal(characterId);
                 character.setCurrentClassesString(request.getEndingClassesString());
                 characterMapper.update(character);
             }
@@ -143,7 +143,7 @@ public class AdventureEntryService {
         Optional<AdventureEntry> latestRemaining =
                 entryMapper.findFirstByCharacterIdOrderByPlayDateDescCreatedAtDesc(characterId);
 
-        Character character = characterService.findCharacter(characterId);
+        Character character = characterService.findCharacterInternal(characterId);
         if (latestRemaining.isPresent()) {
             character.setCurrentClassesString(latestRemaining.get().getEndingClassesString());
         } else {

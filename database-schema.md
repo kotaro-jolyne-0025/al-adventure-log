@@ -142,6 +142,34 @@ CREATE TABLE IF NOT EXISTS inventory_item (
 
 ---
 
+## Step 0：建立 users 與 user_oauth_accounts 資料表（會員與第三方認證）
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255),
+    display_name VARCHAR(100) NOT NULL,
+    avatar_url VARCHAR(500),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_oauth_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL,
+    provider_user_id VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT uq_provider_account UNIQUE (provider, provider_user_id)
+);
+```
+
+---
+
 ## Step 6：建立自動更新 updated_at 的觸發器
 
 ```sql
@@ -153,6 +181,16 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- 套用到 users
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 套用到 user_oauth_accounts
+CREATE TRIGGER update_user_oauth_accounts_updated_at
+    BEFORE UPDATE ON user_oauth_accounts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 套用到 character
 CREATE TRIGGER update_character_updated_at
@@ -177,13 +215,48 @@ CREATE TRIGGER update_inventory_item_updated_at
 
 ---
 
+## Migration 5（Auth & Multi-tenancy）：
+```sql
+-- 1. 建立 users 表
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255),
+    display_name VARCHAR(100) NOT NULL,
+    avatar_url VARCHAR(500),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. 建立 user_oauth_accounts 表
+CREATE TABLE IF NOT EXISTS user_oauth_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL,
+    provider_user_id VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT uq_provider_account UNIQUE (provider, provider_user_id)
+);
+
+-- 3. character 表新增 user_id 欄位與索引
+ALTER TABLE "character" 
+    ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_character_user_id ON "character"(user_id);
+```
+
+---
+
 ## 資料表關聯圖
 
 ```
-character
-├── character_class_level  (1:N，CASCADE DELETE)
-├── adventure_entry        (1:N，CASCADE DELETE)
-│   ├── downtime_activity              (1:N，CASCADE DELETE)
-│   └── adventure_entry_class_snapshot (1:N，CASCADE DELETE)
-└── inventory_item         (1:N，CASCADE DELETE)
+users
+├── user_oauth_accounts  (1:N，CASCADE DELETE)
+└── character            (1:N，CASCADE DELETE)
+    ├── adventure_entry        (1:N，CASCADE DELETE)
+    │   └── downtime_activity  (1:N，CASCADE DELETE)
+    └── inventory_item         (1:N，CASCADE DELETE)
 ```

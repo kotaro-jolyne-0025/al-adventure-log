@@ -131,7 +131,7 @@ export class AdventureFormComponent implements OnInit {
   protected form: FormGroup = this.fb.group({
     adventureCode: [''],
     adventureName: [''],
-    playDate: [null, Validators.required],
+    playDate: [new Date(), Validators.required],
     dmName: [''],
     startingGold: [null],
     goldChange: [null],

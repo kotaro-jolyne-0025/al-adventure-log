@@ -507,4 +507,26 @@
 
 ---
 
+### T19 — 會員與身份驗證系統（Spring Security + JWT + Google & Discord OAuth + 資料隔離）
+- **狀態：** `[x] 已完成`
+- **對應計畫：** `feature/auth-system`
+- **變更摘要：**
+  1. **資料庫層**：整合 Flyway Migration 機制 (`db/migration/V1__...`, `V2__...`)，已自動連線 Supabase 執行建表（`users`、`user_oauth_accounts` 表與 `character.user_id` 欄位索引）。
+  2. **後端認證層**：導入 Spring Security + JJWT，實作 BCrypt 帳密註冊/登入與 Google/Discord OAuth2 登入 API。
+  3. **後端多租戶隔離**：全面升級 Character API 與關聯服務，依據 JWT Token 取得之 `currentUserId` 進行存取控制。
+  4. **前端認證模組**：實作登入與註冊頁面、OAuth Callback 頁面、AuthService (Signals)、AuthGuard 與 AuthInterceptor。
+  5. **前端 UI 整合**：導覽列 Header 顯示當前玩家身分、頭像與登出按鈕。
+- **完成項目：**
+  - [x] Phase 1: 規格文件更新 (SRS, DB Schema, User Stories, Backlog)
+  - [x] Phase 2: 後端 Spring Security + JWT + 帳密註冊登入
+  - [x] Phase 3: 後端 Google & Discord OAuth2 第三方登入
+  - [x] Phase 4: 後端角色與日誌資料多租戶隔離 (user_id 關聯)
+  - [x] Phase 5: 前端 Auth 模組 (Login, Register, Signals Service, Guard, Interceptor)
+  - [x] Phase 6: 前端 OAuth 登入整合與導覽列使用者狀態
+  - [x] Phase 7: 前後端打包建置與功能驗證
+
+
+
+---
+
 ## 如何使用這個 Backlog

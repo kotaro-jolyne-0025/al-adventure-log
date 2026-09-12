@@ -21,32 +21,33 @@ public class CharacterService {
 
     private final CharacterMapper characterMapper;
 
-    public List<CharacterResponse> getAllCharacters() {
-        return characterMapper.findAll()
+    public List<CharacterResponse> getAllCharacters(UUID userId) {
+        return characterMapper.findByUserId(userId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    public CharacterResponse getCharacter(UUID id) {
-        return toResponse(findCharacter(id));
+    public CharacterResponse getCharacter(UUID id, UUID userId) {
+        return toResponse(findCharacter(id, userId));
     }
 
     @Transactional
-    public CharacterResponse createCharacter(CharacterRequest request) {
+    public CharacterResponse createCharacter(CharacterRequest request, UUID userId) {
         Character character = new Character();
         character.setId(UUID.randomUUID());
+        character.setUserId(userId);
         character.setCharacterName(request.getCharacterName());
         character.setPlayerName(request.getPlayerName());
         character.setRace(request.getRace());
         character.setFaction(request.getFaction());
         character.setCurrentClassesString(request.getCurrentClassesString());
         characterMapper.insert(character);
-        log.info("角色建立成功: ID={}, 名稱={}", character.getId(), character.getCharacterName());
-        return toResponse(findCharacter(character.getId()));
+        log.info("角色建立成功: ID={}, UserID={}, 名稱={}", character.getId(), userId, character.getCharacterName());
+        return toResponse(findCharacter(character.getId(), userId));
     }
 
     @Transactional
-    public CharacterResponse updateCharacter(UUID id, CharacterRequest request) {
-        Character character = findCharacter(id);
+    public CharacterResponse updateCharacter(UUID id, CharacterRequest request, UUID userId) {
+        Character character = findCharacter(id, userId);
         character.setCharacterName(request.getCharacterName());
         character.setPlayerName(request.getPlayerName());
         character.setRace(request.getRace());
@@ -54,19 +55,27 @@ public class CharacterService {
             character.setCurrentClassesString(request.getCurrentClassesString());
         }
         characterMapper.update(character);
-        Character updated = findCharacter(id);
-        log.info("角色基本資料更新成功: ID={}, 名稱={}", updated.getId(), updated.getCharacterName());
+        Character updated = findCharacter(id, userId);
+        log.info("角色基本資料更新成功: ID={}, UserID={}, 名稱={}", updated.getId(), userId, updated.getCharacterName());
         return toResponse(updated);
     }
 
     @Transactional
-    public void deleteCharacter(UUID id) {
-        findCharacter(id);
+    public void deleteCharacter(UUID id, UUID userId) {
+        findCharacter(id, userId);
         characterMapper.deleteById(id);
-        log.info("角色刪除成功: ID={}", id);
+        log.info("角色刪除成功: ID={}, UserID={}", id, userId);
     }
 
-    public Character findCharacter(UUID id) {
+    public Character findCharacter(UUID id, UUID userId) {
+        Character character = characterMapper.findByIdAndUserId(id, userId);
+        if (character == null) {
+            throw new ResourceNotFoundException("找不到角色 ID：" + id);
+        }
+        return character;
+    }
+
+    public Character findCharacterInternal(UUID id) {
         Character character = characterMapper.findById(id);
         if (character == null) {
             throw new ResourceNotFoundException("找不到角色 ID：" + id);
@@ -77,6 +86,7 @@ public class CharacterService {
     private CharacterResponse toResponse(Character character) {
         CharacterResponse response = new CharacterResponse();
         response.setId(character.getId());
+        response.setUserId(character.getUserId());
         response.setCharacterName(character.getCharacterName());
         response.setPlayerName(character.getPlayerName());
         response.setRace(character.getRace());

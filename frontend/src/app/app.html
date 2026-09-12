@@ -2,7 +2,45 @@
   <span class="toolbar-title" routerLink="/characters" style="cursor:pointer">
     🎲 D&amp;D 冒險日誌
   </span>
+
   <span class="spacer"></span>
+
+  <!-- 已登入狀態 -->
+  <ng-container *ngIf="authService.currentUser() as user">
+    <button mat-button [matMenuTriggerFor]="userMenu" class="user-profile-btn">
+      <img *ngIf="user.avatarUrl" [src]="user.avatarUrl" alt="Avatar" class="user-avatar" />
+      <mat-icon *ngIf="!user.avatarUrl" class="user-avatar-placeholder">account_circle</mat-icon>
+      <span class="user-name">{{ user.displayName }}</span>
+      <mat-icon>arrow_drop_down</mat-icon>
+    </button>
+
+    <mat-menu #userMenu="matMenu" xPosition="before">
+      <div class="menu-user-header">
+        <strong>{{ user.displayName }}</strong>
+        <small class="menu-user-email">{{ user.email }}</small>
+      </div>
+      <mat-divider></mat-divider>
+      <button mat-menu-item routerLink="/characters">
+        <mat-icon>group</mat-icon>
+        <span>我的角色列表</span>
+      </button>
+      <button mat-menu-item (click)="openEditProfileDialog()">
+        <mat-icon>badge</mat-icon>
+        <span>修改顯示名稱</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()" class="logout-menu-item">
+        <mat-icon color="warn">logout</mat-icon>
+        <span style="color: #f44336">登出系統</span>
+      </button>
+    </mat-menu>
+  </ng-container>
+
+  <!-- 未登入狀態 -->
+  <ng-container *ngIf="!authService.isAuthenticated()">
+    <a mat-button routerLink="/login">登入</a>
+    <a mat-stroked-button routerLink="/register" class="btn-register-nav">註冊</a>
+  </ng-container>
 </mat-toolbar>
 
 <main class="app-content">

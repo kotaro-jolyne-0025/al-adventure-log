@@ -7,20 +7,30 @@ import { AdventureDetailComponent } from './features/adventures/adventure-detail
 import { AdventureFormComponent } from './features/adventures/adventure-form/adventure-form.component';
 import { InventoryListComponent } from './features/inventory/inventory-list/inventory-list.component';
 import { InventoryFormComponent } from './features/inventory/inventory-form/inventory-form.component';
+import { LoginComponent } from './features/auth/login/login.component';
+import { RegisterComponent } from './features/auth/register/register.component';
+import { OAuthCallbackComponent } from './features/auth/oauth-callback/oauth-callback.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
+  // ── Epic 0: 身份驗證 ────────────────────────────────────────────────────────
+  { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
+  { path: 'auth/callback/:provider', component: OAuthCallbackComponent },
+
   // 預設導向角色列表
   { path: '', redirectTo: 'characters', pathMatch: 'full' },
 
-  // ── Epic 1: 角色管理 ────────────────────────────────────────────────────────
-  { path: 'characters', component: CharacterListComponent },
-  { path: 'characters/new', component: CharacterFormComponent },
-  { path: 'characters/:id/edit', component: CharacterFormComponent },
+  // ── Epic 1: 角色管理（需登入） ────────────────────────────────────────────────
+  { path: 'characters', component: CharacterListComponent, canActivate: [authGuard] },
+  { path: 'characters/new', component: CharacterFormComponent, canActivate: [authGuard] },
+  { path: 'characters/:id/edit', component: CharacterFormComponent, canActivate: [authGuard] },
 
-  // ── 角色 Shell（含 Tab 導覽） ────────────────────────────────────────────────
+  // ── 角色 Shell（含 Tab 導覽，需登入） ────────────────────────────────────────
   {
     path: 'characters/:id',
     component: CharacterShellComponent,
+    canActivate: [authGuard],
     children: [
       // Epic 2: 冒險日誌
       { path: 'adventures', component: AdventureListComponent },
@@ -41,3 +51,4 @@ export const routes: Routes = [
   // Fallback
   { path: '**', redirectTo: 'characters' },
 ];
+

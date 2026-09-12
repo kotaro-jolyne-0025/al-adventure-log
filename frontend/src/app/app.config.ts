@@ -7,12 +7,13 @@ import {
 import { registerLocaleData } from '@angular/common';
 import localeZhTW from '@angular/common/locales/zh-Hant';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS } from '@angular/material/snack-bar';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
 import type { MatDateFormats } from '@angular/material/core';
 import { TwDateAdapter } from './core/adapters/tw-date-adapter';
+import { authInterceptor } from './core/interceptors/auth.interceptor';
 
 import { routes } from './app.routes';
 import { provideServiceWorker } from '@angular/service-worker';
@@ -36,7 +37,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([authInterceptor])),
     provideAnimationsAsync(),
     {
       provide: MAT_SNACK_BAR_DEFAULT_OPTIONS,

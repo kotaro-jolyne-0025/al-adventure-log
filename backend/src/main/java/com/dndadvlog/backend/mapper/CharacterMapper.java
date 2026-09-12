@@ -12,7 +12,11 @@ public interface CharacterMapper {
 
     List<Character> findAll();
 
+    List<Character> findByUserId(@Param("userId") UUID userId);
+
     Character findById(@Param("id") UUID id);
+
+    Character findByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
 
     void insert(Character character);
 

@@ -1,0 +1,142 @@
+.auth-page-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 120px);
+  padding: 1.5rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 1.5rem 1rem;
+}
+
+.auth-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 1.5rem;
+
+  .brand-logo {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+  }
+
+  mat-card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  mat-card-subtitle {
+    font-size: 0.9rem;
+    color: #666;
+  }
+}
+
+.auth-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #fee2e2;
+  color: #b91c1c;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  .btn-oauth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 44px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    border-color: #e2e8f0;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .oauth-icon {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .btn-discord {
+    color: #5865f2;
+    &:hover {
+      background-color: #f4f5fd;
+    }
+  }
+}
+
+.divider-with-text {
+  display: flex;
+  align-items: center;
+  margin: 0.5rem 0;
+
+  mat-divider {
+    flex: 1;
+  }
+
+  .divider-label {
+    padding: 0 0.75rem;
+    font-size: 0.8rem;
+    color: #888;
+    white-space: nowrap;
+  }
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .full-width {
+    width: 100%;
+  }
+
+  .btn-submit {
+    height: 44px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+  }
+}
+
+.auth-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #666;
+}

@@ -1,0 +1,58 @@
+<div class="auth-page-container">
+  <mat-card class="auth-card">
+    <mat-card-header class="auth-header">
+      <div class="brand-logo">📜</div>
+      <mat-card-title>建立冒險者帳號</mat-card-title>
+      <mat-card-subtitle>開啟您的 D&D 冒險聯盟旅程</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content class="auth-content">
+      <!-- 錯誤提示 -->
+      <div *ngIf="errorMessage()" class="auth-error-alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ errorMessage() }}</span>
+      </div>
+
+      <!-- 註冊表單 -->
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>顯示名稱 (玩家暱稱)</mat-label>
+          <input matInput formControlName="displayName" placeholder="例：亞夢、可嵐" autocomplete="name" />
+          <mat-icon matPrefix>badge</mat-icon>
+          <mat-error *ngIf="registerForm.get('displayName')?.hasError('required')">請輸入顯示名稱</mat-error>
+          <mat-error *ngIf="registerForm.get('displayName')?.hasError('maxlength')">名稱不能超過 100 字</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>電子郵件 (Email)</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="example@domain.com" autocomplete="email" />
+          <mat-icon matPrefix>email</mat-icon>
+          <mat-error *ngIf="registerForm.get('email')?.hasError('required')">請輸入電子郵件</mat-error>
+          <mat-error *ngIf="registerForm.get('email')?.hasError('email')">請輸入正確的 Email 格式</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>密碼</mat-label>
+          <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" autocomplete="new-password" />
+          <mat-icon matPrefix>lock</mat-icon>
+          <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())" [attr.aria-label]="'切換密碼顯示'">
+            <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-hint>至少需要 6 個字元</mat-hint>
+          <mat-error *ngIf="registerForm.get('password')?.hasError('required')">請輸入密碼</mat-error>
+          <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">密碼長度至少需要 6 個字元</mat-error>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" type="submit" class="btn-submit full-width" [disabled]="registerForm.invalid || isLoading()">
+          <mat-spinner *ngIf="isLoading()" diameter="20" class="spinner"></mat-spinner>
+          <span *ngIf="!isLoading()">確認註冊</span>
+        </button>
+      </form>
+    </mat-card-content>
+
+    <mat-card-actions class="auth-footer">
+      <span>已經有冒險者帳號？</span>
+      <a mat-button color="accent" routerLink="/login">立即登入</a>
+    </mat-card-actions>
+  </mat-card>
+</div>

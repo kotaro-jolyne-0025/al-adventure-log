@@ -10,6 +10,7 @@ import java.util.UUID;
 @Data
 public class Character {
     private UUID id;
+    private UUID userId;
     private String characterName;
     private String playerName;
     private String race;
