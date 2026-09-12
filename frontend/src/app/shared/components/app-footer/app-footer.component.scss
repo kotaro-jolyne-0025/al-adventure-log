@@ -47,4 +47,13 @@
       font-weight: 600;
     }
   }
+
+  .version-tag {
+    margin: 4px 0 0;
+    font-size: 0.7rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text-muted);
+    opacity: 0.75;
+    letter-spacing: 0.04em;
+  }
 }
