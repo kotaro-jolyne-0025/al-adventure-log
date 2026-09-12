@@ -160,15 +160,15 @@ export class InventoryListComponent implements OnInit {
   }
 
   /**
-   * 排序邏輯（稀有度永遠是主排序）：
+   * 排序邏輯：
    *
    *   「稀有度」模式：
    *     主排序 — 稀有度（方向由 order 控制）
    *     次排序 — 取得時間（固定由新至舊）
    *
    *   「取得時間」模式：
-   *     主排序 — 稀有度（固定高→低）
-   *     次排序 — 取得時間（方向由 order 控制）
+   *     主排序 — 取得時間（方向由 order 控制）
+   *     次排序 — 稀有度（固定由高至低）
    *
    *   末排序 — 物品名稱 → ID（穩定排序）
    */
@@ -178,27 +178,30 @@ export class InventoryListComponent implements OnInit {
     order: 'desc' | 'asc'
   ): InventoryItem[] {
     return [...items].sort((a, b) => {
-      // 主排序：稀有度
       const rA = a.rarity ? (RARITY_WEIGHT[a.rarity] ?? 0) : 0;
       const rB = b.rarity ? (RARITY_WEIGHT[b.rarity] ?? 0) : 0;
-      if (rA !== rB) {
-        // 「稀有度」模式：方向由 order 控制；「取得時間」模式：固定高→低
-        return field === 'rarity'
-          ? (order === 'desc' ? rB - rA : rA - rB)
-          : rB - rA;
-      }
 
-      // 次排序：取得時間
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       const validTimeA = isNaN(timeA) ? 0 : timeA;
       const validTimeB = isNaN(timeB) ? 0 : timeB;
-      const timeDiff = validTimeB - validTimeA;
-      if (timeDiff !== 0) {
-        // 「取得時間」模式：方向由 order 控制；「稀有度」模式：固定由新至舊
-        return field === 'createdAt'
-          ? (order === 'desc' ? timeDiff : -timeDiff)
-          : timeDiff;
+
+      if (field === 'createdAt') {
+        // 主排序：取得時間（方向由 order 控制）
+        const timeDiff = order === 'desc' ? validTimeB - validTimeA : validTimeA - validTimeB;
+        if (timeDiff !== 0) return timeDiff;
+
+        // 次排序：稀有度（固定高至低）
+        const rarityDiff = rB - rA;
+        if (rarityDiff !== 0) return rarityDiff;
+      } else {
+        // 主排序：稀有度（方向由 order 控制）
+        const rarityDiff = order === 'desc' ? rB - rA : rA - rB;
+        if (rarityDiff !== 0) return rarityDiff;
+
+        // 次排序：取得時間（固定由新至舊）
+        const timeDiff = validTimeB - validTimeA;
+        if (timeDiff !== 0) return timeDiff;
       }
 
       // 末排序：物品名稱 → ID（穩定排序）

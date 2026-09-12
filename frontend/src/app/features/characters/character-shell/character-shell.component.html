@@ -68,14 +68,14 @@
             <span class="hud-label">金幣 (GP)</span>
           </div>
           <span class="hud-value stat-gold">
-            {{ (defaults()?.startingGold ?? 0) | number:'1.2-2' }} <small class="unit">GP</small>
+            {{ (defaults()?.startingGold ?? 0) | number:'1.2-2' }} <small class="unit">金</small>
           </span>
         </div>
 
         <div class="hud-stat-box">
           <div class="hud-stat-header">
             <svg lucideTent class="hud-icon stat-downtime-icon" [size]="16"></svg>
-            <span class="hud-label">休整期天數</span>
+            <span class="hud-label">休整期 (Downtime)</span>
           </div>
           <span class="hud-value stat-downtime">
             {{ defaults()?.startingDowntime ?? 0 }} <small class="unit">天</small>

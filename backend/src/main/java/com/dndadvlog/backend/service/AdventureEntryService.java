@@ -1,6 +1,12 @@
 package com.dndadvlog.backend.service;
 
-import com.dndadvlog.backend.dto.*;
+import com.dndadvlog.backend.dto.AdventureEntryRequest;
+import com.dndadvlog.backend.dto.AdventureEntryResponse;
+import com.dndadvlog.backend.dto.AdventureGainedItemRequest;
+import com.dndadvlog.backend.dto.AdventureGainedItemResponse;
+import com.dndadvlog.backend.dto.DowntimeActivityRequest;
+import com.dndadvlog.backend.dto.DowntimeActivityResponse;
+import com.dndadvlog.backend.dto.EntryDefaultsResponse;
 import com.dndadvlog.backend.entity.AdventureEntry;
 import com.dndadvlog.backend.entity.AdventureGainedItem;
 import com.dndadvlog.backend.entity.Character;
@@ -22,12 +28,14 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdventureEntryService {
+
+    private static final Pattern CLASS_LEVEL_PATTERN = Pattern.compile("(\\d++)$");
 
     private final AdventureEntryMapper entryMapper;
     private final CharacterMapper characterMapper;
@@ -39,7 +47,7 @@ public class AdventureEntryService {
     public List<AdventureEntryResponse> getEntriesByCharacter(UUID characterId, UUID userId) {
         characterService.findCharacter(characterId, userId);
         List<AdventureEntry> entries = entryMapper.findByCharacterIdOrderByPlayDateAsc(characterId);
-        return entries.stream().map(this::toResponse).collect(Collectors.toList());
+        return entries.stream().map(this::toResponse).toList();
     }
 
     public AdventureEntryResponse getEntry(UUID entryId, UUID userId) {
@@ -84,11 +92,13 @@ public class AdventureEntryService {
         for (String seg : segments) {
             String trimmed = seg.trim();
             // Match trailing digits e.g. "戰士2" -> 2
-            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)$").matcher(trimmed);
+            java.util.regex.Matcher matcher = CLASS_LEVEL_PATTERN.matcher(trimmed);
             if (matcher.find()) {
                 try {
                     total += Integer.parseInt(matcher.group(1));
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException ignored) {
+                    // 非法數字格式則略過並於後續預設加 1
+                }
             } else {
                 total += 1;
             }
@@ -174,7 +184,7 @@ public class AdventureEntryService {
     public List<DowntimeActivityResponse> getActivities(UUID entryId, UUID userId) {
         findEntryAndVerifyOwner(entryId, userId);
         return downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entryId)
-                .stream().map(this::toActivityResponse).collect(Collectors.toList());
+                .stream().map(this::toActivityResponse).toList();
     }
 
     @Transactional
@@ -207,7 +217,7 @@ public class AdventureEntryService {
     public List<AdventureGainedItemResponse> getGainedItems(UUID entryId, UUID userId) {
         findEntryAndVerifyOwner(entryId, userId);
         return gainedItemMapper.findByAdventureEntryId(entryId)
-                .stream().map(this::toGainedItemResponse).collect(Collectors.toList());
+                .stream().map(this::toGainedItemResponse).toList();
     }
 
     @Transactional
@@ -219,7 +229,7 @@ public class AdventureEntryService {
         item.setItemName(request.getItemName());
         item.setItemType(request.getItemType());
         item.setRarity(request.getRarity());
-        item.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
+        item.setQuantity(request.getQuantity() != null ? request.getQuantity() : Integer.valueOf(1));
         item.setNotes(request.getNotes());
         gainedItemMapper.insert(item);
         return toGainedItemResponse(gainedItemMapper.findById(item.getId()));
@@ -233,8 +243,8 @@ public class AdventureEntryService {
             throw new ResourceNotFoundException("找不到獲得物品快照 ID: " + itemId);
         }
 
-        int oldQty = snapshot.getQuantity() != null ? snapshot.getQuantity() : 1;
-        int newQty = request.getQuantity() != null ? request.getQuantity() : 1;
+        int oldQty = snapshot.getQuantity() != null ? snapshot.getQuantity().intValue() : 1;
+        int newQty = request.getQuantity() != null ? request.getQuantity().intValue() : 1;
         int delta = newQty - oldQty;
 
         // 1. 更新快照表記錄
@@ -284,8 +294,7 @@ public class AdventureEntryService {
 
     @Transactional
     public void deleteGainedItem(UUID itemId, UUID userId) {
-        AdventureGainedItem item = findGainedItemAndVerifyOwner(itemId, userId);
-        AdventureEntry entry = findEntry(item.getAdventureEntryId());
+        findGainedItemAndVerifyOwner(itemId, userId);
         InventoryItem warehouseItem = inventoryItemMapper.findByAdventureGainedItemId(itemId);
         if (warehouseItem != null) {
             inventoryItemMapper.deleteById(warehouseItem.getId());
@@ -435,7 +444,7 @@ public class AdventureEntryService {
         response.setCreatedAt(entry.getCreatedAt());
         response.setUpdatedAt(entry.getUpdatedAt());
         response.setDowntimeActivities(entry.getDowntimeActivities()
-                .stream().map(this::toActivityResponse).collect(Collectors.toList()));
+                .stream().map(this::toActivityResponse).toList());
         return response;
     }
 

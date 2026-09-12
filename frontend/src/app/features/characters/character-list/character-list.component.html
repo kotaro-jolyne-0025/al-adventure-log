@@ -52,21 +52,6 @@
     <div class="card-grid">
       @for (char of characters(); track char.id) {
         <div class="char-card clean-card clickable" (click)="onViewCharacter(char.id)">
-          
-          <!-- Card Top-Right Actions -->
-          <div class="card-top-actions" (click)="$event.stopPropagation()">
-            <span class="level-badge">Lv. {{ parseTotalLevel(char.currentClassesString) }}</span>
-            <button mat-icon-button class="action-btn"
-              matTooltip="編輯角色"
-              (click)="onEditCharacter($event, char.id)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button class="action-btn delete-btn"
-              matTooltip="刪除角色"
-              (click)="onDeleteCharacter($event, char)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
 
           <div class="card-hero-layout">
             <!-- 左側大肖像 -->
@@ -81,7 +66,8 @@
             <!-- 右側標題與資料 -->
             <div class="char-content-col">
               <div class="char-name-row">
-                <h3 class="char-name">{{ char.characterName }}</h3>
+                <h3 class="char-name" [title]="char.characterName">{{ char.characterName }}</h3>
+                <span class="level-badge">Lv. {{ parseTotalLevel(char.currentClassesString) }}</span>
               </div>
 
               <div class="char-info-list">
@@ -106,6 +92,24 @@
                   </div>
                 }
               </div>
+            </div>
+          </div>
+
+          <!-- 卡片底部操作列 (方案 D) -->
+          <div class="card-footer">
+            <div class="card-footer-actions" (click)="$event.stopPropagation()">
+              <button mat-button class="footer-action-btn"
+                matTooltip="編輯角色資訊"
+                (click)="onEditCharacter($event, char.id)">
+                <mat-icon>edit</mat-icon>
+                <span>編輯</span>
+              </button>
+              <button mat-button class="footer-action-btn delete-btn"
+                matTooltip="刪除角色"
+                (click)="onDeleteCharacter($event, char)">
+                <mat-icon>delete_outline</mat-icon>
+                <span>刪除</span>
+              </button>
             </div>
           </div>
 

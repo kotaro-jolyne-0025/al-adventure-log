@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,7 +26,7 @@ public class InventoryItemService {
         List<InventoryItem> items = (itemType != null)
                 ? inventoryItemMapper.findByCharacterIdAndItemType(characterId, itemType.name())
                 : inventoryItemMapper.findByCharacterId(characterId);
-        return items.stream().map(this::toResponse).collect(Collectors.toList());
+        return items.stream().map(this::toResponse).toList();
     }
 
     @Transactional
@@ -78,7 +77,7 @@ public class InventoryItemService {
         item.setItemType(request.getItemType());
         item.setRarity(request.getRarity());
         item.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
-        item.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
+        item.setQuantity(request.getQuantity() != null ? request.getQuantity() : Integer.valueOf(1));
         item.setSource(request.getSource());
         item.setNotes(request.getNotes());
     }

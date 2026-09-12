@@ -92,62 +92,6 @@
   }
 }
 
-/* Card Top-Right Actions */
-.card-top-actions {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  z-index: 2;
-
-  @media (max-width: 600px) {
-    top: 8px;
-    right: 8px;
-    gap: 3px;
-  }
-
-  .action-btn {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    border-radius: var(--radius-sm);
-    transition: color 0.15s ease, background-color 0.15s ease;
-
-    mat-icon {
-      font-size: 1.05rem;
-      width: 1.05rem;
-      height: 1.05rem;
-    }
-
-    &:hover {
-      color: var(--color-primary);
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    &.delete-btn:hover {
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.12);
-    }
-
-    @media (max-width: 600px) {
-      width: 32px;
-      height: 32px;
-
-      mat-icon {
-        font-size: 1.15rem;
-        width: 1.15rem;
-        height: 1.15rem;
-      }
-    }
-  }
-}
-
 /* Hero Portrait Layout (Style A) */
 .card-hero-layout {
   display: flex;
@@ -235,19 +179,20 @@
 }
 
 .char-name-row {
-  height: 24px;
+  height: 26px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  line-height: 24px;
+  line-height: 26px;
   flex-wrap: nowrap;
-  padding-right: 110px;
+  padding-right: 0;
 
   @media (max-width: 600px) {
     height: 22px;
     line-height: 22px;
     gap: 6px;
-    padding-right: 105px;
+    padding-right: 0;
   }
 }
 
@@ -255,8 +200,10 @@
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
-  line-height: 24px;
+  line-height: 26px;
   color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -270,7 +217,7 @@
 .level-badge {
   font-size: 0.72rem;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: var(--radius-full);
   background: var(--color-info-bg);
   color: var(--color-info);
@@ -279,6 +226,78 @@
   flex-shrink: 0;
   line-height: 1.2;
   user-select: none;
+
+  @media (max-width: 600px) {
+    font-size: 0.68rem;
+    padding: 1px 6px;
+  }
+}
+
+/* Card Footer Actions (Plan D) */
+.card-footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+
+  @media (max-width: 600px) {
+    margin-top: 10px;
+    padding-top: 8px;
+  }
+
+  .card-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .footer-action-btn {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 30px;
+    transition: all 0.15s ease;
+
+    mat-icon {
+      font-size: 1.05rem;
+      width: 1.05rem;
+      height: 1.05rem;
+      margin-right: 2px;
+    }
+
+    &:hover {
+      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &.delete-btn {
+      &:hover {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+      }
+    }
+
+    @media (max-width: 600px) {
+      height: 32px;
+      padding: 0 8px;
+      font-size: 0.78rem;
+
+      mat-icon {
+        font-size: 1.1rem;
+        width: 1.1rem;
+        height: 1.1rem;
+      }
+    }
+  }
 }
 
 .char-info-list {

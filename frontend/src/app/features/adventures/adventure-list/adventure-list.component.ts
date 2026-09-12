@@ -6,7 +6,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatMenuModule } from '@angular/material/menu';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { AdventureEntry } from '../../../core/models/adventure.model';
 
@@ -102,29 +101,25 @@ export class AdventureListComponent implements OnInit {
     const list = [...this.rawEntries()];
 
     return list.sort((a, b) => {
-      let diff = 0;
-      if (field === 'playDate') {
-        const timeA = a.playDate ? new Date(a.playDate).getTime() : 0;
-        const timeB = b.playDate ? new Date(b.playDate).getTime() : 0;
-        diff = timeB - timeA;
-        if (diff === 0) {
-          const cA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const cB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          diff = cB - cA;
-        }
-      } else if (field === 'createdAt') {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        diff = timeB - timeA;
-        if (diff === 0) {
-          const pA = a.playDate ? new Date(a.playDate).getTime() : 0;
-          const pB = b.playDate ? new Date(b.playDate).getTime() : 0;
-          diff = pB - pA;
-        }
-      }
+      const diff = this.compareEntries(a, b, field);
       return order === 'desc' ? diff : -diff;
     });
   });
+
+  private compareEntries(a: AdventureEntry, b: AdventureEntry, field: AdventureSortField): number {
+    const primaryA = field === 'playDate' ? this.getTime(a.playDate) : this.getTime(a.createdAt);
+    const primaryB = field === 'playDate' ? this.getTime(b.playDate) : this.getTime(b.createdAt);
+    const diff = primaryB - primaryA;
+    if (diff !== 0) return diff;
+
+    const secondaryA = field === 'playDate' ? this.getTime(a.createdAt) : this.getTime(a.playDate);
+    const secondaryB = field === 'playDate' ? this.getTime(b.createdAt) : this.getTime(b.playDate);
+    return secondaryB - secondaryA;
+  }
+
+  private getTime(val?: string | Date | null): number {
+    return val ? new Date(val).getTime() : 0;
+  }
 
   ngOnInit(): void {
     this.characterId =
@@ -179,7 +174,7 @@ export class AdventureListComponent implements OnInit {
   protected formatGoldChange(entry: AdventureEntry): string | null {
     const change = Math.round(((entry.goldChange ?? 0) + (entry.goldDowntimeChange ?? 0)) * 100) / 100;
     if (change === 0 && entry.goldChange == null && entry.goldDowntimeChange == null) return null;
-    return change >= 0 ? `+${change} GP` : `${change} GP`;
+    return change >= 0 ? `+${change} 金` : `${change} 金`;
   }
 
   protected formatDowntimeChange(entry: AdventureEntry): string | null {

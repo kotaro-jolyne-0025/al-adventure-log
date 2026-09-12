@@ -11,12 +11,41 @@ export class InventoryService {
   private readonly characterService = inject(CharacterService);
   private readonly base = `${environment.apiUrl}/characters`;
 
+  // 記憶體快取
+  private readonly inventoryCache = new Map<string, InventoryItem[]>();
+
+  clearCache(characterId?: string): void {
+    if (characterId) {
+      this.inventoryCache.delete(characterId);
+    } else {
+      this.inventoryCache.clear();
+    }
+  }
+
   // 後端路徑：/api/characters/{id}/inventory
 
-  getAllByCharacter(characterId: string): Observable<InventoryItem[]> {
-    return this.http.get<InventoryItem[]>(
+  getAllByCharacter(characterId: string, forceRefresh = false): Observable<InventoryItem[]> {
+    const cached = this.inventoryCache.get(characterId);
+    const fetch$ = this.http.get<InventoryItem[]>(
       `${this.base}/${characterId}/inventory`
+    ).pipe(
+      tap((items) => this.inventoryCache.set(characterId, items))
     );
+
+    if (cached && !forceRefresh) {
+      return new Observable<InventoryItem[]>((subscriber) => {
+        subscriber.next(cached);
+        fetch$.subscribe({
+          next: (fresh) => {
+            subscriber.next(fresh);
+            subscriber.complete();
+          },
+          error: () => subscriber.complete(),
+        });
+      });
+    }
+
+    return fetch$;
   }
 
   create(characterId: string, req: InventoryItemRequest): Observable<InventoryItem> {
@@ -24,7 +53,10 @@ export class InventoryService {
       `${this.base}/${characterId}/inventory`,
       req
     ).pipe(
-      tap(() => this.characterService.notifyCharacterChanged(characterId))
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
     );
   }
 
@@ -37,7 +69,10 @@ export class InventoryService {
       `${this.base}/${characterId}/inventory/${itemId}`,
       req
     ).pipe(
-      tap(() => this.characterService.notifyCharacterChanged(characterId))
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
     );
   }
 
@@ -45,7 +80,11 @@ export class InventoryService {
     return this.http.delete<void>(
       `${this.base}/${characterId}/inventory/${itemId}`
     ).pipe(
-      tap(() => this.characterService.notifyCharacterChanged(characterId))
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
     );
   }
 }
+

@@ -168,7 +168,7 @@
             <div class="res-card-header">
               <div class="res-header-left">
                 <svg lucideTent [size]="18" class="res-icon downtime"></svg>
-                <span class="res-title">休整期天數</span>
+                <span class="res-title">休整期 (Downtime)</span>
               </div>
             </div>
             <div class="res-inputs-grid two-cols">
@@ -457,8 +457,8 @@
                 <span class="badge-title">最終金幣</span>
               </div>
               <div class="badge-total-value">
-                <span class="value-num">{{ (goldTotal() ?? 0) | number:'1.0-2' }}</span>
-                <span class="value-unit">GP</span>
+                <span class="value-num">{{ (goldTotal() ?? 0) | number:'1.2-2' }}</span>
+                <span class="value-unit">金</span>
               </div>
             </div>
             <div class="badge-formula-line">

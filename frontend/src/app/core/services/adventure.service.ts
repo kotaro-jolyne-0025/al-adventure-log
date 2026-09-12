@@ -19,19 +19,69 @@ export class AdventureService {
   private readonly characterService = inject(CharacterService);
   private readonly base = `${environment.apiUrl}/characters`;
 
+  // 記憶體快取
+  private readonly entriesCache = new Map<string, AdventureEntry[]>();
+  private readonly defaultsCache = new Map<string, EntryDefaults>();
+
+  clearCache(characterId?: string): void {
+    if (characterId) {
+      this.entriesCache.delete(characterId);
+      this.defaultsCache.delete(characterId);
+    } else {
+      this.entriesCache.clear();
+      this.defaultsCache.clear();
+    }
+  }
+
   // ── AdventureEntry ───────────────────────────────────────────────────────
   // 後端路徑：/api/characters/{id}/entries
 
-  getAllByCharacter(characterId: string): Observable<AdventureEntry[]> {
-    return this.http.get<AdventureEntry[]>(
+  getAllByCharacter(characterId: string, forceRefresh = false): Observable<AdventureEntry[]> {
+    const cached = this.entriesCache.get(characterId);
+    const fetch$ = this.http.get<AdventureEntry[]>(
       `${this.base}/${characterId}/entries`
+    ).pipe(
+      tap((list) => this.entriesCache.set(characterId, list))
     );
+
+    if (cached && !forceRefresh) {
+      return new Observable<AdventureEntry[]>((subscriber) => {
+        subscriber.next(cached);
+        fetch$.subscribe({
+          next: (fresh) => {
+            subscriber.next(fresh);
+            subscriber.complete();
+          },
+          error: () => subscriber.complete(),
+        });
+      });
+    }
+
+    return fetch$;
   }
 
-  getDefaults(characterId: string): Observable<EntryDefaults> {
-    return this.http.get<EntryDefaults>(
+  getDefaults(characterId: string, forceRefresh = false): Observable<EntryDefaults> {
+    const cached = this.defaultsCache.get(characterId);
+    const fetch$ = this.http.get<EntryDefaults>(
       `${this.base}/${characterId}/entries/defaults`
+    ).pipe(
+      tap((defaults) => this.defaultsCache.set(characterId, defaults))
     );
+
+    if (cached && !forceRefresh) {
+      return new Observable<EntryDefaults>((subscriber) => {
+        subscriber.next(cached);
+        fetch$.subscribe({
+          next: (fresh) => {
+            subscriber.next(fresh);
+            subscriber.complete();
+          },
+          error: () => subscriber.complete(),
+        });
+      });
+    }
+
+    return fetch$;
   }
 
   getById(characterId: string, entryId: string): Observable<AdventureEntry> {
@@ -45,7 +95,10 @@ export class AdventureService {
       `${this.base}/${characterId}/entries`,
       req
     ).pipe(
-      tap(() => this.characterService.notifyCharacterChanged(characterId))
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
     );
   }
 
@@ -58,7 +111,10 @@ export class AdventureService {
       `${environment.apiUrl}/entries/${entryId}`,
       req
     ).pipe(
-      tap(() => this.characterService.notifyCharacterChanged(characterId))
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
     );
   }
 
@@ -66,7 +122,10 @@ export class AdventureService {
     return this.http.delete<void>(
       `${environment.apiUrl}/entries/${entryId}`
     ).pipe(
-      tap(() => this.characterService.notifyCharacterChanged(characterId))
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
     );
   }
 
@@ -122,3 +181,4 @@ export class AdventureService {
     );
   }
 }
+

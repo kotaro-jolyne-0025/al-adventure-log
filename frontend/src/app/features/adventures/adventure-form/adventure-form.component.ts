@@ -22,6 +22,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
+import { CharacterService } from '../../../core/services/character.service';
 import { AdventureEntry, AdventureEntryRequest, AdventureGainedItemRequest } from '../../../core/models/adventure.model';
 import { ItemRarity, ITEM_RARITY_LABELS, InventoryItemRequest } from '../../../core/models/inventory.model';
 import { from, of, concatMap, toArray, map, Observable, catchError, forkJoin } from 'rxjs';
@@ -81,6 +82,7 @@ export class AdventureFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly adventureService = inject(AdventureService);
   private readonly inventoryService = inject(InventoryService);
+  private readonly characterService = inject(CharacterService);
   private readonly snackBar = inject(MatSnackBar);
 
   protected isEditMode = signal(false);
@@ -352,7 +354,7 @@ export class AdventureFormComponent implements OnInit {
           let magicItems: number | null = null;
 
           if (deltasStr) {
-            const goldMatch = deltasStr.match(/金幣\s*([+-]?\d+(?:\.\d+)?)\s*gp/i);
+            const goldMatch = deltasStr.match(/金幣\s*([+-]?\d+(?:\.\d+)?)\s*(?:gp|金)/i);
             if (goldMatch) gold = parseFloat(goldMatch[1]);
             const dtMatch = deltasStr.match(/休整期\s*([+-]?\d+)\s*天/i);
             if (dtMatch) downtime = parseInt(dtMatch[1], 10);
@@ -648,7 +650,7 @@ export class AdventureFormComponent implements OnInit {
     const text = item.description.trim() || '休整期活動';
     const deltas: string[] = [];
     if (item.gold != null && !isNaN(item.gold) && item.gold !== 0) {
-      deltas.push(`金幣 ${item.gold > 0 ? '+' : ''}${item.gold} gp`);
+      deltas.push(`金幣 ${item.gold > 0 ? '+' : ''}${item.gold} 金`);
     }
     if (item.downtime != null && !isNaN(item.downtime) && item.downtime !== 0) {
       deltas.push(`休整期 ${item.downtime > 0 ? '+' : ''}${item.downtime} 天`);
@@ -956,6 +958,8 @@ export class AdventureFormComponent implements OnInit {
         )),
       ).subscribe({
         next: (updated) => {
+          this.inventoryService.clearCache(this.characterId);
+          this.characterService.notifyCharacterChanged(this.characterId);
           this.snackBar.open('記錄已更新', '關閉', { duration: 2500 });
           this.router.navigate(['/characters', this.characterId, 'adventures', updated.id]);
         },
@@ -972,6 +976,8 @@ export class AdventureFormComponent implements OnInit {
         )),
       ).subscribe({
         next: (created) => {
+          this.inventoryService.clearCache(this.characterId);
+          this.characterService.notifyCharacterChanged(this.characterId);
           this.snackBar.open('冒險記錄已新增', '關閉', { duration: 2500 });
           this.router.navigate(['/characters', this.characterId, 'adventures', created.id]);
         },

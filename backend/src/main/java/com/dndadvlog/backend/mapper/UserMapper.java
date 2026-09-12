@@ -4,7 +4,6 @@ import com.dndadvlog.backend.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Mapper

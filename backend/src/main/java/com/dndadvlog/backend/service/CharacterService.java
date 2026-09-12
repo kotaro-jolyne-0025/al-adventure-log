@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -23,7 +22,7 @@ public class CharacterService {
 
     public List<CharacterResponse> getAllCharacters(UUID userId) {
         return characterMapper.findByUserId(userId)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(this::toResponse).toList();
     }
 
     public CharacterResponse getCharacter(UUID id, UUID userId) {

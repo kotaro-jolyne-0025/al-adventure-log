@@ -4,6 +4,9 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { AuthResponse, LoginCredentials, OAuthLoginRequest, RegisterCredentials, User } from '../models/auth.model';
 import { environment } from '../../../environments/environment';
+import { CharacterService } from './character.service';
+import { AdventureService } from './adventure.service';
+import { InventoryService } from './inventory.service';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +14,9 @@ import { environment } from '../../../environments/environment';
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly characterService = inject(CharacterService);
+  private readonly adventureService = inject(AdventureService);
+  private readonly inventoryService = inject(InventoryService);
   private readonly API_URL = `${environment.apiUrl}/auth`;
 
   private readonly TOKEN_KEY = 'dnd_auth_token';
@@ -103,6 +109,7 @@ export class AuthService {
     localStorage.removeItem(this.USER_KEY);
     this.token.set(null);
     this.currentUser.set(null);
+    this.clearAllCaches();
 
     if (redirect) {
       this.router.navigate(['/login']);
@@ -114,6 +121,13 @@ export class AuthService {
     localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
     this.token.set(res.token);
     this.currentUser.set(res.user);
+    this.clearAllCaches();
+  }
+
+  private clearAllCaches(): void {
+    this.characterService.clearCache();
+    this.adventureService.clearCache();
+    this.inventoryService.clearCache();
   }
 
   private getStoredToken(): string | null {

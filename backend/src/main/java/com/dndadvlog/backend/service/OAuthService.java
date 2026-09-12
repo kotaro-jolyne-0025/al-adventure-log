@@ -6,20 +6,20 @@ import com.dndadvlog.backend.entity.UserOAuthAccount;
 import com.dndadvlog.backend.exception.BusinessException;
 import com.dndadvlog.backend.mapper.UserMapper;
 import com.dndadvlog.backend.mapper.UserOAuthAccountMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientException;
 
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -35,9 +35,6 @@ public class OAuthService {
     @Value("${app.oauth.google.client-id:}")
     private String googleClientId;
 
-    @Value("${app.oauth.google.client-secret:}")
-    private String googleClientSecret;
-
     @Value("${app.oauth.discord.client-id:}")
     private String discordClientId;
 
@@ -51,80 +48,88 @@ public class OAuthService {
 
     @Transactional
     public User processOAuthLogin(OAuthLoginRequest request) {
-        String provider = request.getProvider().toUpperCase();
-        OAuthUserInfo userInfo;
-
-        if ("GOOGLE".equals(provider)) {
-            userInfo = verifyGoogleToken(request.getTokenOrCode());
-        } else if ("DISCORD".equals(provider)) {
-            String redirectUri = request.getRedirectUri() != null ? request.getRedirectUri() : discordDefaultRedirectUri;
-            userInfo = exchangeDiscordCode(request.getTokenOrCode(), redirectUri);
-        } else {
-            throw new BusinessException("不支援的第三方登入提供者: " + provider);
+        OAuthUserInfo userInfo = resolveOAuthUserInfo(request);
+        User existingUser = findAndSyncExistingUser(userInfo);
+        if (existingUser != null) {
+            return existingUser;
         }
+        return createNewUserWithOAuth(userInfo);
+    }
 
+    private OAuthUserInfo resolveOAuthUserInfo(OAuthLoginRequest request) {
+        String provider = request.getProvider().toUpperCase();
+        if ("GOOGLE".equals(provider)) {
+            return verifyGoogleToken(request.getTokenOrCode());
+        }
+        if ("DISCORD".equals(provider)) {
+            String redirectUri = request.getRedirectUri() != null ? request.getRedirectUri() : discordDefaultRedirectUri;
+            return exchangeDiscordCode(request.getTokenOrCode(), redirectUri);
+        }
+        throw new BusinessException("不支援的第三方登入提供者: " + provider);
+    }
+
+    private User findAndSyncExistingUser(OAuthUserInfo userInfo) {
         // 1. 查詢是否已有綁定此 provider + providerUserId
         UserOAuthAccount existingOAuth = oauthAccountMapper.findByProviderAndProviderUserId(userInfo.provider(), userInfo.providerUserId());
         if (existingOAuth != null) {
             User user = userMapper.findById(existingOAuth.getUserId());
             if (user != null) {
-                // 更新大頭貼或名稱（若原先為空）
-                boolean needUpdate = false;
-                if (user.getAvatarUrl() == null && userInfo.avatarUrl() != null) {
-                    user.setAvatarUrl(userInfo.avatarUrl());
-                    needUpdate = true;
-                }
-                if (needUpdate) {
-                    userMapper.update(user);
-                }
+                updateAvatarIfPresent(user, userInfo.avatarUrl());
                 return user;
             }
         }
 
         // 2. 檢查 email 是否已註冊過
-        User existingUser = null;
         if (userInfo.email() != null && !userInfo.email().isBlank()) {
-            existingUser = userMapper.findByEmail(userInfo.email());
+            User emailUser = userMapper.findByEmail(userInfo.email());
+            if (emailUser != null) {
+                bindOAuthAccount(emailUser.getId(), userInfo);
+                return emailUser;
+            }
         }
 
-        if (existingUser != null) {
-            // 綁定既有帳號
-            UserOAuthAccount newOAuth = UserOAuthAccount.builder()
-                    .id(UUID.randomUUID())
-                    .userId(existingUser.getId())
-                    .provider(userInfo.provider())
-                    .providerUserId(userInfo.providerUserId())
-                    .email(userInfo.email())
-                    .build();
-            oauthAccountMapper.insert(newOAuth);
-            return existingUser;
+        return null;
+    }
+
+    private void updateAvatarIfPresent(User user, String newAvatarUrl) {
+        if (user.getAvatarUrl() == null && newAvatarUrl != null) {
+            user.setAvatarUrl(newAvatarUrl);
+            userMapper.update(user);
         }
+    }
 
-        // 3. 建立全新使用者
-        UUID newUserId = UUID.randomUUID();
-        String fallbackEmail = userInfo.email() != null && !userInfo.email().isBlank()
-                ? userInfo.email()
-                : userInfo.provider().toLowerCase() + "_" + userInfo.providerUserId() + "@dndadvlog.internal";
-
-        User newUser = User.builder()
-                .id(newUserId)
-                .email(fallbackEmail)
-                .passwordHash(null) // 第三方無密碼
-                .displayName(userInfo.displayName() != null && !userInfo.displayName().isBlank() ? userInfo.displayName() : "冒險者")
-                .avatarUrl(userInfo.avatarUrl())
-                .isActive(true)
-                .build();
-        userMapper.insert(newUser);
-
+    private void bindOAuthAccount(UUID userId, OAuthUserInfo userInfo) {
         UserOAuthAccount newOAuth = UserOAuthAccount.builder()
                 .id(UUID.randomUUID())
-                .userId(newUserId)
+                .userId(userId)
                 .provider(userInfo.provider())
                 .providerUserId(userInfo.providerUserId())
                 .email(userInfo.email())
                 .build();
         oauthAccountMapper.insert(newOAuth);
+    }
 
+    private User createNewUserWithOAuth(OAuthUserInfo userInfo) {
+        UUID newUserId = UUID.randomUUID();
+        String fallbackEmail = (userInfo.email() != null && !userInfo.email().isBlank())
+                ? userInfo.email()
+                : userInfo.provider().toLowerCase() + "_" + userInfo.providerUserId() + "@dndadvlog.internal";
+
+        String displayName = (userInfo.displayName() != null && !userInfo.displayName().isBlank())
+                ? userInfo.displayName()
+                : "冒險者";
+
+        User newUser = User.builder()
+                .id(newUserId)
+                .email(fallbackEmail)
+                .passwordHash(null)
+                .displayName(displayName)
+                .avatarUrl(userInfo.avatarUrl())
+                .isActive(true)
+                .build();
+        userMapper.insert(newUser);
+
+        bindOAuthAccount(newUserId, userInfo);
         return newUser;
     }
 
@@ -153,15 +158,16 @@ public class OAuthService {
                 throw new BusinessException("無效的 Google Token 來源 (Audience 不符)");
             }
 
-            boolean emailVerified = root.has("email_verified")
-                    ? "true".equalsIgnoreCase(root.path("email_verified").asText())
-                    : true;
+            boolean emailVerified = !root.has("email_verified")
+                    || "true".equalsIgnoreCase(root.path("email_verified").asText());
             if (!emailVerified) {
                 throw new BusinessException("Google Email 尚未通過驗證");
             }
 
             return new OAuthUserInfo("GOOGLE", sub, email, name, picture);
-        } catch (Exception e) {
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RestClientException | JsonProcessingException e) {
             log.error("Google OAuth 驗證失敗: {}", e.getMessage());
             throw new BusinessException("Google 登入驗證失敗: " + e.getMessage());
         }
@@ -210,7 +216,9 @@ public class OAuthService {
             }
 
             return new OAuthUserInfo("DISCORD", discordId, email, username, avatarUrl);
-        } catch (Exception e) {
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RestClientException | JsonProcessingException e) {
             log.error("Discord OAuth 交換失敗: {}", e.getMessage());
             throw new BusinessException("Discord 登入驗證失敗: " + e.getMessage());
         }

@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,7 +11,7 @@ import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { Character } from '../../../core/models/character.model';
 import { EntryDefaults } from '../../../core/models/adventure.model';
-import { catchError, filter, forkJoin, of, Subject, takeUntil } from 'rxjs';
+import { catchError, forkJoin, of, Subject, takeUntil } from 'rxjs';
 
 import { CommonModule } from '@angular/common';
 
@@ -50,7 +50,6 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   protected characterId!: string;
 
   private readonly destroy$ = new Subject<void>();
-  private initialLoadDone = false;
 
   ngOnInit(): void {
     this.characterId = this.route.snapshot.paramMap.get('id')!;
@@ -61,18 +60,6 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((id) => {
         if (!id || id === this.characterId) {
-          this.refreshHud();
-        }
-      });
-
-    // 子路由切換導航完成時，自動刷新統計（忽略初次載入，避免重複打 API）
-    this.router.events
-      .pipe(
-        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-        takeUntil(this.destroy$)
-      )
-      .subscribe(() => {
-        if (this.initialLoadDone) {
           this.refreshHud();
         }
       });
@@ -100,7 +87,6 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
           .reduce((sum, i) => sum + (i.quantity || 1), 0);
         this.magicItemsCount.set(count);
         this.isLoading.set(false);
-        this.initialLoadDone = true;
       },
       error: () => {
         this.snackBar.open('找不到此角色', '關閉', { duration: 3000 });
