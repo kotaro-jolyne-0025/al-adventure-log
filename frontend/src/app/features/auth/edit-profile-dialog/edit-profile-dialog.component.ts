@@ -59,7 +59,9 @@ import { User } from '../../../core/models/auth.model';
       margin-bottom: 0.5rem;
     }
     .dialog-content {
-      min-width: 320px;
+      width: 100%;
+      max-width: 400px;
+      box-sizing: border-box;
       padding-top: 1rem !important;
     }
     .full-width {
@@ -68,6 +70,15 @@ import { User } from '../../../core/models/auth.model';
     .dialog-actions {
       padding: 1rem 1.5rem;
       gap: 0.5rem;
+
+      @media (max-width: 480px) {
+        padding: 0.75rem 1rem;
+
+        button {
+          flex: 1;
+          height: 42px;
+        }
+      }
     }
     .spinner {
       display: inline-block;

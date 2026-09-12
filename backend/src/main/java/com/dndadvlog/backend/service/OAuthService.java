@@ -147,8 +147,17 @@ public class OAuthService {
             String name = root.path("name").asText(root.path("given_name").asText("Google 玩家"));
             String picture = root.path("picture").asText(null);
 
-            if (sub == null || sub.isBlank()) {
-                throw new BusinessException("無效的 Google ID Token");
+            String aud = root.path("aud").asText();
+            if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(aud)) {
+                log.warn("Google Token aud mismatch: expected={}, received={}", googleClientId, aud);
+                throw new BusinessException("無效的 Google Token 來源 (Audience 不符)");
+            }
+
+            boolean emailVerified = root.has("email_verified")
+                    ? "true".equalsIgnoreCase(root.path("email_verified").asText())
+                    : true;
+            if (!emailVerified) {
+                throw new BusinessException("Google Email 尚未通過驗證");
             }
 
             return new OAuthUserInfo("GOOGLE", sub, email, name, picture);

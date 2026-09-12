@@ -1,39 +1,393 @@
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+/* ==========================================================================
+   Design Tokens & CSS Variables (Style A: Clean Light & Style B: Soft Charcoal)
+   ========================================================================== */
+
+/* ── 風格 A：現代簡約淺色 (Clean Light - 預設) ── */
+:root,
+body,
+body.theme-light {
+  // Base Surfaces
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
+  --bg-surface-hover: #f1f5f9;
+
+  // Borders
+  --border-subtle: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --border-highlight: rgba(217, 119, 6, 0.35);
+
+  // Typography
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+
+  // Primary & Functional Colors
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-gold: #d97706;
+  --color-gold-bg: #fef3c7;
+  --color-positive: #059669;
+  --color-positive-bg: #d1fae5;
+  --color-negative: #e11d48;
+  --color-negative-bg: #ffe4e6;
+  --color-info: #0284c7;
+  --color-info-bg: #e0f2fe;
+
+  // D&D Item Rarity (Light Mode)
+  --rarity-common: #64748b;
+  --rarity-uncommon: #16a34a;
+  --rarity-rare: #2563eb;
+  --rarity-very-rare: #9333ea;
+  --rarity-legendary: #d97706;
+  --rarity-artifact: #dc2626;
+
+  // Spacing & Radius
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+
+  // Header & Scrollbar
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --scrollbar-track: #f8fafc;
+  --scrollbar-thumb: #cbd5e1;
+
+  // Safe Area Insets (for mobile notches & gesture bars)
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+
+  // Fonts
+  --font-family-base: 'Inter', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── 風格 B：柔和炭灰深色 (Soft Charcoal Dark) ── */
+body.theme-dark {
+  // Base Surfaces
+  --bg-canvas: #18181b;
+  --bg-surface: #27272a;
+  --bg-surface-elevated: #3f3f46;
+  --bg-surface-hover: #3f3f46;
+
+  // Borders
+  --border-subtle: #3f3f46;
+  --border-medium: #52525b;
+  --border-highlight: rgba(251, 191, 36, 0.35);
+
+  // Typography
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+
+  // Primary & Functional Colors
+  --color-primary: #a855f7;
+  --color-primary-hover: #9333ea;
+  --color-gold: #fbbf24;
+  --color-gold-bg: rgba(251, 191, 36, 0.15);
+  --color-positive: #34d399;
+  --color-positive-bg: rgba(52, 211, 153, 0.15);
+  --color-negative: #fb7185;
+  --color-negative-bg: rgba(251, 113, 133, 0.15);
+  --color-info: #38bdf8;
+  --color-info-bg: rgba(56, 189, 248, 0.15);
+
+  // D&D Item Rarity (Dark Mode)
+  --rarity-common: #a1a1aa;
+  --rarity-uncommon: #4ade80;
+  --rarity-rare: #60a5fa;
+  --rarity-very-rare: #c084fc;
+  --rarity-legendary: #fde047;
+  --rarity-artifact: #f87171;
+
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
+  // Header & Scrollbar
+  --header-bg: rgba(39, 39, 42, 0.88);
+  --scrollbar-track: #18181b;
+  --scrollbar-thumb: #3f3f46;
+}
+
+/* ==========================================================================
+   Material 3 Theming Integration
+   ========================================================================== */
 html {
   height: 100%;
+}
+
+// Light theme by default
+body,
+body.theme-light {
+  color-scheme: light;
   @include mat.theme(
     (
       color: (
+        theme-type: light,
         primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        tertiary: mat.$orange-palette,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: ('Inter', 'Noto Sans TC', sans-serif),
+        brand-family: ('Inter', 'Noto Sans TC', sans-serif),
+      ),
+      density: 0,
+    )
+  );
+}
+
+// Dark theme when body has .theme-dark
+body.theme-dark {
+  color-scheme: dark;
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$violet-palette,
+        tertiary: mat.$yellow-palette,
+      ),
+      typography: (
+        plain-family: ('Inter', 'Noto Sans TC', sans-serif),
+        brand-family: ('Inter', 'Noto Sans TC', sans-serif),
+      ),
       density: 0,
     )
   );
 }
 
 body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
-
-  // Reset the user agent margin.
   margin: 0;
   height: 100%;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
-/* You can add global styles to this file, and also import other style files */
+
+/* ==========================================================================
+   Global Scrollbars
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--scrollbar-track);
+
+  &:hover {
+    background: var(--text-muted);
+  }
+}
+
+/* ==========================================================================
+   Global Utility Classes & Components
+   ========================================================================== */
+// 卡片容器
+.clean-card {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+
+  &.clickable {
+    cursor: pointer;
+    &:hover {
+      background: var(--bg-surface-hover) !important;
+      border-color: var(--border-medium) !important;
+      box-shadow: var(--shadow-md);
+    }
+  }
+}
+
+// 數值增減標籤
+.delta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+
+  &.positive {
+    color: var(--color-positive);
+    background-color: var(--color-positive-bg);
+  }
+
+  &.negative {
+    color: var(--color-negative);
+    background-color: var(--color-negative-bg);
+  }
+
+  &.neutral {
+    color: var(--text-secondary);
+  }
+}
+
+// 稀有度標籤 (Rarity Pill)
+.rarity-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid currentColor;
+  background-color: rgba(0, 0, 0, 0.05);
+
+  &.rarity-common { color: var(--rarity-common); }
+  &.rarity-uncommon { color: var(--rarity-uncommon); }
+  &.rarity-rare { color: var(--rarity-rare); }
+  &.rarity-very-rare { color: var(--rarity-very-rare); }
+  &.rarity-legendary { color: var(--rarity-legendary); }
+  &.rarity-artifact { color: var(--rarity-artifact); }
+}
+
+// 同調標籤 (Attunement Pill)
+.attunement-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #b45309;
+  background-color: #fef3c7;
+  border: 1px solid rgba(180, 83, 9, 0.25);
+}
+
+// 狀態徽章 (Badge)
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+
+  .badge-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+// 骨架屏載入動效 (Skeleton pulse)
+@keyframes skeleton-pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.25; }
+  100% { opacity: 0.6; }
+}
+
+.skeleton-box {
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Mobile Ergonomics & Responsive Overrides
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+// 觸控點擊微動效反饋
+.clickable {
+  &:active {
+    transform: scale(0.985) !important;
+  }
+}
+
+// 防止 iOS Safari 在輸入框聚焦時強制畫面放大 (字體需 >= 16px)
+@media (max-width: 768px) {
+  .mat-mdc-form-field input,
+  .mat-mdc-form-field textarea,
+  .mat-mdc-select {
+    font-size: 16px !important;
+  }
+
+  // Material Dialog 小螢幕自適應寬度
+  .cdk-overlay-pane {
+    max-width: 94vw !important;
+  }
+
+  .mat-mdc-dialog-container {
+    padding: 16px !important;
+  }
+}
+
+// 底部安全區域輔助類別
+.safe-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
+// Material Form Field 邊框銳利化與子像素模糊修復
+.mat-mdc-form-field.mat-form-field-appearance-outline {
+  .mat-mdc-text-field-wrapper {
+    background-color: var(--bg-surface);
+  }
+
+  .mdc-notched-outline {
+    &__leading,
+    &__notch,
+    &__trailing {
+      border-color: var(--border-medium) !important;
+      border-width: 1px !important;
+    }
+  }
+
+  &:hover .mdc-notched-outline {
+    &__leading,
+    &__notch,
+    &__trailing {
+      border-color: var(--text-secondary) !important;
+    }
+  }
+
+  &.mat-focused .mdc-notched-outline {
+    &__leading,
+    &__notch,
+    &__trailing {
+      border-color: var(--color-primary) !important;
+      border-width: 2px !important;
+    }
+  }
+}
+
+

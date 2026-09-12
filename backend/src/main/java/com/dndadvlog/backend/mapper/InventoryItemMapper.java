@@ -16,6 +16,8 @@ public interface InventoryItemMapper {
 
     InventoryItem findById(@Param("id") UUID id);
 
+    InventoryItem findByAdventureGainedItemId(@Param("gainedItemId") UUID gainedItemId);
+
     void insert(InventoryItem item);
 
     void update(InventoryItem item);

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D&D 冒險日誌 - UI/UX 主題配色即時預覽</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    /* ==========================================================
+       THEME PRESETS (CSS Variables)
+       ========================================================== */
+    
+    /* 1. 風格 A：現代簡約淺色 (Clean Light - 推薦：類似 Notion / Linear) */
+    body.theme-light {
+      --bg-body: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card-sub: #f1f5f9;
+      --bg-input: #ffffff;
+      --border: #e2e8f0;
+      --border-focus: #6366f1;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --text-muted: #94a3b8;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-text: #ffffff;
+      --gold: #d97706;
+      --gold-bg: #fef3c7;
+      --positive: #059669;
+      --positive-bg: #d1fae5;
+      --negative: #e11d48;
+      --negative-bg: #ffe4e6;
+      --info: #0284c7;
+      --info-bg: #e0f2fe;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.08);
+      --header-bg: rgba(255, 255, 255, 0.9);
+    }
+
+    /* 2. 風格 B：柔和炭灰深色 (Soft Charcoal - 護眼不偏藍) */
+    body.theme-charcoal {
+      --bg-body: #18181b;
+      --bg-card: #27272a;
+      --bg-card-sub: #3f3f46;
+      --bg-input: #18181b;
+      --border: #3f3f46;
+      --border-focus: #a855f7;
+      --text-main: #f4f4f5;
+      --text-sub: #a1a1aa;
+      --text-muted: #71717a;
+      --primary: #a855f7;
+      --primary-hover: #9333ea;
+      --primary-text: #ffffff;
+      --gold: #fbbf24;
+      --gold-bg: rgba(251, 191, 36, 0.15);
+      --positive: #34d399;
+      --positive-bg: rgba(52, 211, 153, 0.15);
+      --negative: #fb7185;
+      --negative-bg: rgba(251, 113, 133, 0.15);
+      --info: #38bdf8;
+      --info-bg: rgba(56, 189, 248, 0.15);
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+      --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.4);
+      --header-bg: rgba(39, 39, 42, 0.9);
+    }
+
+    /* 3. 風格 C：溫潤紙感米白 (Warm Cream - 柔和護眼淺色) */
+    body.theme-cream {
+      --bg-body: #f7f4ef;
+      --bg-card: #ffffff;
+      --bg-card-sub: #eee9e0;
+      --bg-input: #faf8f5;
+      --border: #e2ddd3;
+      --border-focus: #c2410c;
+      --text-main: #292524;
+      --text-sub: #78716c;
+      --text-muted: #a8a29e;
+      --primary: #c2410c;
+      --primary-hover: #9a3412;
+      --primary-text: #ffffff;
+      --gold: #b45309;
+      --gold-bg: #fef3c7;
+      --positive: #15803d;
+      --positive-bg: #dcfce7;
+      --negative: #be123c;
+      --negative-bg: #ffe4e6;
+      --info: #0369a1;
+      --info-bg: #e0f2fe;
+      --shadow: 0 1px 3px rgba(68, 64, 60, 0.08);
+      --shadow-hover: 0 8px 12px -2px rgba(68, 64, 60, 0.12);
+      --header-bg: rgba(247, 244, 239, 0.95);
+    }
+
+    /* 4. 風格 D：低對比靜謐深藍 (Muted Slate Navy - 溫和深色) */
+    body.theme-navy {
+      --bg-body: #111827;
+      --bg-card: #1f2937;
+      --bg-card-sub: #374151;
+      --bg-input: #111827;
+      --border: #374151;
+      --border-focus: #38bdf8;
+      --text-main: #f9fafb;
+      --text-sub: #9ca3af;
+      --text-muted: #6b7280;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-text: #ffffff;
+      --gold: #f59e0b;
+      --gold-bg: rgba(245, 158, 11, 0.15);
+      --positive: #10b981;
+      --positive-bg: rgba(16, 185, 129, 0.15);
+      --negative: #f43f5e;
+      --negative-bg: rgba(244, 63, 94, 0.15);
+      --info: #38bdf8;
+      --info-bg: rgba(56, 189, 248, 0.15);
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+      --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.4);
+      --header-bg: rgba(31, 41, 55, 0.9);
+    }
+
+    /* ==========================================================
+       BASE STYLES
+       ========================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding-bottom: 60px;
+    }
+
+    /* Top Switcher Bar */
+    .theme-controller {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 12px 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .controller-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .theme-options {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .theme-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .theme-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .theme-btn.active {
+      background: #3b82f6;
+      border-color: #60a5fa;
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+
+    /* Demo Container */
+    .demo-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* App Header */
+    .mock-header {
+      background: var(--header-bg);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .brand-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--gold-bg);
+      color: var(--gold);
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      background: var(--bg-card-sub);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    /* Section Headers */
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 28px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Character HUD Card */
+    .char-hud {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .char-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .char-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .char-meta {
+      font-size: 0.9rem;
+      color: var(--text-sub);
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat-box {
+      background: var(--bg-card-sub);
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-gold { color: var(--gold); }
+    .stat-downtime { color: var(--info); }
+    .stat-magic { color: var(--primary); }
+
+    /* Adventure Chronicle Card */
+    .adventure-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+    }
+
+    .adventure-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .adv-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .adv-code {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .adv-date {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    .adv-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .deltas-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .delta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .delta-positive {
+      background: var(--positive-bg);
+      color: var(--positive);
+    }
+
+    .delta-negative {
+      background: var(--negative-bg);
+      color: var(--negative);
+    }
+
+    .delta-neutral {
+      background: var(--bg-card-sub);
+      color: var(--text-sub);
+    }
+
+    /* Inventory Items Preview */
+    .inventory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .item-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .item-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .rarity-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .rarity-uncommon { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+    .rarity-rare { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+
+    .item-source {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    /* Form Controls */
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .mock-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-text);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    .mock-input {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+    }
+  </style>
+</head>
+<body class="theme-light">
+
+  <!-- Top Realtime Controller -->
+  <div class="theme-controller">
+    <div class="controller-title">
+      <span class="material-icons" style="font-size: 20px;">palette</span>
+      <span>D&amp;D 冒險日誌 - UI/UX 主題配色切換器（請點擊下方切換查看）</span>
+    </div>
+    <div class="theme-options">
+      <button class="theme-btn active" onclick="setTheme('theme-light', this)">
+        ☀️ 風格 A：現代簡約淺色 (Clean Light)
+      </button>
+      <button class="theme-btn" onclick="setTheme('theme-charcoal', this)">
+        🌙 風格 B：柔和炭灰深色 (Soft Charcoal)
+      </button>
+      <button class="theme-btn" onclick="setTheme('theme-cream', this)">
+        📜 風格 C：溫潤紙感米白 (Warm Cream)
+      </button>
+      <button class="theme-btn" onclick="setTheme('theme-navy', this)">
+        🌌 風格 D：低對比靜謐深藍 (Muted Navy)
+      </button>
+    </div>
+  </div>
+
+  <div class="demo-container">
+
+    <!-- Mock Navigation -->
+    <div class="mock-header">
+      <div class="brand">
+        <span>🎲 D&amp;D 冒險日誌</span>
+        <span class="brand-tag">AL</span>
+      </div>
+      <div class="user-pill">
+        <div class="avatar">可</div>
+        <span>可嵐</span>
+        <span class="material-icons" style="font-size: 18px; color: var(--text-muted);">arrow_drop_down</span>
+      </div>
+    </div>
+
+    <!-- Character HUD Section -->
+    <div class="section-title">
+      <span class="material-icons" style="color: var(--primary);">person</span>
+      <span>角色狀態總覽 (Character HUD)</span>
+    </div>
+
+    <div class="char-hud">
+      <div class="char-header">
+        <div>
+          <div class="char-name">亞夢 (Amu)</div>
+          <div class="char-meta">阿斯莫 ・ 聖騎士 Lv.6 / 術士 Lv.4 ・ 豎琴手同盟</div>
+        </div>
+        <div class="controls-row" style="margin-top: 0;">
+          <button class="mock-btn btn-primary">
+            <span class="material-icons" style="font-size: 16px;">add</span>
+            新增冒險記錄
+          </button>
+          <button class="mock-btn btn-secondary">
+            <span class="material-icons" style="font-size: 16px;">edit</span>
+            編輯角色
+          </button>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-label">當前總等級</span>
+          <span class="stat-value">Lv. 10</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">🪙 金幣資產 (GP)</span>
+          <span class="stat-value stat-gold">4,756.66</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">🏕️ 休整期天數</span>
+          <span class="stat-value stat-downtime">80 天</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">✨ 永久魔法物品</span>
+          <span class="stat-value stat-magic">3 件</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adventure Log Timeline Section -->
+    <div class="section-title">
+      <span class="material-icons" style="color: var(--gold);">menu_book</span>
+      <span>冒險歷程時間軸 (Adventure Chronicle)</span>
+    </div>
+
+    <!-- Adventure Card 1 -->
+    <div class="adventure-card">
+      <div class="adv-top">
+        <span class="adv-code">CCC-GHC-BK2-07</span>
+        <span class="adv-date">2026/08/20 ・ DM: 蔚浩</span>
+      </div>
+      <div class="adv-title">死亡騎士的復仇 (Death Knight's Revenge)</div>
+      <div class="deltas-container">
+        <span class="delta-badge delta-positive">Lv.9 ➔ Lv.10 (+1 術士)</span>
+        <span class="delta-badge delta-positive">🪙 +1,000 GP</span>
+        <span class="delta-badge delta-negative">🏕️ -10 天 (休整)</span>
+        <span class="delta-badge delta-positive">✨ +1 魔法物品</span>
+      </div>
+      <p style="font-size: 0.88rem; color: var(--text-sub);">
+        備註：成功討伐守墓死騎，獲得冰霜之刃與靈魂硬幣，並在要塞進行了為期 10 天的修煉。
+      </p>
+    </div>
+
+    <!-- Adventure Card 2 -->
+    <div class="adventure-card">
+      <div class="adv-top">
+        <span class="adv-code">DDAL-09-01</span>
+        <span class="adv-date">2026/08/10 ・ DM: 小明</span>
+      </div>
+      <div class="adv-title">深坑的呼喚 (Escape from Elturgard)</div>
+      <div class="deltas-container">
+        <span class="delta-badge delta-neutral">Lv.9 (未升級)</span>
+        <span class="delta-badge delta-positive">🪙 +250 GP</span>
+        <span class="delta-badge delta-positive">🏕️ +10 天</span>
+      </div>
+      <p style="font-size: 0.88rem; color: var(--text-sub);">
+        備註：護送難民抵達安全營地，消耗了 2 瓶治療藥水。
+      </p>
+    </div>
+
+    <!-- Inventory Preview Section -->
+    <div class="section-title">
+      <span class="material-icons" style="color: var(--positive);">inventory_2</span>
+      <span>背包與倉庫 (Inventory Preview)</span>
+    </div>
+
+    <div class="inventory-grid">
+      <div class="item-card">
+        <div class="item-header">
+          <span class="item-name">✨ +1 長劍 (Longsword +1)</span>
+          <span class="rarity-pill rarity-uncommon">非罕見</span>
+        </div>
+        <div class="item-source">來源：死亡騎士的復仇 ・ 數量：1</div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-header">
+          <span class="item-name">✨ 守護披風 (Cloak of Protection)</span>
+          <span class="rarity-pill rarity-rare">罕見</span>
+        </div>
+        <div class="item-source">來源：黑石深淵 ・ 數量：1</div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-header">
+          <span class="item-name">🧪 高級治療藥水 (Greater Healing)</span>
+          <span class="rarity-pill rarity-uncommon">非罕見</span>
+        </div>
+        <div class="item-source">消耗品 ・ 數量：3 瓶</div>
+      </div>
+    </div>
+
+    <!-- Form Inputs Preview -->
+    <div class="section-title">
+      <span class="material-icons" style="color: var(--info);">tune</span>
+      <span>表單與操作互動 (Controls Preview)</span>
+    </div>
+
+    <div style="background: var(--bg-card); border: 1px solid var(--border); padding: 18px; border-radius: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      <input type="text" class="mock-input" value="輸入冒險名稱..." style="flex: 1; min-width: 180px;">
+      <input type="number" class="mock-input" value="1000" style="width: 110px;">
+      <button class="mock-btn btn-primary">儲存記錄</button>
+      <button class="mock-btn btn-secondary">取消</button>
+    </div>
+
+  </div>
+
+  <script>
+    function setTheme(themeClass, btn) {
+      document.body.className = themeClass;
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

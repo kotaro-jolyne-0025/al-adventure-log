@@ -52,7 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception ex) {
-            log.error("無法在 SecurityContext 中設定使用者認證資訊", ex);
+            log.warn("無法在 SecurityContext 中設定使用者認證資訊: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);

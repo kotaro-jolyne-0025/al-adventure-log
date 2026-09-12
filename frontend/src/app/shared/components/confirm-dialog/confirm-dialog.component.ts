@@ -18,7 +18,7 @@ export interface ConfirmDialogData {
     <mat-dialog-content>
       <p>{{ data.message }}</p>
     </mat-dialog-content>
-    <mat-dialog-actions align="end">
+    <mat-dialog-actions align="end" class="dialog-actions">
       <button mat-button (click)="onCancel()">
         {{ data.cancelText ?? '取消' }}
       </button>
@@ -27,6 +27,21 @@ export interface ConfirmDialogData {
       </button>
     </mat-dialog-actions>
   `,
+  styles: [`
+    .dialog-actions {
+      padding: 0.75rem 1.5rem 1.25rem;
+      gap: 0.5rem;
+
+      @media (max-width: 480px) {
+        padding: 0.5rem 0.75rem 1rem;
+
+        button {
+          flex: 1;
+          height: 42px;
+        }
+      }
+    }
+  `],
 })
 export class ConfirmDialogComponent {
   protected readonly data: ConfirmDialogData = inject(MAT_DIALOG_DATA);

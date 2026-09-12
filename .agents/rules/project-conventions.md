@@ -35,8 +35,11 @@
    - 採用 `ReactiveFormsModule`（`FormGroup` / `FormControl`）。
    - 唯讀欄位與即時計算欄位使用 computed signal 或表單 disabled 狀態呈現，確保使用者體驗流暢且防呆。
 5. **UI & 主題風格**：
-   - 使用 Angular Material 組件（MatCard, MatTable, MatButton, MatIcon, MatFormField, MatSelect, MatSlideToggle 等）。
+   - 使用 Angular Material 組件（MatCard, MatTable, MatButton, MatFormField, MatSelect, MatSlideToggle 等）。
    - 保持 D&D 冒險風格的高質感深色/紫金系視覺（`#7b1fa2` 主色系），支援響應式排版（手機、平板與桌面）。
+6. **圖示標準 (Icon System)**：
+   - 全站統一使用 **Lucide Icons (`@lucide/angular`)**，建立現代 SVG 線條視覺風格。
+   - 禁止在同組件或同一行中混用 `mat-icon` 與 Lucide，逐步將舊有 `mat-icon` 重構遷移至 Lucide。
 
 ---
 

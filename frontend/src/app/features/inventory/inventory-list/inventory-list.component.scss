@@ -1,28 +1,447 @@
 .page-container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 8px 16px 80px;
+  padding: 8px 0 40px;
 }
 
-.loading-wrapper {
+.inventory-header {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 600px) {
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+}
+
+.header-titles {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+
+  @media (max-width: 600px) {
+    font-size: 1.2rem;
+  }
+}
+
+.title-icon {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  padding: 48px 0;
+  color: var(--color-primary);
 }
 
-/* Tabs */
-.inventory-tabs {
-  margin-top: 4px;
+.count-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
-.tab-content {
-  padding: 16px 0;
-}
-
-.tab-header {
+.header-actions {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  @media (max-width: 600px) {
+    width: 100%;
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+}
+
+.sort-toolbar-capsule {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 3px 4px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.12);
+  }
+
+  @media (max-width: 600px) {
+    width: 100%;
+    height: 44px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  }
+}
+
+.capsule-section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 16px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.18s ease, color 0.18s ease;
+
+  &:hover {
+    background: var(--bg-surface-elevated);
+    color: var(--color-primary);
+  }
+
+  &:active {
+    background: var(--bg-surface-hover);
+  }
+
+  @media (max-width: 600px) {
+    flex: 1;
+    padding: 0 8px;
+    font-size: 0.86rem;
+  }
+}
+
+.select-section {
+  /* 覆蓋整個按鈕的隱形原生選單，觸控時精準呼叫原生滾輪/選單 */
+  .invisible-native-select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+  }
+}
+
+.capsule-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
+
+  &.dir-icon {
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+
+    &.icon-asc {
+      color: var(--color-positive);
+    }
+  }
+}
+
+.capsule-text {
+  white-space: nowrap;
+}
+
+.capsule-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.capsule-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-medium);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.btn-add-item {
+  font-weight: 600;
+  height: 40px;
+  padding: 0 18px;
+
+  @media (max-width: 600px) {
+    width: 100%;
+    height: 44px;
+    justify-content: center;
+  }
+}
+
+.inventory-sub-tabs {
+  margin-bottom: 20px;
+
+  ::ng-deep .mat-mdc-tab {
+    @media (max-width: 600px) {
+      flex: 1;
+      padding: 0 8px;
+    }
+  }
+
+  .tab-icon {
+    margin-right: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+  }
+}
+
+/* Items List (方案 4 橫向條列模式) */
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  @media (max-width: 640px) {
+    gap: 10px;
+  }
+}
+
+.item-row-card {
+  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  align-items: center;
+  gap: 20px;
+  border-radius: var(--radius-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-medium) !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  &.skeleton-row {
+    height: 60px;
+    cursor: default;
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr) 200px auto;
+    gap: 16px;
+  }
+
+  /* 消耗品卡片專用 4 欄 Grid：名稱 ➔ 獨立數量徽章 ➔ 稀有度 ➔ 日期/操作 */
+  &.consumable-row-card {
+    grid-template-columns: minmax(0, 1fr) 56px 180px auto;
+
+    @media (max-width: 900px) {
+      grid-template-columns: minmax(0, 1fr) 50px 150px auto;
+      gap: 14px;
+    }
+  }
+
+  /* 手機版響應式結構：自適應多行流動 */
+  @media (max-width: 640px) {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 12px;
+
+    /* 手機版消耗品卡片：數量徽章固定於右上角，釋放多餘行空間 */
+    &.consumable-row-card {
+      position: relative;
+
+      .row-left-main {
+        padding-right: 56px; // 避免長品名與右上角數量徽章重疊
+      }
+
+      .row-qty-col {
+        position: absolute;
+        top: 14px;
+        right: 12px;
+        justify-content: flex-end;
+      }
+    }
+  }
+}
+
+/* 1. 左側主體：標題 + 來源/備註（充分利用寬度，溢出 ... 省略） */
+.row-left-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+
+  .name-block {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+
+    .item-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text-primary);
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sub-info-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+
+      .meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        color: var(--text-muted);
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        .source-icon {
+          color: var(--text-secondary);
+          flex-shrink: 0;
+        }
+      }
+    }
+  }
+}
+
+/* 2. 獨立數量欄位（垂直齊頭對齊） */
+.row-qty-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+
+  @media (max-width: 640px) {
+    justify-content: flex-start;
+  }
+}
+
+/* 數量標籤徽章 */
+.qty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #2563eb;
+  user-select: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: rgba(59, 130, 246, 0.14);
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+
+  .qty-x {
+    font-size: 0.68rem;
+    font-weight: 500;
+    opacity: 0.8;
+    margin-right: 1px;
+  }
+}
+
+/* 2. 中間：稀有度與同調標籤（靠左齊頭對齊，保證多卡片間水平位置嚴格一致） */
+.row-center-tags {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+
+  @media (max-width: 640px) {
+    justify-content: flex-start;
+  }
+}
+
+/* 3. 右側：時間 + 編輯/刪除 */
+.row-right-actions {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  gap: 12px;
+  flex-shrink: 0;
+
+  @media (max-width: 640px) {
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .date-text {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .crud-btns {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: var(--bg-surface-elevated);
+        color: var(--color-primary);
+      }
+
+      &.delete-btn:hover {
+        background: #fee2e2;
+        color: #ef4444;
+      }
+
+      @media (max-width: 640px) {
+        width: 36px;
+        height: 36px;
+      }
+    }
+  }
 }
 
 /* Empty State */
@@ -30,88 +449,40 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 48px 16px;
   text-align: center;
-}
+  padding: 56px 20px;
+  max-width: 480px;
+  margin: 32px auto;
 
-.empty-icon {
-  font-size: 48px;
-  width: 48px;
-  height: 48px;
-  color: var(--mat-sys-outline);
-  opacity: 0.4;
-}
-
-.empty-title {
-  font-size: 1rem;
-  margin: 0;
-  color: var(--mat-sys-on-surface);
-}
-
-/* Item Cards */
-.item-card {
-  margin-bottom: 10px;
-
-  mat-card-content {
-    padding: 12px 16px !important;
+  .empty-icon-wrap {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--bg-surface-elevated);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
   }
-}
 
-.item-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+  .empty-icon {
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-.item-main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 140px;
-}
+  .empty-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--text-primary);
+  }
 
-.item-name {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.rarity-badge {
-  font-size: 0.72rem;
-  border: 1px solid;
-  border-radius: 12px;
-  padding: 1px 8px;
-  white-space: nowrap;
-}
-
-.item-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.meta-text {
-  font-size: 0.82rem;
-  color: var(--mat-sys-outline);
-}
-
-.quantity-badge {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--mat-sys-primary);
-}
-
-.item-actions {
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-
-.item-notes {
-  margin: 6px 0 0;
-  font-size: 0.82rem;
-  color: var(--mat-sys-outline);
-  white-space: pre-wrap;
+  .empty-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin: 0 0 20px;
+    line-height: 1.5;
+  }
 }

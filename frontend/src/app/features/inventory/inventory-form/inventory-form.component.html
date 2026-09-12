@@ -1,75 +1,82 @@
 <div class="page-container">
   <div class="page-header">
-    <button mat-icon-button (click)="onBack()"><mat-icon>arrow_back</mat-icon></button>
+    <button mat-icon-button (click)="onBack()" class="btn-back" matTooltip="返回倉庫">
+      <svg lucideArrowLeft [size]="20"></svg>
+    </button>
     <h1 class="page-title">{{ isEditMode() ? '編輯物品' : '新增物品' }}</h1>
   </div>
 
-  <mat-card class="form-card">
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <div class="form-card clean-card">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>物品名稱 *</mat-label>
-          <input matInput formControlName="itemName" placeholder="例：幸運石" />
-          @if (form.get('itemName')?.hasError('required') && form.get('itemName')?.touched) {
-            <mat-error>物品名稱為必填</mat-error>
-          }
-        </mat-form-field>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>物品名稱 *</mat-label>
+        <input matInput formControlName="itemName" />
+        @if (form.get('itemName')?.hasError('required') && form.get('itemName')?.touched) {
+          <mat-error>物品名稱為必填</mat-error>
+        }
+      </mat-form-field>
 
-        <div class="field-row">
-          <mat-form-field appearance="outline" class="flex-1">
-            <mat-label>類型 *</mat-label>
-            <mat-select formControlName="itemType">
-              @for (t of itemTypes; track t) {
-                <mat-option [value]="t">{{ typeLabels[t] }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="flex-1">
-            <mat-label>稀有度</mat-label>
-            <mat-select formControlName="rarity">
-              <mat-option value="">— 未設定 —</mat-option>
-              @for (r of rarities; track r) {
-                @if (r !== '') {
-                  <mat-option [value]="r">{{ rarityLabels[r] }}</mat-option>
-                }
-              }
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="field-row">
-          <mat-form-field appearance="outline" class="flex-1">
-            <mat-label>數量</mat-label>
-            <input matInput type="number" formControlName="quantity" min="0" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="flex-2">
-            <mat-label>取得來源</mat-label>
-            <input matInput formControlName="source" placeholder="例：死亡騎士" />
-          </mat-form-field>
-        </div>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>備註</mat-label>
-          <textarea matInput formControlName="notes" rows="3"
-            placeholder="自由備註..."></textarea>
-        </mat-form-field>
-
-        <div class="form-actions">
-          <button type="button" mat-stroked-button (click)="onBack()">取消</button>
-          <button type="submit" mat-flat-button color="primary" [disabled]="isSaving()">
-            @if (isSaving()) {
-              <mat-spinner diameter="20"></mat-spinner>
-            } @else {
-              <mat-icon>save</mat-icon>
+      <div class="field-row">
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>物品類型 *</mat-label>
+          <mat-select formControlName="itemType">
+            @for (t of itemTypes; track t) {
+              <mat-option [value]="t">{{ typeLabels[t] }}</mat-option>
             }
-            {{ isEditMode() ? '儲存變更' : '新增物品' }}
-          </button>
-        </div>
+          </mat-select>
+        </mat-form-field>
 
-      </form>
-    </mat-card-content>
-  </mat-card>
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>稀有度</mat-label>
+          <mat-select formControlName="rarity">
+            <mat-option value="">— 未設定 —</mat-option>
+            @for (r of rarities; track r) {
+              @if (r !== '') {
+                <mat-option [value]="r">{{ rarityLabels[r] }}</mat-option>
+              }
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      @if (form.get('itemType')?.value === 'PERMANENT') {
+        <div class="checkbox-row">
+          <mat-checkbox formControlName="requiresAttunement" color="primary">
+            需要同調 (Requires Attunement)
+          </mat-checkbox>
+        </div>
+      }
+
+      <div class="field-row">
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>數量</mat-label>
+          <input matInput type="number" formControlName="quantity" min="1" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="flex-2">
+          <mat-label>取得來源（選填）</mat-label>
+          <input matInput formControlName="source" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>備註</mat-label>
+        <textarea matInput formControlName="notes" rows="4"></textarea>
+      </mat-form-field>
+
+      <div class="form-actions">
+        <button type="button" mat-stroked-button (click)="onBack()">取消</button>
+        <button type="submit" mat-flat-button color="primary" [disabled]="isSaving() || form.invalid">
+          @if (isSaving()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <svg lucideSave [size]="18" style="margin-right: 6px;"></svg>
+          }
+          {{ isEditMode() ? '儲存變更' : '新增物品' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
 </div>

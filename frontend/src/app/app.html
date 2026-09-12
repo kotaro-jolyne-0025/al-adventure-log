@@ -1,47 +1,67 @@
-<mat-toolbar color="primary" class="app-toolbar">
-  <span class="toolbar-title" routerLink="/characters" style="cursor:pointer">
-    🎲 D&amp;D 冒險日誌
-  </span>
+<header class="app-header">
+  <mat-toolbar class="app-toolbar">
+    @if (showBack()) {
+      <button mat-icon-button (click)="goBack()" class="top-nav-back-btn" matTooltip="返回角色列表">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+    }
 
-  <span class="spacer"></span>
+    <div class="brand-container" routerLink="/characters">
+      <svg lucideDices class="brand-icon" [size]="22"></svg>
+      <span class="brand-title">D&amp;D 冒險紀錄表</span>
+    </div>
 
-  <!-- 已登入狀態 -->
-  <ng-container *ngIf="authService.currentUser() as user">
-    <button mat-button [matMenuTriggerFor]="userMenu" class="user-profile-btn">
-      <img *ngIf="user.avatarUrl" [src]="user.avatarUrl" alt="Avatar" class="user-avatar" />
-      <mat-icon *ngIf="!user.avatarUrl" class="user-avatar-placeholder">account_circle</mat-icon>
-      <span class="user-name">{{ user.displayName }}</span>
-      <mat-icon>arrow_drop_down</mat-icon>
+    <span class="spacer"></span>
+
+    <!-- 主題切換按鈕 (A 淺色 / B 炭灰深色) -->
+    <button
+      mat-icon-button
+      (click)="themeService.toggleTheme()"
+      [matTooltip]="themeService.isDark() ? '切換為淺色模式 (風格 A)' : '切換為深色模式 (風格 B)'"
+      class="theme-toggle-btn"
+      aria-label="切換深淺色模式">
+      <mat-icon class="theme-icon">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
     </button>
 
-    <mat-menu #userMenu="matMenu" xPosition="before">
-      <div class="menu-user-header">
-        <strong>{{ user.displayName }}</strong>
-        <small class="menu-user-email">{{ user.email }}</small>
-      </div>
-      <mat-divider></mat-divider>
-      <button mat-menu-item routerLink="/characters">
-        <mat-icon>group</mat-icon>
-        <span>我的角色列表</span>
+    <!-- 已登入狀態 -->
+    @if (authService.currentUser(); as user) {
+      <button mat-button [matMenuTriggerFor]="userMenu" class="user-pill-btn">
+        <mat-icon class="user-icon">person</mat-icon>
+        <span class="user-name">{{ user.displayName }}</span>
+        <mat-icon class="dropdown-icon">expand_more</mat-icon>
       </button>
-      <button mat-menu-item (click)="openEditProfileDialog()">
-        <mat-icon>badge</mat-icon>
-        <span>修改顯示名稱</span>
-      </button>
-      <mat-divider></mat-divider>
-      <button mat-menu-item (click)="logout()" class="logout-menu-item">
-        <mat-icon color="warn">logout</mat-icon>
-        <span style="color: #f44336">登出系統</span>
-      </button>
-    </mat-menu>
-  </ng-container>
 
-  <!-- 未登入狀態 -->
-  <ng-container *ngIf="!authService.isAuthenticated()">
-    <a mat-button routerLink="/login">登入</a>
-    <a mat-stroked-button routerLink="/register" class="btn-register-nav">註冊</a>
-  </ng-container>
-</mat-toolbar>
+      <mat-menu #userMenu="matMenu" xPosition="before" class="app-user-menu">
+        <div class="menu-user-header">
+          <span class="menu-user-name">{{ user.displayName }}</span>
+          <span class="menu-user-email">{{ user.email }}</span>
+        </div>
+        <mat-divider></mat-divider>
+        <button mat-menu-item routerLink="/characters">
+          <mat-icon>group</mat-icon>
+          <span>我的角色列表</span>
+        </button>
+        <button mat-menu-item (click)="openEditProfileDialog()">
+          <mat-icon>badge</mat-icon>
+          <span>修改顯示名稱</span>
+        </button>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="logout()" class="logout-menu-item">
+          <mat-icon class="logout-icon">logout</mat-icon>
+          <span class="logout-text">登出系統</span>
+        </button>
+      </mat-menu>
+    }
+
+    <!-- 未登入狀態 -->
+    @if (!authService.isAuthenticated()) {
+      <div class="auth-actions">
+        <a mat-button routerLink="/login" class="btn-login-nav">登入</a>
+        <a mat-flat-button color="primary" routerLink="/register" class="btn-register-nav">註冊帳號</a>
+      </div>
+    }
+  </mat-toolbar>
+</header>
 
 <main class="app-content">
   <router-outlet />

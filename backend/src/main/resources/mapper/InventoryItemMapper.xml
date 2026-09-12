@@ -5,16 +5,19 @@
 <mapper namespace="com.dndadvlog.backend.mapper.InventoryItemMapper">
 
     <resultMap id="itemMap" type="com.dndadvlog.backend.entity.InventoryItem">
-        <id     property="id"          column="id"/>
-        <result property="characterId" column="character_id"/>
-        <result property="itemName"    column="item_name"/>
-        <result property="itemType"    column="item_type"/>
-        <result property="rarity"      column="rarity"/>
-        <result property="quantity"    column="quantity"/>
-        <result property="source"      column="source"/>
-        <result property="notes"       column="notes"/>
-        <result property="createdAt"   column="created_at"/>
-        <result property="updatedAt"   column="updated_at"/>
+        <id     property="id"               column="id"/>
+        <result property="characterId"          column="character_id"/>
+        <result property="adventureEntryId"     column="adventure_entry_id"/>
+        <result property="adventureGainedItemId" column="adventure_gained_item_id"/>
+        <result property="itemName"             column="item_name"/>
+        <result property="itemType"             column="item_type"/>
+        <result property="rarity"               column="rarity"/>
+        <result property="requiresAttunement"   column="requires_attunement"/>
+        <result property="quantity"             column="quantity"/>
+        <result property="source"               column="source"/>
+        <result property="notes"                column="notes"/>
+        <result property="createdAt"            column="created_at"/>
+        <result property="updatedAt"            column="updated_at"/>
     </resultMap>
 
     <select id="findByCharacterId" resultMap="itemMap">
@@ -25,7 +28,7 @@
 
     <select id="findByCharacterIdAndItemType" resultMap="itemMap">
         SELECT * FROM inventory_item
-        WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}
+        WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}::item_type
         ORDER BY created_at ASC
     </select>
 
@@ -33,16 +36,23 @@
         SELECT * FROM inventory_item WHERE id = #{id}::uuid
     </select>
 
+    <select id="findByAdventureGainedItemId" resultMap="itemMap">
+        SELECT * FROM inventory_item WHERE adventure_gained_item_id = #{gainedItemId}::uuid LIMIT 1
+    </select>
+
     <insert id="insert">
-        INSERT INTO inventory_item (id, character_id, item_name, item_type, rarity, quantity, source, notes, created_at, updated_at)
-        VALUES (#{id}::uuid, #{characterId}::uuid, #{itemName}, #{itemType}, #{rarity}, #{quantity}, #{source}, #{notes}, NOW(), NOW())
+        INSERT INTO inventory_item (id, character_id, adventure_entry_id, adventure_gained_item_id, item_name, item_type, rarity, requires_attunement, quantity, source, notes, created_at, updated_at)
+        VALUES (#{id}::uuid, #{characterId}::uuid, CAST(#{adventureEntryId, jdbcType=VARCHAR} AS uuid), CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid), #{itemName}, #{itemType}::item_type, CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity), COALESCE(#{requiresAttunement}, false), #{quantity}, #{source}, #{notes}, NOW(), NOW())
     </insert>
 
     <update id="update">
         UPDATE inventory_item SET
+            adventure_entry_id = CAST(#{adventureEntryId, jdbcType=VARCHAR} AS uuid),
+            adventure_gained_item_id = CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid),
             item_name  = #{itemName},
-            item_type  = #{itemType},
-            rarity     = #{rarity},
+            item_type  = #{itemType}::item_type,
+            rarity     = CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity),
+            requires_attunement = COALESCE(#{requiresAttunement}, false),
             quantity   = #{quantity},
             source     = #{source},
             notes      = #{notes},

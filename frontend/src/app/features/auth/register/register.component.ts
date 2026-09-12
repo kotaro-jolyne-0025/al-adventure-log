@@ -11,6 +11,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
 
+import { LucideScroll } from '@lucide/angular';
+
 @Component({
   selector: 'app-register',
   standalone: true,
@@ -24,6 +26,7 @@ import { AuthService } from '../../../core/services/auth.service';
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    LucideScroll,
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',

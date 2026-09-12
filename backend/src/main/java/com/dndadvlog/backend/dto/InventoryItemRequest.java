@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class InventoryItemRequest {
 
@@ -15,7 +17,10 @@ public class InventoryItemRequest {
     private InventoryItem.ItemType itemType;
 
     private InventoryItem.Rarity rarity;
+    private Boolean requiresAttunement;
     private Integer quantity;
     private String source;
     private String notes;
+    private UUID adventureEntryId;
+    private UUID adventureGainedItemId;
 }

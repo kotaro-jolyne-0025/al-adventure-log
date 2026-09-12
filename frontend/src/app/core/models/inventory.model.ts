@@ -7,12 +7,12 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
 };
 
 export const ITEM_RARITY_LABELS: Record<ItemRarity, string> = {
-  COMMON: '普通',
-  UNCOMMON: '非普通',
-  RARE: '珍稀',
-  VERY_RARE: '極珍稀',
-  LEGENDARY: '傳說',
-  ARTIFACT: '神器',
+  COMMON: '普通 (Common)',
+  UNCOMMON: '非普通 (Uncommon)',
+  RARE: '珍稀 (Rare)',
+  VERY_RARE: '極珍稀 (Very Rare)',
+  LEGENDARY: '傳說 (Legendary)',
+  ARTIFACT: '神器 (Artifact)',
 };
 
 export const RARITY_COLORS: Record<ItemRarity, string> = {
@@ -27,9 +27,12 @@ export const RARITY_COLORS: Record<ItemRarity, string> = {
 export interface InventoryItem {
   id: string;           // UUID
   characterId: string;  // UUID
+  adventureEntryId?: string | null;
+  adventureGainedItemId?: string | null;
   itemName: string;
   itemType: ItemType;
   rarity?: ItemRarity;
+  requiresAttunement?: boolean;
   quantity: number;
   source?: string;
   notes?: string;
@@ -38,9 +41,12 @@ export interface InventoryItem {
 }
 
 export interface InventoryItemRequest {
+  adventureEntryId?: string | null;
+  adventureGainedItemId?: string | null;
   itemName: string;
   itemType: ItemType;
   rarity?: ItemRarity | null;
+  requiresAttunement?: boolean;
   quantity?: number;
   source?: string | null;
   notes?: string | null;

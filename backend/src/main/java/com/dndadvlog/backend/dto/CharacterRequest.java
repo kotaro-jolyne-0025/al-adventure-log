@@ -15,7 +15,11 @@ public class CharacterRequest {
     @NotBlank(message = "種族為必填")
     private String race;
 
+    private String subclass;
+
     private String faction;
+
+    private String avatarUrl;
 
     private String currentClassesString;
 

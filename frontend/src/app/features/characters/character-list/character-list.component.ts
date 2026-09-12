@@ -73,7 +73,7 @@ export class CharacterListComponent implements OnInit {
     event.stopPropagation();
     const data: ConfirmDialogData = {
       title: '刪除角色',
-      message: `確定要刪除「${character.characterName}」嗎？此操作將一併刪除所有冒險記錄且無法復原。`,
+      message: `確定要刪除「${character.characterName}」嗎？此操作將一併刪除其所有冒險記錄與倉庫物品，且無法復原。`,
       confirmText: '確認刪除',
       cancelText: '取消',
     };
@@ -96,5 +96,26 @@ export class CharacterListComponent implements OnInit {
 
   protected formatClasses(character: Character): string {
     return character.currentClassesString || '無職業紀錄';
+  }
+
+  protected parseTotalLevel(classesString?: string): number {
+    if (!classesString || !classesString.trim()) return 1;
+    let total = 0;
+    const segments = classesString.split('/');
+    for (const seg of segments) {
+      const match = seg.match(/(\d+)$/);
+      if (match) {
+        try {
+          total += parseInt(match[1], 10);
+        } catch {}
+      } else {
+        total += 1;
+      }
+    }
+    return total > 0 ? total : 1;
+  }
+
+  protected getInitial(name: string): string {
+    return name ? name.trim().charAt(0).toUpperCase() : '?';
   }
 }

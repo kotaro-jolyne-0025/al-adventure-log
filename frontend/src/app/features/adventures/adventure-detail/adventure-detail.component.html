@@ -5,166 +5,292 @@
   }
 
   @if (!isLoading() && entry()) {
-    <!-- Page Header -->
-    <div class="page-header">
-      <button mat-icon-button (click)="onBack()">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <h2 class="page-title">
-        {{ entry()!.adventureName || entry()!.adventureCode || '冒險記錄' }}
-      </h2>
-      <button mat-icon-button color="primary" matTooltip="編輯" (click)="onEdit()">
-        <mat-icon>edit</mat-icon>
-      </button>
-      <button mat-icon-button color="warn" matTooltip="刪除" (click)="onDelete()">
-        <mat-icon>delete</mat-icon>
-      </button>
+    <!-- Detail Header -->
+    <div class="detail-header">
+      <div class="header-left">
+        <button mat-icon-button class="btn-back" (click)="onBack()" matTooltip="返回冒險紀錄表">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div>
+          <div class="adv-code-row">
+            @if (entry()!.adventureCode) {
+              <span class="adv-code-tag">{{ entry()!.adventureCode }}</span>
+            }
+            <span class="adv-date-tag">
+              <mat-icon class="date-icon">event</mat-icon>
+              {{ entry()!.playDate ? (entry()!.playDate! | date:'yyyy/MM/dd') : '未指定日期' }}
+            </span>
+          </div>
+          <h1 class="adv-title-hero">
+            {{ entry()!.adventureName || entry()!.adventureCode || '冒險紀錄' }}
+          </h1>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button mat-flat-button color="primary" class="btn-edit" (click)="onEdit()">
+          <mat-icon>edit</mat-icon>
+          <span>編輯</span>
+        </button>
+        <button mat-icon-button color="warn" matTooltip="刪除此紀錄" (click)="onDelete()">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
     </div>
 
-    <!-- 📋 基本資訊 -->
-    <mat-card class="detail-card">
-      <mat-card-header>
-        <mat-card-title>📋 基本資訊</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">冒險代碼</span>
-            <span class="info-value">{{ entry()!.adventureCode || '—' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">冒險名稱</span>
-            <span class="info-value">{{ entry()!.adventureName || '—' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">遊玩日期</span>
-            <span class="info-value">
-              {{ entry()!.playDate ? (entry()!.playDate! | date:'yyyy/MM/dd') : '—' }}
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">DM 名稱</span>
-            <span class="info-value">{{ entry()!.dmName || '—' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">起始等級</span>
-            <span class="info-value">
-              {{ formatClassesDisplay(entry()!.startingClassesString, entry()!.startingLevel) }}
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">結束等級</span>
-            <span class="info-value">
-              {{ formatClassesDisplay(entry()!.endingClassesString, entry()!.endingLevel) }}
-            </span>
+    <!-- 📋 冒險資訊與等級 -->
+    <div class="detail-section-card clean-card">
+      <div class="section-card-header">
+        <mat-icon class="section-icon">info</mat-icon>
+        <h2 class="section-title">冒險資訊</h2>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">冒險代碼</span>
+          <span class="info-value">{{ entry()!.adventureCode || '—' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">冒險名稱</span>
+          <span class="info-value">{{ entry()!.adventureName || '—' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">遊玩日期</span>
+          <span class="info-value">
+            {{ entry()!.playDate ? (entry()!.playDate! | date:'yyyy/MM/dd') : '—' }}
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">DM</span>
+          <span class="info-value">{{ entry()!.dmName || '—' }}</span>
+        </div>
+        <div class="info-item full-row level-progression-item">
+          <span class="info-label">等級與職業推進</span>
+          <div class="level-progression-box">
+            <div class="level-box">
+              <span class="level-box-label">起始狀態</span>
+              <span class="level-box-value">{{ formatClassesDisplay(entry()!.startingClassesString, entry()!.startingLevel) }}</span>
+            </div>
+            <mat-icon class="level-arrow">arrow_forward</mat-icon>
+            <div class="level-box highlight">
+              <span class="level-box-label">結算狀態</span>
+              <span class="level-box-value">{{ formatClassesDisplay(entry()!.endingClassesString, entry()!.endingLevel) }}</span>
+            </div>
           </div>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
+    </div>
 
     <!-- 💰 資源變動 -->
-    <mat-card class="detail-card">
-      <mat-card-header>
-        <mat-card-title>💰 資源變動</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <table class="resource-table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>起始</th>
-              <th>冒險中變化</th>
-              <th>休整期變化</th>
-              <th>合計</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="resource-label">🪙 金幣</td>
-              <td>{{ entry()!.startingGold ?? '—' }}</td>
-              <td [class.positive]="(entry()!.goldChange ?? 0) > 0"
-                  [class.negative]="(entry()!.goldChange ?? 0) < 0">
-                {{ formatChange(entry()!.goldChange) }}
-              </td>
-              <td [class.positive]="(entry()!.goldDowntimeChange ?? 0) > 0"
-                  [class.negative]="(entry()!.goldDowntimeChange ?? 0) < 0">
-                {{ formatChange(entry()!.goldDowntimeChange) }}
-              </td>
-              <td class="total-cell">{{ entry()!.goldTotal ?? '—' }}</td>
-            </tr>
-            <tr>
-              <td class="resource-label">🏕️ 休整期天數</td>
-              <td>{{ entry()!.startingDowntime ?? '—' }}</td>
-              <td [class.positive]="(entry()!.downtimeChange ?? 0) > 0"
-                  [class.negative]="(entry()!.downtimeChange ?? 0) < 0">
-                {{ formatChange(entry()!.downtimeChange) }}
-              </td>
-              <td [class.positive]="(entry()!.downtimeDowntimeChange ?? 0) > 0"
-                  [class.negative]="(entry()!.downtimeDowntimeChange ?? 0) < 0">
-                {{ formatChange(entry()!.downtimeDowntimeChange) }}
-              </td>
-              <td class="total-cell">{{ entry()!.downtimeTotal ?? '—' }}</td>
-            </tr>
-            <tr>
-              <td class="resource-label">✨ 魔法物品</td>
-              <td>{{ entry()!.startingMagicItems ?? '—' }}</td>
-              <td [class.positive]="(entry()!.magicItemsChange ?? 0) > 0"
-                  [class.negative]="(entry()!.magicItemsChange ?? 0) < 0">
-                {{ formatChange(entry()!.magicItemsChange) }}
-              </td>
-              <td [class.positive]="(entry()!.magicItemsDowntimeChange ?? 0) > 0"
-                  [class.negative]="(entry()!.magicItemsDowntimeChange ?? 0) < 0">
-                {{ formatChange(entry()!.magicItemsDowntimeChange) }}
-              </td>
-              <td class="total-cell">{{ entry()!.magicItemsTotal ?? '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </mat-card-content>
-    </mat-card>
+    <div class="detail-section-card clean-card">
+      <div class="section-card-header">
+        <mat-icon class="section-icon" style="color: var(--color-gold);">account_balance_wallet</mat-icon>
+        <h2 class="section-title">資源變動</h2>
+      </div>
 
-    <!-- 📝 冒險備註 -->
-    <mat-card class="detail-card">
-      <mat-card-header>
-        <mat-card-title>📝 冒險備註</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="info-grid">
-          @if (entry()!.adventureNotes) {
-            <div class="info-item full-row">
-              <span class="info-label">備註</span>
-              <p class="info-value note-text">{{ entry()!.adventureNotes }}</p>
+      <div class="resource-cards-grid">
+        <!-- 金幣卡片 -->
+        <div class="resource-summary-card">
+          <div class="res-card-top">
+            <svg lucideCoins class="res-icon gold" [size]="18"></svg>
+            <span class="res-name">金幣 (GP)</span>
+          </div>
+          <div class="res-breakdown">
+            <div class="breakdown-row">
+              <span class="row-label">起始</span>
+              <span class="row-val">{{ (entry()!.startingGold ?? 0) | number:'1.2-2' }}</span>
             </div>
-          }
-          @if (entry()!.soulCoinChargesUsed) {
-            <div class="info-item">
-              <span class="info-label">靈魂幣使用</span>
-              <span class="info-value">{{ entry()!.soulCoinChargesUsed }}</span>
+            <div class="breakdown-row">
+              <span class="row-label">冒險中</span>
+              <span class="row-val" [class.positive]="(entry()!.goldChange ?? 0) > 0"
+                                   [class.negative]="(entry()!.goldChange ?? 0) < 0">
+                {{ formatChange(entry()!.goldChange) }}
+              </span>
             </div>
-          }
-          @if (!entry()!.adventureNotes && !entry()!.soulCoinChargesUsed) {
-            <p class="empty-text">（無備註）</p>
+            <div class="breakdown-row">
+              <span class="row-label">休整期</span>
+              <span class="row-val" [class.positive]="(entry()!.goldDowntimeChange ?? 0) > 0"
+                                   [class.negative]="(entry()!.goldDowntimeChange ?? 0) < 0">
+                {{ formatChange(entry()!.goldDowntimeChange) }}
+              </span>
+            </div>
+          </div>
+          <div class="res-total-row">
+            <span class="total-label">結算合計</span>
+            <span class="total-val stat-gold">{{ (entry()!.goldTotal ?? 0) | number:'1.2-2' }} GP</span>
+          </div>
+        </div>
+
+        <!-- 休整期天數卡片 -->
+        <div class="resource-summary-card">
+          <div class="res-card-top">
+            <svg lucideTent class="res-icon downtime" [size]="18"></svg>
+            <span class="res-name">休整期天數</span>
+          </div>
+          <div class="res-breakdown">
+            <div class="breakdown-row">
+              <span class="row-label">起始</span>
+              <span class="row-val">{{ entry()!.startingDowntime ?? 0 }}</span>
+            </div>
+            <div class="breakdown-row">
+              <span class="row-label">冒險中</span>
+              <span class="row-val" [class.positive]="(entry()!.downtimeChange ?? 0) > 0"
+                                   [class.negative]="(entry()!.downtimeChange ?? 0) < 0">
+                {{ formatChange(entry()!.downtimeChange) }}
+              </span>
+            </div>
+            <div class="breakdown-row">
+              <span class="row-label">休整期</span>
+              <span class="row-val" [class.positive]="(entry()!.downtimeDowntimeChange ?? 0) > 0"
+                                   [class.negative]="(entry()!.downtimeDowntimeChange ?? 0) < 0">
+                {{ formatChange(entry()!.downtimeDowntimeChange) }}
+              </span>
+            </div>
+          </div>
+          <div class="res-total-row">
+            <span class="total-label">結算合計</span>
+            <span class="total-val stat-downtime">{{ entry()!.downtimeTotal ?? 0 }} 天</span>
+          </div>
+        </div>
+
+        <!-- 永久魔法物品卡片 -->
+        <div class="resource-summary-card">
+          <div class="res-card-top">
+            <svg lucideSparkles class="res-icon magic" [size]="18"></svg>
+            <span class="res-name">魔法物品</span>
+          </div>
+          <div class="res-breakdown">
+            <div class="breakdown-row">
+              <span class="row-label">起始</span>
+              <span class="row-val">{{ entry()!.startingMagicItems ?? 0 }}</span>
+            </div>
+            <div class="breakdown-row">
+              <span class="row-label">冒險中</span>
+              <span class="row-val" [class.positive]="(entry()!.magicItemsChange ?? 0) > 0"
+                                   [class.negative]="(entry()!.magicItemsChange ?? 0) < 0">
+                {{ formatChange(entry()!.magicItemsChange) }}
+              </span>
+            </div>
+            <div class="breakdown-row">
+              <span class="row-label">休整期</span>
+              <span class="row-val" [class.positive]="(entry()!.magicItemsDowntimeChange ?? 0) > 0"
+                                   [class.negative]="(entry()!.magicItemsDowntimeChange ?? 0) < 0">
+                {{ formatChange(entry()!.magicItemsDowntimeChange) }}
+              </span>
+            </div>
+          </div>
+          <div class="res-total-row">
+            <span class="total-label">結算合計</span>
+            <span class="total-val stat-magic">{{ entry()!.magicItemsTotal ?? 0 }} 件</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 獲得魔法物品 -->
+    @if (magicItems().length > 0 || (entry()!.magicItemsChange ?? 0) > 0) {
+      <div class="detail-section-card clean-card">
+        <div class="section-card-header">
+          <mat-icon class="section-icon" style="color: var(--color-primary);">auto_awesome</mat-icon>
+          <h2 class="section-title">獲得魔法物品</h2>
+        </div>
+
+        @if (magicItems().length > 0) {
+          <div class="items-list-grid">
+            @for (item of magicItems(); track item.id) {
+              <div class="item-entry-card">
+                <div class="item-top-line">
+                  <span class="item-name-bold">
+                    <svg lucideSparkles [size]="16" class="inline-item-icon"></svg>
+                    {{ item.itemName }}
+                  </span>
+                  @if (item.rarity) {
+                    <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
+                      {{ rarityLabels[item.rarity] }}
+                    </span>
+                  }
+                </div>
+                @if (item.notes) {
+                  <p class="item-desc">{{ item.notes }}</p>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="simple-gain-text">本次獲得魔法物品：+{{ entry()!.magicItemsChange }} 件</p>
+        }
+      </div>
+    }
+
+    <!-- 獲得消耗品 -->
+    @if (consumableItems().length > 0) {
+      <div class="detail-section-card clean-card">
+        <div class="section-card-header">
+          <mat-icon class="section-icon" style="color: var(--color-positive);">science</mat-icon>
+          <h2 class="section-title">獲得消耗品</h2>
+        </div>
+
+        <div class="items-list-grid">
+          @for (item of consumableItems(); track item.id) {
+            <div class="item-entry-card">
+              <div class="item-top-line">
+                <span class="item-name-bold">
+                  <svg lucideFlaskConical [size]="16" class="inline-item-icon consumable"></svg>
+                  {{ item.itemName }}
+                </span>
+                <span class="qty-pill">× {{ item.quantity }}</span>
+                @if (item.rarity) {
+                  <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
+                    {{ rarityLabels[item.rarity] }}
+                  </span>
+                }
+              </div>
+              @if (item.notes) {
+                <p class="item-desc">{{ item.notes }}</p>
+              }
+            </div>
           }
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
+    }
 
-    <!-- 🏕️ 休整期活動 -->
-    <mat-card class="detail-card">
-      <mat-card-header>
-        <mat-card-title>🏕️ 休整期活動</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        @if (entry()!.downtimeActivities.length === 0) {
-          <p class="empty-text">（無休整期活動）</p>
-        }
-        @for (dt of entry()!.downtimeActivities; track dt.id) {
-          <div class="downtime-item">
-            <span class="downtime-text">{{ dt.description }}</span>
+    <!-- 📝 備註與休整期活動 -->
+    <div class="detail-section-card clean-card">
+      <div class="section-card-header">
+        <mat-icon class="section-icon">notes</mat-icon>
+        <h2 class="section-title">備註與休整期活動</h2>
+      </div>
+
+      <div class="notes-and-activities">
+        <div class="notes-block">
+          <span class="block-label">備註</span>
+          <p class="block-text">{{ entry()!.adventureNotes || '（無）' }}</p>
+        </div>
+
+        @if (entry()!.soulCoinChargesUsed) {
+          <div class="notes-block" style="margin-top: 12px;">
+            <span class="block-label">靈魂幣使用紀錄</span>
+            <p class="block-text">{{ entry()!.soulCoinChargesUsed }}</p>
           </div>
         }
-      </mat-card-content>
-    </mat-card>
 
-  }<!-- end @if entry() -->
+        <div class="downtime-block" style="margin-top: 16px;">
+          <span class="block-label">休整期活動</span>
+          @if (entry()!.downtimeActivities.length === 0) {
+            <p class="empty-downtime-text">（無）</p>
+          } @else {
+            <div class="downtime-items-list">
+              @for (dt of entry()!.downtimeActivities; track dt.id) {
+                <div class="downtime-row">
+                  <mat-icon class="downtime-dot-icon">fiber_manual_record</mat-icon>
+                  <span class="downtime-desc">{{ dt.description }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+  }
 </div>

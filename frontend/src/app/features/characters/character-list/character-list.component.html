@@ -1,79 +1,115 @@
 <div class="page-container">
   <!-- Header -->
   <div class="page-header">
-    <h1 class="page-title">
-      <mat-icon class="title-icon">person</mat-icon>
-      我的角色
-    </h1>
-    <button mat-fab extended color="primary" (click)="onCreateCharacter()">
+    <div>
+      <h1 class="page-title">
+        <mat-icon class="title-icon">groups</mat-icon>
+        我的角色
+      </h1>
+      <p class="page-subtitle">管理角色、冒險紀錄表與倉庫</p>
+    </div>
+    <button mat-flat-button color="primary" class="btn-create-char" (click)="onCreateCharacter()">
       <mat-icon>add</mat-icon>
-      新增角色
+      建立新角色
     </button>
   </div>
 
-  <!-- Loading -->
+  <!-- Loading Skeletons -->
   @if (isLoading()) {
-    <div class="loading-wrapper">
-      <mat-spinner diameter="48"></mat-spinner>
+    <div class="card-grid">
+      @for (item of [1, 2, 3]; track $index) {
+        <div class="skeleton-char-card clean-card">
+          <div class="skeleton-top">
+            <div class="skeleton-avatar skeleton-box"></div>
+            <div class="skeleton-lines">
+              <div class="skeleton-line skeleton-box" style="width: 60%; height: 20px;"></div>
+              <div class="skeleton-line skeleton-box" style="width: 40%; height: 14px; margin-top: 6px;"></div>
+            </div>
+          </div>
+          <div class="skeleton-box" style="width: 100%; height: 36px; margin-top: 16px;"></div>
+        </div>
+      }
     </div>
   }
 
   <!-- Empty State -->
   @if (!isLoading() && characters().length === 0) {
-    <div class="empty-state">
-      <mat-icon class="empty-icon">person_off</mat-icon>
-      <p class="empty-title">尚無角色</p>
-      <p class="empty-desc">點擊新增開始建立您的第一個角色</p>
-      <button mat-flat-button color="primary" (click)="onCreateCharacter()">
+    <div class="empty-state clean-card">
+      <div class="empty-icon-wrap">
+        <mat-icon class="empty-icon">person_add</mat-icon>
+      </div>
+      <h2 class="empty-title">尚無角色</h2>
+      <p class="empty-desc">建立您的第一個 D&amp;D 冒險者，開始記錄冒險紀錄表！</p>
+      <button mat-flat-button color="primary" (click)="onCreateCharacter()" class="empty-btn">
         <mat-icon>add</mat-icon>
-        建立第一個角色
+        建立新角色
       </button>
     </div>
   }
 
-  <!-- Character Cards -->
+  <!-- Character Cards Grid -->
   @if (!isLoading() && characters().length > 0) {
     <div class="card-grid">
       @for (char of characters(); track char.id) {
-        <mat-card class="character-card" (click)="onViewCharacter(char.id)">
-          <mat-card-header>
-            <mat-card-title>{{ char.characterName }}</mat-card-title>
-            <mat-card-subtitle>{{ char.playerName }}</mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content>
-            <div class="char-info">
-              <div class="info-row">
-                <span class="info-label">種族</span>
-                <span class="info-value">{{ char.race }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">職業</span>
-                <span class="info-value classes">{{ formatClasses(char) }}</span>
-              </div>
-
-              @if (char.faction) {
-                <div class="info-row">
-                  <span class="info-label">派系</span>
-                  <span class="info-value">{{ char.faction }}</span>
-                </div>
-              }
-            </div>
-          </mat-card-content>
-
-          <mat-card-actions align="end">
-            <button mat-icon-button color="primary"
+        <div class="char-card clean-card clickable" (click)="onViewCharacter(char.id)">
+          
+          <!-- Card Top-Right Actions -->
+          <div class="card-top-actions" (click)="$event.stopPropagation()">
+            <span class="level-badge">Lv. {{ parseTotalLevel(char.currentClassesString) }}</span>
+            <button mat-icon-button class="action-btn"
               matTooltip="編輯角色"
               (click)="onEditCharacter($event, char.id)">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button color="warn"
+            <button mat-icon-button class="action-btn delete-btn"
               matTooltip="刪除角色"
               (click)="onDeleteCharacter($event, char)">
               <mat-icon>delete</mat-icon>
             </button>
-          </mat-card-actions>
-        </mat-card>
+          </div>
+
+          <div class="card-hero-layout">
+            <!-- 左側大肖像 -->
+            <div class="char-portrait-token">
+              @if (char.avatarUrl) {
+                <img [src]="char.avatarUrl" [alt]="char.characterName" class="char-avatar-img" />
+              } @else {
+                <div class="char-avatar-fallback">{{ getInitial(char.characterName) }}</div>
+              }
+            </div>
+
+            <!-- 右側標題與資料 -->
+            <div class="char-content-col">
+              <div class="char-name-row">
+                <h3 class="char-name">{{ char.characterName }}</h3>
+              </div>
+
+              <div class="char-info-list">
+                <div class="info-row">
+                  <span class="info-label">種族：</span>
+                  <span class="info-value">{{ char.race }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">職業：</span>
+                  <span class="info-value">{{ formatClasses(char) }}</span>
+                </div>
+                @if (char.subclass) {
+                  <div class="info-row">
+                    <span class="info-label">子職：</span>
+                    <span class="info-value">{{ char.subclass }}</span>
+                  </div>
+                }
+                @if (char.faction) {
+                  <div class="info-row">
+                    <span class="info-label">派系：</span>
+                    <span class="info-value">{{ char.faction }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+        </div>
       }
     </div>
   }

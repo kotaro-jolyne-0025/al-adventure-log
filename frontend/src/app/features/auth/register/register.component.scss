@@ -4,6 +4,11 @@
   align-items: center;
   min-height: calc(100vh - 120px);
   padding: 1.5rem;
+
+  @media (max-width: 480px) {
+    padding: 1rem 0.75rem;
+    min-height: calc(100vh - 80px);
+  }
 }
 
 .auth-card {
@@ -12,6 +17,10 @@
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   padding: 1.5rem 1rem;
+
+  @media (max-width: 480px) {
+    padding: 1.25rem 0.875rem;
+  }
 }
 
 .auth-header {
@@ -22,8 +31,11 @@
   margin-bottom: 1.5rem;
 
   .brand-logo {
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+    margin-bottom: 0.75rem;
   }
 
   mat-card-title {

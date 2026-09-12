@@ -38,7 +38,9 @@ public class CharacterService {
         character.setCharacterName(request.getCharacterName());
         character.setPlayerName(request.getPlayerName());
         character.setRace(request.getRace());
+        character.setSubclass(request.getSubclass());
         character.setFaction(request.getFaction());
+        character.setAvatarUrl(request.getAvatarUrl());
         character.setCurrentClassesString(request.getCurrentClassesString());
         characterMapper.insert(character);
         log.info("角色建立成功: ID={}, UserID={}, 名稱={}", character.getId(), userId, character.getCharacterName());
@@ -51,6 +53,9 @@ public class CharacterService {
         character.setCharacterName(request.getCharacterName());
         character.setPlayerName(request.getPlayerName());
         character.setRace(request.getRace());
+        character.setSubclass(request.getSubclass());
+        character.setFaction(request.getFaction());
+        character.setAvatarUrl(request.getAvatarUrl());
         if (request.getCurrentClassesString() != null) {
             character.setCurrentClassesString(request.getCurrentClassesString());
         }
@@ -90,7 +95,9 @@ public class CharacterService {
         response.setCharacterName(character.getCharacterName());
         response.setPlayerName(character.getPlayerName());
         response.setRace(character.getRace());
+        response.setSubclass(character.getSubclass());
         response.setFaction(character.getFaction());
+        response.setAvatarUrl(character.getAvatarUrl());
         response.setCreatedAt(character.getCreatedAt());
         response.setUpdatedAt(character.getUpdatedAt());
         response.setCurrentClassesString(character.getCurrentClassesString());

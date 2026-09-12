@@ -14,7 +14,7 @@ public class FlywayConfig {
     @Bean(initMethod = "migrate")
     public Flyway flyway(DataSource dataSource) {
         log.info("🚀 正在執行 Flyway 資料庫 Migration...");
-        return Flyway.configure()
+        Flyway flyway = Flyway.configure()
                 .dataSource(dataSource)
                 .baselineOnMigrate(true)
                 .baselineVersion("0")
@@ -22,5 +22,7 @@ public class FlywayConfig {
                 .connectRetries(5)
                 .connectRetriesInterval(2)
                 .load();
+        flyway.repair();
+        return flyway;
     }
 }

@@ -83,6 +83,7 @@
   - `frontend/src/app/core/services/adventure.service.ts`
   - `frontend/src/app/core/models/adventure.model.ts`
   - `frontend/src/app/app.routes.ts`
+- **備註（方案 C 物品解耦）：** 新增冒險時自動同步寫入倉庫；編輯冒險時不覆寫倉庫現有庫存（保護玩家在倉庫已消耗/使用的道具數據）。
 
 ---
 
@@ -526,6 +527,431 @@
   - [x] Phase 7: 前後端打包建置與功能驗證
 
 
+
+---
+
+### T20 — 冒險日誌支援記錄獲得消耗品 (Gained Consumables) 與自動入庫
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **前端表單擴充 (`AdventureFormComponent`)**：新增「🧪 獲得消耗品」動態區塊，支援記錄物品名稱、自訂數量（min 1）、稀有度下拉選單與效果備註。
+  2. **倉庫自動同步**：冒險記錄新增/編輯儲存時，自動將獲得的消耗品同步寫入角色倉庫 (`itemType: 'CONSUMABLE'`, `quantity`, `source`, `notes`)。
+  3. **冒險詳情顯示 (`AdventureDetailComponent`)**：新增「🧪 獲得消耗品」區塊，顯示名稱、數量徽章（`× N`）、稀有度標籤與效果備註。
+- **影響範圍：**
+  - 前端：`adventure-detail.component.*`, `adventure-form.component.*`
+  - 文檔：`system-requirements-spec.md`, `backlog.md`, `walkthrough.md`
+- **完成項目：**
+  - [x] `AdventureDetailComponent` 增加 `consumableItems` 狀態與「🧪 獲得消耗品」視圖
+  - [x] `AdventureFormComponent` 增加 `gainedConsumableItems` 狀態、數量輸入與自動入庫同步邏輯
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+  - [x] 規格書與 Backlog 更新
+
+---
+
+### T21 — UI/UX 重構 Phase 1：雙主題設計系統（A 淺色 / B 炭灰深色切換）與登入檢核健檢
+- **狀態：** `[x] 已完成`
+- **分支：** `feature/uiux-overhaul`
+- **變更摘要：**
+  1. **高易讀性字體導入**：引入 `Inter`（數字與英文字體清晰、對齊精準）與 `Noto Sans TC`（繁體中文思源黑體清晰無襯線），設定全域字體排版系統。
+  2. **雙主題 Design Tokens 體系**：
+     - **風格 A（現代簡約淺色 Clean Light，預設）**：純白卡片 (`#ffffff`) + 柔和淺灰底 (`#f8fafc`) + 靛藍主色 (`#4f46e5`) + 琥珀金/翠綠/珊瑚紅語意標籤。
+     - **風格 B（柔和炭灰深色 Soft Charcoal Dark）**：中性炭灰底 (`#18181b` / `#27272a`，無偏藍或刺眼紫色) + 低飽和魔力紫主色 (`#a855f7`)。
+  3. **Angular Material 3 雙主題無縫整合**：同時配置 `body.theme-light` 與 `body.theme-dark` 雙模式 Material 3 系統變數。
+  4. **ThemeService (Signals) & 頂部切換開關**：實作即時深淺色切換按鈕 (☀️/🌙)，自動持久化於 `localStorage ('dnd_theme')` 並同步瀏覽器 `meta[theme-color]`。
+  5. **登入檢核機制健檢優化**：修復 `AuthService` 啟動時遇到非 401 暫時性網路異常即誤清空登入狀態的 Bug，確保登入狀態 7 天穩定維持。
+- **完成項目：**
+  - [x] 建立並切換專屬 Git 分支 `feature/uiux-overhaul`
+  - [x] `index.html` 引入 Inter 與 Noto Sans TC Google Fonts
+  - [x] 建立 `ThemeService`（Signals 即時響應、深淺模式切換與持久化）
+  - [x] `styles.scss` 建立風格 A / B 雙主題 Design Tokens 與 Material 3 樣式
+  - [x] `app.html` & `app.scss` 增加主題切換按鈕、升級導覽列
+  - [x] `AuthService` 修復非 401 錯誤誤登出問題
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T22 — UI/UX 重構 Phase 2：角色清單卡片與角色總覽看板 (Character HUD) 重構
+- **狀態：** `[x] 已完成`
+- **分支：** `feature/uiux-overhaul`
+- **變更摘要：**
+  1. **角色清單卡片重構 (`character-list`)**：
+     - 卡片採用 `.clean-card.clickable` 懸浮動效與邊框層次。
+     - 角色頭像徽記、姓名、玩家名稱、種族與派系標籤一目了然。
+     - 總等級徽章（`Lv. X`，琥珀金亮點）。
+     - 載入狀態採用骨架屏 (Skeleton loading) 取代轉圈，空狀態視覺美化。
+  2. **角色總覽英雄看板 (`character-shell`)**：
+     - 頂部導覽列整合返回列表按鈕、角色頭像、等級徽章、種族/職業/派系與編輯按鈕。
+     - **即時戰情看板 (Character HUD Stats Bar)**：自動取得角色最新總結數值（🏆 總等級、🪙 金幣資產、🏕️ 休整期天數、✨ 永久魔法物品件數）。
+     - 美化 Tab 導覽列（冒險日誌 / 背包與倉庫）。
+- **完成項目：**
+  - [x] `character-list.component.ts`、`html`、`scss` 全面升級現代卡片排版
+  - [x] `character-shell.component.ts` 串接 `AdventureService.getDefaults` 取得即時統計
+  - [x] `character-shell.component.html`、`scss` 實作 Hero 卡片與 4 欄式 HUD 戰情看板
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T23 — UI/UX 重構 Phase 3：冒險歷程時間軸列表與冒險詳情頁重構
+- **狀態：** `[x] 已完成`
+- **分支：** `feature/uiux-overhaul`
+- **變更摘要：**
+  1. **冒險歷程時間軸列表 (`adventure-list`)**：
+     - 廢除傳統桌面寬表格，升級為手機與桌機皆適配的 **「冒險篇章卡片 (Chronicle Cards)」**。
+     - 每筆冒險自動按遊玩日期最新優先排序。
+     - 卡片頂部標記冒險代碼、遊玩日期、DM 姓名；標題清晰可辨。
+     - **即時數值變更徽章 (Delta Badges)**：等級進程（`Lv.X ➔ Lv.Y`）、🪙 金幣變動（`+1,000 GP`）、🏕️ 休整期天數（`-10 天`）、✨ 獲得魔法物品數。
+     - 冒險備註文字摘要預覽，支援卡片懸浮過渡動效與點擊進入詳情。
+  2. **冒險詳情頁重構 (`adventure-detail`)**：
+     - **Hero Header**：返回按鈕、冒險代碼、遊玩日期、大標題與編輯/刪除操作區。
+     - **等級與職業推進看板**：起始狀態 ➔ 結算狀態視覺箭頭對比盒。
+     - **3 欄式資源變動結算卡片**：金幣、休整期天數、永久魔法物品（起始 ➔ 冒險變化 ➔ 休整變化 ➔ 最終合計）。
+     - **獲得物品清單**：永久魔法物品（含稀有度徽章）、獲得消耗品（含數量徽章 `× N`）。
+     - **備註與休整期活動區塊**：清晰條列備註、靈魂幣使用與活動項目。
+- **完成項目：**
+  - [x] `adventure-list.component.ts`、`html`、`scss` 重構為時間軸篇章卡片
+  - [x] `adventure-detail.component.ts`、`html`、`scss` 重構為資源看板與等級對比盒
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T24 — UI/UX 重構 Phase 4 & Phase 5：冒險記錄表單 (Adventure Form UX) 與角色倉庫背包 (Inventory) 模組重構
+- **狀態：** `[x] 已完成`
+- **分支：** `feature/uiux-overhaul`
+- **變更摘要：**
+  1. **冒險記錄表單優化 (`adventure-form`)**：
+     - 各分區全面套用 `.clean-card` 現代卡片設計與高對比階層。
+     - 等級與職業配置狀態條即時響應平衡檢查。
+     - 資源變動即時試算列（金幣、休整天數、魔法物品）合計自動高亮呈現。
+     - 獲得永久魔法物品與消耗品卡片化動態輸入，支援多筆增刪與稀有度下拉選單。
+     - 休整期活動預設快速帶入面板與伴隨資源異動。
+     - 底部固定式操作列 (Sticky Action Footer)，提供流暢填表體驗。
+  2. **背包與角色倉庫模組重構 (`inventory-list`, `inventory-form`)**：
+     - 分頁切換「永久性魔法物品」與「消耗品與藥水卷軸」。
+     - 物品卡片展示名稱、D&D 稀有度標準色光暈標籤、取得來源與描述。
+     - **消耗品快速操作 (Quick Consume)**：提供「使用 ( -1 )」微操作按鈕，剩餘 1 份時點擊彈出安全確認，大幅提升跑團即時體驗。
+     - 新增/編輯物品表單全面升級雙主題 Design Tokens。
+- **完成項目：**
+  - [x] `adventure-form.component.scss` 與 `html` 升級分區卡片與底部固定動作列
+  - [x] `inventory-list.component.ts`、`html`、`scss` 實作消耗品快捷使用與雙標籤卡片網格
+  - [x] `inventory-form.component.ts`、`html`、`scss` 升級為雙主題乾淨表單
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T25 — UI/UX 文案精簡與標準跑團術語統一（冒險紀錄表 Logsheet）
+- **狀態：** `[x] 已完成`
+- **分支：** `feature/uiux-overhaul`
+- **變更摘要：**
+  1. **標準中文跑團術語統一**：
+     - 將原有的「冒險日誌」、「冒險歷程日誌」、「戰役歷程」全站統一為中文社群慣用的 **「冒險紀錄表」** 或 **「冒險紀錄」**。
+  2. **提示訊息與標題全面精簡 (De-cluttering)**：
+     - 移除冗長贅字與對資深玩家多餘的說明段落（如：「（選填，儲存時自動同步入庫）」、「起始值新增時自動帶入...」、「⚡ 快速帶入常見活動預設（選取後仍可自由修改）」等）。
+     - 簡化表單分區標題（`📋 冒險資訊`、`💰 資源變動`、`✨ 獲得魔法物品`、`🧪 獲得消耗品`、`📝 備註`、`🏕️ 休整期活動`）。
+     - 簡化詳情頁與倉庫分頁名稱（`冒險紀錄表` / `倉庫` / `魔法物品` / `消耗品`），還原如同紙本冒險紀錄表般俐落、乾淨的視覺體驗。
+- **完成項目：**
+  - [x] `index.html`、`app.html` 更新品牌名稱為「D&D 冒險紀錄表」
+  - [x] `character-shell`、`character-list`、`character-form` 統一術語與精簡 HUD 標籤
+  - [x] `adventure-list`、`adventure-detail`、`adventure-form` 移除冗長干擾文字，回歸俐落排版
+  - [x] `inventory-list` 分頁精簡為「魔法物品」與「消耗品」
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T26 — 手機版 (Mobile UX) 全方位體驗優化
+- **狀態：** `[x] 已完成`
+- **分支：** `feature/mobile-optimization`
+- **變更摘要：**
+  1. **基礎與全螢幕適配**：`index.html` 加入 `viewport-fit=cover` 與 iOS / Android Safe-Area 支援；`styles.scss` 規範觸控最小熱區 (44px) 與 iOS 輸入縮放防護。
+  2. **頂部導覽列**：小螢幕自動縮合品牌徽章與使用者頭像，避免橫向溢出。
+  3. **角色戰情看板 (HUD)**：在手機端升級為乾淨的 **2×2 網格看板**，字體與圖示醒目。
+  4. **冒險紀錄表單 (最核心)**：
+     - 將 4 欄式桌面橫向表格在手機寬度下自動切換為 **獨立資源卡片（2×2 網格輸入 + 結算合計全寬高亮）**，徹底消除擠壓溢出。
+     - 底部固定式動作列（Sticky Action Footer）支援 Safe-Area 與等寬大按鈕。
+  5. **冒險時間軸與詳情**：篇章卡片與 Delta 數值變動標籤自動流式適配；等級進程與資源結算單欄視覺優化。
+  6. **倉庫背包與對話框**：消耗品「使用 ( -1 )」按鈕加大觸控區；彈出對話框自適應手機螢幕寬度。
+- **完成項目：**
+  - [x] 建立並切換專屬 Git 分支 `feature/mobile-optimization`
+  - [x] `index.html` 與 `styles.scss` 加入 Safe-Area 與觸控基礎
+  - [x] `app.scss` 導覽列與使用者頭像手機適配
+  - [x] `character-shell` HUD 2×2 網格與全寬 Tabs
+  - [x] `adventure-form` 資源變動手機卡片式 2x2 網格與底部 Sticky Action
+  - [x] `character-list`、`adventure-list`、`adventure-detail`、`inventory-list` 全站響應式微調
+  - [x] 對話框與 Auth 表單手機尺寸適配
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T27 — 效能與連線最佳化 (Performance & DB Optimization)
+- **狀態：** `[x] 已完成`
+- **分支：** `perf/latency-and-db-optimization`
+- **變更摘要：**
+  1. **後端 HikariCP 連線池調優**：消除 `keepaliveTime >= maxLifetime` 啟動警告，將連線池容量擴增至 10、常駐 2 條熱連線、壽命延長至 10 分鐘（`max-lifetime=600000`）、加入 30 秒心跳保活（`keepalive-time=30000`），徹底解決跨國連線 TLS 重複握手與並發塞車。
+  2. **前端請求去重與平行化**：`CharacterShellComponent` 與 `AdventureDetailComponent` 全面改用 `forkJoin` 平行處理；修復 `router.events` 初始載入重複發送 API 的問題，請求次數減少 60%，消除 Waterfall 瀑布流等待。
+  3. **資料庫效能索引 (Flyway V4)**：建立 `adventure_entry`、`inventory_item`、`downtime_activity`、`character` 常用查詢與排序索引，所有查詢走 Index Scan (< 1ms)。
+- **完成項目：**
+  - [x] `application.properties` 連線池參數更新
+  - [x] 建立 Flyway `V4__add_performance_indexes.sql` 遷移腳本
+  - [x] `database-schema.md` 新增 Migration 6
+  - [x] `character-shell.component.ts` 與 `adventure-detail.component.ts` 平行請求與去重
+  - [x] 前後端建置與編譯驗證通過
+
+---
+
+### T28 — 冒險紀錄表單「三大階段區塊」與「休整期活動卡片清單」重構
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **三大邏輯階段劃分 (3-Phase Flow)**：
+     - `📜 冒險基本資訊`：代碼、名稱、日期、DM、升級機制與兼職配置。
+     - `⚔️ 冒險收穫與戰利品`：起始數值 + 冒險中收益、獲得永久魔法物品、獲得消耗品。
+     - `⛺ 休整期活動`：休整期各項活動記錄與伴隨資源變動。
+     - `📊 最終結算與備註`：公式化即時結算看板（起始 + 冒險 + 休整 = 最終合計）、冒險筆記與靈魂幣。
+  2. **休整期活動「卡片清單模式」重構**：
+     - 消除使用者填寫後忘記按下新增按鈕的認知落差，改為點擊 `[➕ 新增休整期活動]` 即展開卡片。
+     - 卡片內建常用快捷預設（自動代入名稱與花費數值）、自訂描述、金幣/天數/魔法物品變動欄位與刪除按鈕。
+     - 系統自動即時加總所有活動花費並連動結算看板，免心算且 100% 防呆。
+  3. **等級與升級機制手機版 RWD 排版優化**：
+     - 將「起始等級」、「本次升級」與「迎頭趕上」整合進同案一體化控制卡片。
+     - 手機版開關兩行對齊貼齊，結束等級化為水平金色橫條，徹底修正手機模式排版偏歪問題。
+- **完成項目：**
+  - [x] `AdventureFormComponent` 引入 `downtimeActivities` 卡片清單 Signal 與即時自動加總運算
+  - [x] `AdventureService` 新增 `updateDowntime` 方法
+  - [x] `adventure-form.component.html` 重構三大階段區塊與活動卡片清單
+  - [x] `adventure-form.component.scss` 樣式美化、精簡無用提示訊息與手機 RWD 對齊修復
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T27 — 冒險紀錄編輯模式：戰利品與休整期活動快照鎖定與追加新增功能
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **既有項目歷史快照鎖定**：
+     - 在 `isEditMode = true` 模式下，已存在的魔法物品、消耗品與休整期活動加上 `[歷史快照]` 標籤。
+     - 欄位全面鎖定（`disabled`），並隱藏刪除按鈕，保護歷史資料不被意外竄改或刪除。
+  2. **編輯模式開放追加新增**：
+     - 解鎖編輯模式下的「新增魔法物品」、「新增消耗品」與「新增休整期活動」按鈕。
+     - 新加入之卡片標示 `[新增]` 標籤，各欄位允許正常填寫，並提供刪除按鈕以供儲存前撤銷。
+  3. **同步儲存與防呆校驗**：
+     - 儲存變更時，僅將新建立之魔法物品與消耗品（`!item.id`）同步寫入角色倉庫，既有物品不重複寫入亦不覆蓋現況。
+     - 僅將新建立之休整期活動寫入冒險記錄，既有活動保留原貌。
+     - 新增送出前空白卡片檢查，若有未填寫名稱或描述之新卡片，立即發出提示防呆。
+- **完成項目：**
+  - [x] `AdventureFormComponent` 完善 `removeGainedItem`、`removeGainedConsumableItem`、`removeDowntimeActivity` 的快照保護邏輯
+  - [x] `AdventureFormComponent` 實作 `syncGainedItemsToInventory` 與 `syncDowntimeActivities` 僅同步新項目邏輯，並於編輯模式儲存時連動
+  - [x] `adventure-form.component.html` 移除新增按鈕限制、加入快照標籤與欄位 `disabled` 條件綁定
+  - [x] `adventure-form.component.scss` 新增 `.snapshot-card`、`.snapshot-tag` 與 `.new-tag` 視覺樣式
+  - [x] 更新 `system-requirements-spec.md` 新增 9.4 規格
+### T28 — CharacterShell 頂部 HUD 魔法物品件數連動倉庫實際數量
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **串接倉庫真實數據**：
+     - 原先頂部 HUD 魔法物品件數顯示來自 `defaults.startingMagicItems`（僅抓取前次冒險紀錄計算值），導致使用者在倉庫頁面手動新增、編輯、刪除魔法物品時，HUD 無法同步反映倉庫現況。
+     - 在 `CharacterShellComponent` 引入 `InventoryService`，在初次載入及每次 `refreshHud()` 時查詢該角色所有倉庫物品，統計 `itemType === 'PERMANENT'` 之實際數量存入 `magicItemsCount` signal。
+  2. **跨組件全域反應**：
+     - `InventoryService` 在道具新增/修改/刪除時本已發送 `characterChanged$` 廣播通知，`CharacterShellComponent` 訂閱後立即呼叫 `refreshHud()`，實現倉庫操作與頂部 HUD 魔法物品數值即時無縫連動。
+- **完成項目：**
+  - [x] `CharacterShellComponent` 注入 `InventoryService`，建立 `magicItemsCount` signal
+  - [x] `loadCharacterData()` 與 `refreshHud()` 新增查詢倉庫永久魔法物品統計邏輯
+  - [x] `character-shell.component.html` 魔法物品數值綁定改為 `magicItemsCount()`
+### T29 — AdventureForm 起始魔法物品件數連動倉庫實際數量
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **後端統一收斂來源**：
+     - `AdventureEntryService.getDefaults()` 注入 `InventoryItemMapper`，無論先前是否有冒險紀錄，預設的 `startingMagicItems` 皆改為查詢倉庫中 `itemType = 'PERMANENT'` 之實際持有件數。
+  2. **前端雙重防護連動**：
+     - `AdventureFormComponent.loadDefaults()` 中使用 `forkJoin` 同時向 `InventoryService` 查詢倉庫物品，確保新增冒險紀錄時，「起始魔法物品件數」即時且準確地反映倉庫目前的永久魔法物品數量。
+- **完成項目：**
+  - [x] 後端 `AdventureEntryService` 注入 `InventoryItemMapper` 並更新 `getDefaults()`
+  - [x] 前端 `AdventureFormComponent.loadDefaults()` 更新為倉庫即時統計
+### T30 — AdventureList 冒險紀錄多維度排序與方向切換（方案一：維度解耦）
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **排序欄位與方向解耦**：
+     - `AdventureListComponent` 引入 `sortField`（支援 `playDate` 遊玩日、`createdAt` 建立時間）與 `sortOrder`（`desc` 與 `asc`）Signals。
+     - 搭配 `computed()` 進行極速客戶端排序：
+       - `playDate`：按遊玩歷史排序，相同時以 `createdAt` 次要排序。
+       - `createdAt`：按資料庫輸入時間排序，卡片額外顯示建立日期標籤，相同時以 `playDate` 次要排序。
+     - 整合 `localStorage` 雙重記憶使用者的欄位與方向偏好。
+  2. **直觀控制項與動態標籤**：
+     - 重構為「一體化膠囊排序工具列（Pill Capsule Toolbar）」，消除雙方塊割裂感，左右等寬居中對齊。
+     - 整合隱形原生 select 覆蓋技術，在手機觸控時自動呼叫流暢的原生選取輪盤，兼具極簡美學與順暢手感。
+- **完成項目：**
+  - [x] `AdventureListComponent` 定義 `AdventureSortField`，實作 `sortField`、`sortOrder`、`directionLabel` 與 `computed` 排序運算
+  - [x] `adventure-list.component.html` 整合一體化膠囊工具列、方向反轉按鈕與建立日期輔助標籤
+  - [x] `adventure-list.component.scss` 重構一體化膠囊樣式與手機版完美自適應排版
+### T31 — 修復冒險紀錄編輯模式戰利品載入匹配機制（容錯與雙向比對）
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **重構戰利品來源比對邏輯 (`isSourceMatch`)**：
+     - 解決原先 `loadGainedItems` 僅依賴 `adventureName || adventureCode` 且以嚴格全等比對 (`===`)，導致冒險代號與名稱割裂、複合命名（如 `[DDAL09-01] 冒險名稱`）或大小寫差異時戰利品無法載入呈現完全空白之問題。
+     - 抽取出通用之雙向容錯比對方法 `isSourceMatch`，支援大小寫不敏感、去前後空白、雙向子字串比對，並統一套用於 `AdventureFormComponent` 與 `AdventureDetailComponent`，使詳情頁與編輯表單之物品展示 100% 一致。
+- **完成項目：**
+  - [x] `AdventureFormComponent` 實作 `isSourceMatch` 替代嚴格全等過濾
+  - [x] `AdventureDetailComponent` 同步採用一致之 `isSourceMatch` 判定
+  - [x] 前端生產建置驗證通過 (`npm run build`)
+
+---
+
+### T32 — 冒險日誌刪除連帶回滾與倉庫消耗解耦機制
+- **狀態：** `[x] 已完成`
+- **對應計畫：** `implementation_plan.md`
+- **變更摘要：**
+  1. **資料庫層級聯與快照 (Flyway V6)**：
+     - 建立 `adventure_gained_item` 冒險戰利品專屬快照表，與 `adventure_entry` 綁定 `ON DELETE CASCADE`。
+     - `inventory_item` 新增 `adventure_entry_id` 外鍵（`ON DELETE CASCADE`），手動建立之裝備保持 NULL。
+     - 歷史資料平滑回填（Backfill）。
+  2. **後端雙軌維護與狀態回滾**：
+     - `AdventureEntryService` 新增獲得物品端點與處理；`deleteEntry` 支援全維度回退角色等級、職業字串與最新 defaults。
+  3. **前端詳情頁解耦與表單同步**：
+     - 冒險表單儲存時雙軌寫入（快照與倉庫）；詳情頁改讀專屬快照表。
+     - 倉庫日常消耗與刪除道具時，歷史日誌紀錄 100% 維持不變；刪除冒險記錄時，倉庫道具、等級、金錢、休整期與頂部 HUD 即時連帶回退。
+- **完成項目：**
+  - [x] 建立 Flyway `V7__add_adventure_gained_item_and_inventory_fk.sql`
+  - [x] 後端 Entity、DTO、Mapper、Service、Controller 實作
+  - [x] 前端 Model、Service、Component 更新
+  - [x] 前後端建置與編譯驗證通過
+
+---
+
+### T33 — 編輯冒險日誌開放歷史物品與休整期修改（方案 A 增量同步 Delta Sync）
+- **狀態：** `[x] 已完成`
+- **對應計畫：** `implementation_plan.md`
+- **變更摘要：**
+  1. **資料庫層精準綁定 (Flyway V8)**：
+     - `inventory_item` 增加 `adventure_gained_item_id UUID REFERENCES adventure_gained_item(id) ON DELETE CASCADE`。
+     - 建立索引與歷史資料回填，達成倉庫持有物與獲得快照項之 1:1/1:N 精準關聯與自動級聯刪除。
+  2. **後端增量差額同步 (Delta Sync)**：
+     - `AdventureEntryService.updateGainedItem` 實作消耗品差額運算 $\Delta = Q_{\text{new}} - Q_{\text{old}}$：
+       - $\Delta > 0$：倉庫現有數量 $+ \Delta$（若已在倉庫喝光用盡則自動補發 $\Delta$ 瓶）。
+       - $\Delta < 0$：倉庫現有數量扣減 $\max(0, \text{qty} + \Delta)$，歸零自動移除。
+     - 魔法物品修訂：名稱、稀有度、備註雙軌同步更新快照與倉庫背包。
+     - 刪除物品：透過資料庫外鍵自動連帶清理倉庫背包道具。
+     - `AdventureEntryController` 新增 `PUT /api/entries/{entryId}/gained-items/{itemId}`。
+  3. **前端解鎖編輯與全面動態聯動**：
+     - `adventure-form.component.html` 移除所有 `disabled` 唯讀限制，開放編輯魔法物品、消耗品與休整期活動。
+     - 開放刪除按鈕，標籤由「歷史快照」更新為友善的「已入庫 / 已有活動」。
+     - `adventure-form.component.ts` 收集 `deletedItemIds` 與 `deletedActivityIds`，在儲存時同時調用增、刪、改端點。
+     - 編輯或刪除休整期活動時，即時重新加總 `goldDowntimeChange`、`downtimeDowntimeChange`、`magicItemsDowntimeChange`，並刷新頂部 HUD 看板。
+- **完成項目：**
+  - [x] 建立 Flyway `V8__link_inventory_to_gained_item.sql` 並執行遷移
+  - [x] 後端 `InventoryItemMapper`、`AdventureGainedItemMapper`、`AdventureEntryService`、`AdventureEntryController` 更新
+  - [x] 前端 `inventory.model.ts`、`adventure.service.ts`、`adventure-form.component.html`、`adventure-form.component.ts` 更新
+  - [x] 後端 `./mvnw clean package -DskipTests` 與前端 `npm run build` 驗證 0 錯誤
+
+---
+
+### T34 — 倉庫魔法物品與消耗品加入「取得時間」展示與雙向排序
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **道具卡片整合「取得時間」標籤**：
+     - 在永久魔法物品與消耗品卡片整合 `.item-meta-row`，同時呈現「來源」與「取得時間：YYYY/MM/dd」（對應道具在系統中的 `createdAt` 時間戳）。
+  2. **一體化膠囊排序按鈕（雙向切換）**：
+     - 在倉庫頁面頂部新增一體化膠囊按鈕，支援「由新到舊 (最新在先)」與「由舊到新 (最舊在先)」的一鍵點擊切換。
+     - 透過 `computed()` 響應式信號進行毫秒級客戶端排序，並將排序偏好持久化儲存於 `localStorage`。
+- **完成項目：**
+  - [x] `InventoryListComponent` 引入 `sortOrder` 信號與 `sortItems` 排序邏輯，整合 `localStorage` 記憶
+  - [x] `inventory-list.component.html` 新增頂部排序膠囊按鈕與卡片 `item-meta-row` 取得時間標籤
+  - [x] `inventory-list.component.scss` 完成現代膠囊樣式與手機端自適應排版
+  - [x] 前端建置驗證通過 (`npm run build`)
+
+---
+
+### T35 — 全站圖示來源統一化（統一為 Lucide Icons 現代線條風格）
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **規範落實**：
+     - 在 `.agents/rules/project-conventions.md` 確立「全站統一使用 Lucide Icons (`@lucide/angular`)，禁止在同組件/同視圖混用 `mat-icon`」標準。
+  2. **倉庫模組 100% 遷移**：
+     - `inventory-list` 與 `inventory-form` 全面移除 `<mat-icon>`。
+     - 替換為 `LucidePackage`、`LucidePlus`、`LucideSparkles`、`LucideFlaskConical`、`LucideBookmark`、`LucideClock`、`LucidePencil`、`LucideTrash2`、`LucideDroplet`、`LucideArrowLeft`、`LucideSave`。
+  3. **冒險清單模組 100% 遷移**：
+     - `adventure-list` 徹底替換殘留的 `menu_book`, `event`, `person`, `chevron_right`, `upgrade` 為對應的 Lucide SVG（`LucideBookOpen`, `LucideCalendar`, `LucideUser`, `LucideChevronRight`, `LucideTrendingUp`）。
+- **完成項目：**
+  - [x] 更新 `.agents/rules/project-conventions.md`
+  - [x] 重構 `inventory-list` 與 `inventory-form`，達成 0 `mat-icon` 混用
+  - [x] 重構 `adventure-list`，達成 0 `mat-icon` 混用
+  - [x] 前端打包驗證通過 (`npm run build`)
+
+---
+
+### T36 — 輕量化安全架構補強（BOLA/IDOR 擁有權隔離、OAuth aud 驗證、CORS/Actuator 收斂與 2小時效期）
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **物件層級授權防護 (BOLA/IDOR 防呆)**：
+     - `AdventureEntryController` 與 `InventoryItemController` 所有端點注入 `@AuthenticationPrincipal UserPrincipal principal`。
+     - `AdventureEntryService` 與 `InventoryItemService` 強制在每次資料查詢與異動前檢驗角色擁有權（`characterService.findCharacter(characterId, userId)`），非擁有者回傳 404，徹底杜絕跨玩家誤改、誤刪彼此冒險日誌與倉庫道具。
+  2. **Google OAuth 安全加固**：
+     - `OAuthService.verifyGoogleToken` 新增 `aud` (Audience) 比對，限定僅接受發給本專案 `googleClientId` 的 Token；新增 `email_verified` 檢驗。
+  3. **安全組態收斂與登入效期調整**：
+     - `application.properties`：將 JWT 登入有效期限由 7 天調整為 **2 小時** (`7200000` ms)。
+     - `SecurityConfig.java`：CORS 白名單移除萬用字元子網域（`*.web.app`, `*.firebaseapp.com`）；Actuator 存取限縮為僅開放 `/actuator/health` 與 `/actuator/info`。
+     - `WebConfig.java`：移除重複定義的 CORS，由 `SecurityConfig` 統一管控。
+     - `GlobalExceptionHandler.java`：脫敏 500 一般未捕捉例外的錯誤回應，保護內部架構與 SQL 細節。
+  4. **前端 HTTP Interceptor Token 發送白名單化**：
+     - `auth.interceptor.ts` 由黑名單排除改為白名單比對（`req.url.startsWith('/api') || req.url.startsWith(environment.apiUrl)`），防止未來串接外部服務時 Token 外洩。
+  5. **CORS 環境變數架構純淨化與舊 Token 例外攔截**：
+     - `SecurityConfig.java`：移除任何寫死的業務網域，CORS 完全遵循 12-Factor 原則由環境變數 `CORS_ALLOWED_ORIGIN` 動態注入，維護公開倉庫架構整潔度。
+     - `JwtTokenProvider.java`：廣泛捕捉 `JwtException` 與 `IllegalArgumentException`，防止過期/無效 Token 洩漏未處理例外至 Filter 堆疊。
+     - `auth.interceptor.ts`：排除 `/api/auth/login`、`/api/auth/register`、`/api/auth/oauth` 附加 `Authorization: Bearer`，避免舊金鑰簽署的 Token 污染登入請求。
+- **完成項目：**
+  - [x] 後端 Controllers、Services、Config、Exception Handler 程式碼更新
+  - [x] 前端 `auth.interceptor.ts` 白名單化更新
+  - [x] 後端 `./mvnw clean package -DskipTests` 打包驗證通過
+---
+
+### T37 — 角色卡片純文字條列佈局與子職（Subclass）欄位支援
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **規格與資料庫**：
+     - 更新 `system-requirements-spec.md` 與 `database-schema.md`。
+     - 新增 Migration 9 (`V9__add_subclass_to_character.sql`)：`ALTER TABLE "character" ADD COLUMN IF NOT EXISTS subclass VARCHAR(100);`。
+  2. **後端 (Spring Boot / MyBatis)**：
+     - `Character` Entity、`CharacterRequest`、`CharacterResponse` 新增 `subclass` 欄位。
+     - `CharacterService` 在 create、update 及 toResponse 中正確映射 `subclass` 與 `faction`。
+     - `CharacterMapper.xml` 於 `resultMap`、所有 `SELECT`、`INSERT` 與 `UPDATE` 語句補齊 `subclass` 欄位。
+  3. **前端 (Angular 22)**：
+     - `character.model.ts` 新增 `subclass?: string | null`。
+     - `character-form` 新增「子職（選填）」輸入框，完整支援建立與編輯角色時儲存/載入。
+     - `character-list` 依照需求移除 icon 標籤，改為整齊俐落的純文字條列式呈現（種族、職業、子職、派系）。
+     - `character-shell` 頂部 meta 亦支援展示子職。
+---
+
+### T38 — 角色自訂大頭照上傳、互動裁切視窗與圓角正方形肖像卡牌風格
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **規格與資料庫**：
+     - 更新 `system-requirements-spec.md` 與 `database-schema.md`。
+     - 新增 Migration 10 (`V10__add_avatar_url_to_character.sql`)：`ALTER TABLE "character" ADD COLUMN IF NOT EXISTS avatar_url TEXT;`。
+  2. **後端 (Spring Boot / MyBatis)**：
+     - `Character` Entity、`CharacterRequest`、`CharacterResponse` 新增 `avatarUrl` 欄位。
+     - `CharacterService` 與 `CharacterMapper.xml` 於所有查詢、INSERT 與 UPDATE 完整支援 `avatar_url` 持久化。
+  3. **前端 (Angular 22)**：
+     - 新增獨立裁切視窗 `AvatarCropperDialogComponent`，支援圖片平移拖曳、雙向滑桿/滾輪縮放、圓角正方形遮罩預覽，輸出 300x300 高解析 WebP 壓縮圖。
+     - `character-form` 整合肖像上傳預覽區塊、更換圖片與移除功能。
+     - `character-list` 採用 **風格 A（左側大肖像 Hero Portrait 卡牌風，104x124px）**，右側整齊條列各項角色資料與等級。
+     - `character-shell` 全面升級為「圓角正方形（RPG 肖像徽章風格）」，支援立繪展示與文字 Fallback 渲染。
+- **完成項目：**
+  - [x] 資料庫 Migration V10 建立與文檔更新
+  - [x] 後端 Entity、DTO、Service、Mapper 調整
+  - [x] 建立 `AvatarCropperDialogComponent` 互動裁切元件
+### T39 — 全站 UI/UX 優化與魔法物品「是否需同調 (requiresAttunement)」欄位支援
+- **狀態：** `[x] 已完成`
+- **變更摘要：**
+  1. **全站 UI/UX 改善（Commit `ed2615c`）**：
+     - 頂部導覽列整合全域返回按鈕（`NavigationEnd` 偵測內頁顯示），移除內頁卡片重複返回鍵。
+     - 全站四大資源（等級=靛藍、金幣=琥珀金、休整期=翡翠綠、魔法物品=奧術紫）色調與語義對齊。
+     - 等級（Level）在 HUD、冒險清單與角色列表中全面去除圖示，純文字呈現更俐落。
+     - 角色卡片 RWD 對齊微調，長名稱 ellipsis 防破版，右上角編輯/刪除觸控區域加寬。
+     - 倉庫物品清單改採「方案 4：橫向條列卡片（Row-Card）」，解決舊版名稱擠壓與右側留白問題。
+  2. **資料庫與後端同調支援（Commit `ef8d438`）**：
+     - 新增 Flyway Migration 11 (`V11__add_requires_attunement_to_inventory_item.sql`)：`ALTER TABLE inventory_item ADD COLUMN IF NOT EXISTS requires_attunement BOOLEAN DEFAULT FALSE;`。
+     - 更新 `database-schema.md` 與 `system-requirements-spec.md`。
+     - `InventoryItem` Entity、Request/Response DTO 新增 `requiresAttunement` 欄位。
+     - `InventoryItemMapper.xml` 更新 `resultMap`、`insert` 與 `update`。
+     - `InventoryItemService` 處理同調屬性映射。
+  3. **前端同調功能串接（Commit `21403db`）**：
+     - TypeScript 模型 `InventoryItem` 新增 `requiresAttunement?: boolean`。
+     - `inventory-form` 新增「需要同調 (Requires Attunement)」核取方塊（`mat-checkbox`，僅魔法物品顯示）。
+     - `inventory-list` 條列卡片於稀有度旁顯示精緻琥珀色「需同調」膠囊標籤。
+     - `styles.scss` 定義全域 `.attunement-pill` 樣式。
 
 ---
 

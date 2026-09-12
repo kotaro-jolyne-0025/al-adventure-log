@@ -1,0 +1,24 @@
+{
+  "hosting": {
+    "site": "dnd-adv-log",
+    "public": "dist/frontend/browser",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "dnd-adv-backend",
+          "region": "asia-east1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

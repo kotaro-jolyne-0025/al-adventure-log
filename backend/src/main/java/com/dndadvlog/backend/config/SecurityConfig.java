@@ -58,7 +58,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -72,14 +72,14 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         List<String> patterns = new java.util.ArrayList<>(List.of(
                 "http://localhost:*",
-                "http://127.0.0.1:*",
-                "https://*.zeabur.app",
-                "https://adv-log.zeabur.app"
+                "http://127.0.0.1:*"
         ));
-        for (String origin : allowedOrigin.split(",")) {
-            String trimmed = origin.trim();
-            if (!trimmed.isEmpty() && !patterns.contains(trimmed)) {
-                patterns.add(trimmed);
+        if (allowedOrigin != null && !allowedOrigin.isBlank()) {
+            for (String origin : allowedOrigin.split(",")) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !patterns.contains(trimmed)) {
+                    patterns.add(trimmed);
+                }
             }
         }
 

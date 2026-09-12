@@ -62,14 +62,10 @@ public class JwtTokenProvider {
         try {
             Jwts.parser().verifyWith(key).build().parseSignedClaims(authToken);
             return true;
-        } catch (SecurityException | MalformedJwtException ex) {
-            log.error("無效的 JWT 簽署格式");
         } catch (ExpiredJwtException ex) {
-            log.error("已過期的 JWT Token");
-        } catch (UnsupportedJwtException ex) {
-            log.error("不支援的 JWT Token");
-        } catch (IllegalArgumentException ex) {
-            log.error("JWT claims 字串為空");
+            log.warn("已過期的 JWT Token: {}", ex.getMessage());
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.warn("無效的 JWT Token: {}", ex.getMessage());
         }
         return false;
     }

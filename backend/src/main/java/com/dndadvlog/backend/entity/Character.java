@@ -14,7 +14,9 @@ public class Character {
     private String characterName;
     private String playerName;
     private String race;
+    private String subclass;
     private String faction;
+    private String avatarUrl;
     private String currentClassesString;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

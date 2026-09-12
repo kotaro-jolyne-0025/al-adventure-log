@@ -3,7 +3,9 @@ export interface Character {
   characterName: string;
   playerName: string;
   race: string;
-  faction?: string;
+  subclass?: string | null;
+  faction?: string | null;
+  avatarUrl?: string | null;
   currentClassesString?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -13,6 +15,8 @@ export interface CharacterRequest {
   characterName: string;
   playerName: string;
   race: string;
+  subclass?: string | null;
   faction?: string | null;
+  avatarUrl?: string | null;
   currentClassesString?: string | null;
 }

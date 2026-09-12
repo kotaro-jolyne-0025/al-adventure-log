@@ -1,69 +1,164 @@
 <div class="page-container">
   <!-- Header Actions -->
   <div class="list-header">
-    <h2 class="section-title">冒險日誌</h2>
-    <button mat-flat-button color="primary" (click)="onAddEntry()">
-      <mat-icon>add</mat-icon>
-      新增冒險
-    </button>
+    <div class="header-titles">
+      <h2 class="section-title">
+        <svg lucideBookOpen [size]="22" class="title-icon"></svg>
+        冒險紀錄表
+      </h2>
+      <span class="count-pill">{{ entries().length }} 筆紀錄</span>
+    </div>
+    <div class="header-actions">
+      <!-- 🌟 一體化膠囊排序工具列 -->
+      <div class="sort-toolbar-capsule">
+        <!-- 欄位選擇（左側） -->
+        <label class="capsule-section select-section" matTooltip="點擊切換排序欄位">
+          <svg lucideSlidersHorizontal [size]="16" class="capsule-icon"></svg>
+          <span class="capsule-text">{{ sortFieldLabel() }}</span>
+          <svg lucideChevronDown [size]="15" class="capsule-arrow"></svg>
+          <select
+            class="invisible-native-select"
+            [value]="sortField()"
+            (change)="onSortFieldChange($event)"
+            aria-label="選擇排序依據">
+            <option value="playDate">遊玩日期</option>
+            <option value="createdAt">建立時間</option>
+          </select>
+        </label>
+
+        <!-- 中間高雅細分隔線 -->
+        <div class="capsule-divider"></div>
+
+        <!-- 方向反轉（右側） -->
+        <button
+          type="button"
+          class="capsule-section button-section"
+          (click)="toggleSortOrder()"
+          [matTooltip]="directionTooltip()">
+          @if (sortOrder() === 'desc') {
+            <svg lucideArrowDown [size]="16" class="capsule-icon dir-icon"></svg>
+          } @else {
+            <svg lucideArrowUp [size]="16" class="capsule-icon dir-icon icon-asc"></svg>
+          }
+          <span class="capsule-text">{{ directionLabel() }}</span>
+        </button>
+      </div>
+
+      <button mat-flat-button color="primary" class="btn-add-adv" (click)="onAddEntry()">
+        <mat-icon>add</mat-icon>
+        新增冒險紀錄
+      </button>
+    </div>
   </div>
 
-  <!-- Loading -->
+  <!-- Loading Skeletons -->
   @if (isLoading()) {
-    <div class="loading-wrapper">
-      <mat-spinner diameter="40"></mat-spinner>
+    <div class="timeline-container">
+      @for (item of [1, 2, 3]; track $index) {
+        <div class="chronicle-card clean-card">
+          <div class="skeleton-box" style="width: 40%; height: 16px; margin-bottom: 12px;"></div>
+          <div class="skeleton-box" style="width: 70%; height: 24px; margin-bottom: 12px;"></div>
+          <div class="skeleton-box" style="width: 100%; height: 32px;"></div>
+        </div>
+      }
     </div>
   }
 
   <!-- Empty State -->
   @if (!isLoading() && entries().length === 0) {
-    <div class="empty-state">
-      <mat-icon class="empty-icon">menu_book</mat-icon>
-      <p class="empty-title">尚無冒險記錄</p>
-      <p class="empty-desc">點擊新增開始記錄第一筆冒險</p>
-      <button mat-flat-button color="primary" (click)="onAddEntry()">
-        <mat-icon>add</mat-icon>
-        新增第一筆冒險
+    <div class="empty-state clean-card">
+      <div class="empty-icon-wrap">
+        <svg lucideBookOpen [size]="48" class="empty-icon"></svg>
+      </div>
+      <h3 class="empty-title">尚無冒險紀錄</h3>
+      <p class="empty-desc">點擊下方按鈕開始建立第一筆冒險紀錄！</p>
+      <button mat-flat-button color="primary" (click)="onAddEntry()" class="empty-btn">
+        <svg lucidePlus [size]="18" class="btn-icon"></svg>
+        <span>新增冒險紀錄</span>
       </button>
     </div>
   }
 
-  <!-- Adventure Table -->
+  <!-- Adventure Chronicle Cards Timeline -->
   @if (!isLoading() && entries().length > 0) {
-    <mat-card class="table-card">
-      <table mat-table [dataSource]="entries()" class="full-width">
+    <div class="timeline-container">
+      @for (row of entries(); track row.id) {
+        <div class="chronicle-card clean-card clickable" (click)="onViewEntry(row.id)">
+          
+          <!-- Card Top Bar -->
+          <div class="card-meta-bar">
+            <div class="meta-left">
+              @if (row.adventureCode) {
+                <span class="adv-code">{{ row.adventureCode }}</span>
+              }
+              <span class="adv-date">
+                <svg lucideCalendar [size]="13" class="meta-icon"></svg>
+                {{ row.playDate ? (row.playDate | date:'yyyy/MM/dd') : '未指定日期' }}
+              </span>
+              @if (sortField() === 'createdAt' && row.createdAt) {
+                <span class="adv-created-tag" matTooltip="資料庫建立時間">
+                  <svg lucideClock [size]="13" class="meta-icon"></svg>
+                  建立：{{ row.createdAt | date:'yyyy/MM/dd' }}
+                </span>
+              }
+              @if (row.dmName) {
+                <span class="adv-dm">
+                  <svg lucideUser [size]="13" class="meta-icon"></svg>
+                  DM: {{ row.dmName }}
+                </span>
+              }
+            </div>
+            <div class="meta-right">
+              <svg lucideChevronRight [size]="18" class="chevron-icon"></svg>
+            </div>
+          </div>
 
-        <!-- 遊玩日期 -->
-        <ng-container matColumnDef="playDate">
-          <th mat-header-cell *matHeaderCellDef>遊玩日期</th>
-          <td mat-cell *matCellDef="let row">
-            {{ row.playDate ? (row.playDate | date:'yyyy/MM/dd') : '—' }}
-          </td>
-        </ng-container>
+          <!-- Adventure Title -->
+          <h3 class="adv-title">
+            {{ row.adventureName || row.adventureCode || '冒險紀錄' }}
+          </h3>
 
-        <!-- 冒險代碼 -->
-        <ng-container matColumnDef="adventureCode">
-          <th mat-header-cell *matHeaderCellDef>冒險代碼</th>
-          <td mat-cell *matCellDef="let row">{{ row.adventureCode || '—' }}</td>
-        </ng-container>
+          <!-- Deltas / Resource Badges -->
+          <div class="badges-row">
+            <!-- Level badge (純文字無 icon，清晰俐落) -->
+            <span class="delta-badge badge-level" [class.badge-level-up]="row.endingLevel && row.startingLevel && row.endingLevel > row.startingLevel">
+              {{ getLevelProgress(row) }}
+            </span>
 
-        <!-- 冒險名稱 -->
-        <ng-container matColumnDef="adventureName">
-          <th mat-header-cell *matHeaderCellDef>冒險名稱</th>
-          <td mat-cell *matCellDef="let row">{{ row.adventureName || '—' }}</td>
-        </ng-container>
+            <!-- Gold change (琥珀金) -->
+            @if (formatGoldChange(row); as gold) {
+              <span class="delta-badge badge-gold">
+                <svg lucideCoins [size]="13" class="badge-icon"></svg>
+                {{ gold }}
+              </span>
+            }
 
-        <!-- DM 名稱 -->
-        <ng-container matColumnDef="dmName">
-          <th mat-header-cell *matHeaderCellDef>DM</th>
-          <td mat-cell *matCellDef="let row">{{ row.dmName || '—' }}</td>
-        </ng-container>
+            <!-- Downtime change (翡翠綠) -->
+            @if (formatDowntimeChange(row); as dt) {
+              <span class="delta-badge badge-downtime">
+                <svg lucideTent [size]="13" class="badge-icon"></svg>
+                {{ dt }}
+              </span>
+            }
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns"
-            class="clickable-row"
-            (click)="onViewEntry(row.id)"></tr>
-      </table>
-    </mat-card>
+            <!-- Magic item change (奧術紫) -->
+            @if (formatMagicItemChange(row); as mi) {
+              <span class="delta-badge badge-magic">
+                <svg lucideSparkles [size]="13" class="badge-icon"></svg>
+                {{ mi }}
+              </span>
+            }
+          </div>
+
+          <!-- Notes Preview -->
+          @if (row.adventureNotes) {
+            <p class="notes-preview">
+              {{ row.adventureNotes }}
+            </p>
+          }
+
+        </div>
+      }
+    </div>
   }
 </div>

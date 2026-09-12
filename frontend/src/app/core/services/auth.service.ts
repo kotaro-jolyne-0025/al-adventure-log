@@ -21,11 +21,43 @@ export class AuthService {
   readonly currentUser = signal<User | null>(this.getStoredUser());
   readonly isAuthenticated = computed(() => !!this.token() && !!this.currentUser());
 
+  /**
+   * 解析 JWT payload 判斷 token 是否已過期。
+   * 採用 30 秒 buffer 避免在邊界時刻因時鐘誤差導致請求失敗。
+   */
+  isTokenExpired(): boolean {
+    const t = this.token();
+    if (!t) return true;
+
+    try {
+      // JWT 使用 base64url 編碼，需先轉換為標準 base64 供 atob() 解碼
+      const base64Url = t.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      // 處理 UTF-8 多位元組字元（如中文 displayName）
+      const jsonPayload = decodeURIComponent(
+        atob(base64).split('').map(c =>
+          '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        ).join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+      if (!payload.exp) return false; // 沒有 exp claim 則視為不過期
+      const bufferSeconds = 30;
+      return Date.now() >= (payload.exp - bufferSeconds) * 1000;
+    } catch {
+      return true; // 解析失敗視為過期
+    }
+  }
+
   constructor() {
     // 啟動時驗證 token
     if (this.token()) {
       this.fetchCurrentUser().subscribe({
-        error: () => this.logout(false),
+        error: (err) => {
+          // 只有明確回傳 401 (Token 失效或未授權) 時才清空登入狀態，避免因網路短暫不穩或伺服器啟動中誤登出
+          if (err?.status === 401) {
+            this.logout(false);
+          }
+        },
       });
     }
   }

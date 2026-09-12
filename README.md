@@ -6,8 +6,8 @@
 
 | 層級 | 技術 | 部署位置 |
 |---|---|---|
-| 前端 | Angular 22 + PWA | Zeabur |
-| 後端 | Spring Boot 4.1（Java 17）| Zeabur |
+| 前端 | Angular 22 + PWA | Google Cloud (Firebase Hosting 全球 CDN) |
+| 後端 | Spring Boot 4.1（Java 17）| Google Cloud Run (asia-east1 台灣) |
 | 資料庫 | PostgreSQL | Supabase（永久免費）|
 | API 風格 | REST | — |
 

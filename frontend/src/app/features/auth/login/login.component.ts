@@ -14,6 +14,8 @@ import { AuthService } from '../../../core/services/auth.service';
 
 import { environment } from '../../../../environments/environment';
 
+import { LucideDices } from '@lucide/angular';
+
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -28,6 +30,7 @@ import { environment } from '../../../../environments/environment';
     MatIconModule,
     MatProgressSpinnerModule,
     MatDividerModule,
+    LucideDices,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',

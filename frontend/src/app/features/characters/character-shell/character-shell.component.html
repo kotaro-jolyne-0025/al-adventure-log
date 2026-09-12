@@ -5,43 +5,120 @@
 }
 
 @if (!isLoading() && character()) {
-  <!-- Character Header -->
-  <div class="char-header">
-    <button mat-icon-button (click)="onBack()">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-    <div class="char-info">
-      <h1 class="char-name">{{ character()!.characterName }}</h1>
-      <p class="char-meta">
-        {{ character()!.race }} ・ {{ formatClasses(character()!) }}
-        @if (character()!.faction) { ・ {{ character()!.faction }} }
-      </p>
+  <div class="shell-container">
+    
+    <!-- Character Header Card & Navigation -->
+    <div class="char-hero-card clean-card">
+
+      <!-- Hero Portrait + Identity & Actions -->
+      <div class="char-hero-top">
+        <div class="hero-identity">
+          <div class="char-avatar-hero">
+            @if (character()!.avatarUrl) {
+              <img [src]="character()!.avatarUrl" [alt]="character()!.characterName" class="char-hero-img" />
+            } @else {
+              <div class="char-hero-fallback">{{ getInitial(character()!.characterName) }}</div>
+            }
+          </div>
+
+          <div class="char-identity-text">
+            <div class="name-line">
+              <h1 class="char-name" [matTooltip]="character()!.characterName">{{ character()!.characterName }}</h1>
+              <button mat-icon-button (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色">
+                <mat-icon>edit</mat-icon>
+              </button>
+            </div>
+            <p class="char-meta">
+              <span>{{ character()!.race }}</span>
+              <span class="meta-dot">・</span>
+              <span class="meta-classes">{{ formatClasses(character()!) }}</span>
+              @if (character()!.subclass) {
+                <span class="meta-dot">・</span>
+                <span class="meta-subclass">{{ character()!.subclass }}</span>
+              }
+              @if (character()!.faction) {
+                <span class="meta-dot">・</span>
+                <span class="meta-faction">{{ character()!.faction }}</span>
+              }
+            </p>
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <button mat-stroked-button (click)="onEdit()" class="btn-edit-hero">
+            <mat-icon>edit</mat-icon>
+            <span>編輯角色</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Character HUD Stats Bar (即時數值看板) -->
+      <div class="char-hud-bar">
+        
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <span class="hud-label">當前等級</span>
+          </div>
+          <span class="hud-value stat-level">Lv. {{ parseTotalLevel() }}</span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideCoins class="hud-icon stat-gold-icon" [size]="16"></svg>
+            <span class="hud-label">金幣 (GP)</span>
+          </div>
+          <span class="hud-value stat-gold">
+            {{ (defaults()?.startingGold ?? 0) | number:'1.2-2' }} <small class="unit">GP</small>
+          </span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideTent class="hud-icon stat-downtime-icon" [size]="16"></svg>
+            <span class="hud-label">休整期天數</span>
+          </div>
+          <span class="hud-value stat-downtime">
+            {{ defaults()?.startingDowntime ?? 0 }} <small class="unit">天</small>
+          </span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideSparkles class="hud-icon stat-magic-icon" [size]="16"></svg>
+            <span class="hud-label">魔法物品</span>
+          </div>
+          <span class="hud-value stat-magic">
+            {{ magicItemsCount() }} <small class="unit">件</small>
+          </span>
+        </div>
+
+      </div>
     </div>
-    <button mat-icon-button (click)="onEdit()">
-      <mat-icon>edit</mat-icon>
-    </button>
+
+    <!-- Tab Nav -->
+    <mat-tab-group
+      [selectedIndex]="getActiveTab()"
+      (selectedIndexChange)="onTabChange($event)"
+      animationDuration="150ms"
+      class="character-tabs">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">menu_book</mat-icon>
+          <span>冒險紀錄表</span>
+        </ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">inventory_2</mat-icon>
+          <span>倉庫</span>
+        </ng-template>
+      </mat-tab>
+    </mat-tab-group>
+
+    <!-- Routed child page (adventures or inventory) -->
+    <div class="tab-content-area">
+      <router-outlet />
+    </div>
+
   </div>
-
-  <!-- Tab Nav -->
-  <mat-tab-group
-    [selectedIndex]="getActiveTab()"
-    (selectedIndexChange)="onTabChange($event)"
-    animationDuration="150ms"
-    class="character-tabs">
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <mat-icon class="tab-icon">menu_book</mat-icon>
-        冒險日誌
-      </ng-template>
-    </mat-tab>
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <mat-icon class="tab-icon">inventory_2</mat-icon>
-        倉庫
-      </ng-template>
-    </mat-tab>
-  </mat-tab-group>
-
-  <!-- Routed child page -->
-  <router-outlet />
 }

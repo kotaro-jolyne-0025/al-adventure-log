@@ -18,9 +18,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { CharacterService } from '../../../core/services/character.service';
 import { CharacterRequest } from '../../../core/models/character.model';
 import { AuthService } from '../../../core/services/auth.service';
+import { AvatarCropperDialogComponent } from '../avatar-cropper-dialog/avatar-cropper-dialog.component';
 
 @Component({
   selector: 'app-character-form',
@@ -48,6 +50,7 @@ export class CharacterFormComponent implements OnInit {
   private readonly characterService = inject(CharacterService);
   private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly CLASS_OPTIONS = [
     '戰士', '法師', '牧師', '遊蕩者', '遊俠',
@@ -57,12 +60,14 @@ export class CharacterFormComponent implements OnInit {
 
   protected isEditMode = signal(false);
   protected isSaving = signal(false);
+  protected avatarUrl = signal<string | null>(null);
   private characterId: string | null = null;
 
   protected form: FormGroup = this.fb.group({
     characterName: ['', Validators.required],
     playerName: [this.authService.currentUser()?.displayName || '', Validators.required],
     race: ['', Validators.required],
+    subclass: [''],
     faction: [''],
   });
 
@@ -125,8 +130,10 @@ export class CharacterFormComponent implements OnInit {
           characterName: character.characterName,
           playerName: character.playerName,
           race: character.race,
+          subclass: character.subclass ?? '',
           faction: character.faction ?? '',
         });
+        this.avatarUrl.set(character.avatarUrl ?? null);
         // 解析職業字串 → 選擇器
         if (character.currentClassesString) {
           const parsed = character.currentClassesString.split('/').map(seg => {
@@ -144,7 +151,46 @@ export class CharacterFormComponent implements OnInit {
     });
   }
 
+  protected onAvatarFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      // 驗證是否為圖片
+      if (!file.type.startsWith('image/')) {
+        this.snackBar.open('請選取有效的圖片檔案', '關閉', { duration: 2500 });
+        input.value = '';
+        return;
+      }
+      // 限制原始檔案大小（5MB），避免大圖解碼佔用過多記憶體導致裁切卡頓
+      const MAX_FILE_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        this.snackBar.open('圖片檔案過大，請選擇 5MB 以下的圖片', '關閉', { duration: 3000 });
+        input.value = '';
+        return;
+      }
+      this.openCropper(file);
+      input.value = ''; // 重置 input 讓同檔名可重複觸發
+    }
+  }
 
+  private openCropper(source: string | File): void {
+    const dialogRef = this.dialog.open(AvatarCropperDialogComponent, {
+      data: { imageSource: source },
+      width: '400px',
+      maxWidth: '92vw',
+      disableClose: true,
+    });
+
+    dialogRef.afterClosed().subscribe((croppedDataUrl: string | undefined) => {
+      if (croppedDataUrl) {
+        this.avatarUrl.set(croppedDataUrl);
+      }
+    });
+  }
+
+  protected removeAvatar(): void {
+    this.avatarUrl.set(null);
+  }
 
   protected onSubmit(): void {
     if (this.isEditMode()) {
@@ -172,7 +218,9 @@ export class CharacterFormComponent implements OnInit {
       characterName: raw.characterName.trim(),
       playerName: raw.playerName.trim(),
       race: raw.race.trim(),
+      subclass: raw.subclass?.trim() || null,
       faction: raw.faction?.trim() || null,
+      avatarUrl: this.avatarUrl(),
       currentClassesString: this.buildClassesString(),
     };
 

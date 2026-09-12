@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS character (
     character_name VARCHAR(100) NOT NULL,
     player_name VARCHAR(100) NOT NULL,
     race VARCHAR(100) NOT NULL,
+    subclass VARCHAR(100),
     faction VARCHAR(100),
+    avatar_url TEXT,
     current_classes_string VARCHAR(255),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -250,6 +252,147 @@ CREATE INDEX IF NOT EXISTS idx_character_user_id ON "character"(user_id);
 
 ---
 
+## Migration 6（效能與外鍵索引優化）：
+```sql
+-- 1. 冒險記錄表索引 (優化按角色查詢與日期排序)
+CREATE INDEX IF NOT EXISTS idx_adventure_entry_char_playdate 
+    ON adventure_entry (character_id, play_date DESC, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_adventure_entry_char_playdate_asc 
+    ON adventure_entry (character_id, play_date ASC, created_at ASC);
+
+-- 2. 休整期活動表索引 (優化按冒險記錄查詢)
+CREATE INDEX IF NOT EXISTS idx_downtime_activity_entry_created 
+    ON downtime_activity (adventure_entry_id, created_at ASC);
+
+-- 3. 倉庫道具表索引 (優化按角色與物品類型過濾查詢)
+CREATE INDEX IF NOT EXISTS idx_inventory_item_char_type_created 
+    ON inventory_item (character_id, item_type, created_at ASC);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_item_char_created 
+    ON inventory_item (character_id, created_at ASC);
+
+-- 4. 角色表索引 (優化使用者角色清單查詢)
+CREATE INDEX IF NOT EXISTS idx_character_user_created 
+    ON "character" (user_id, created_at DESC);
+```
+
+---
+
+## Migration 7（Supabase Security Advisor 安全警告修復）：
+```sql
+-- 1. 修復 update_updated_at_column 函式，指定明確 search_path 防止 search_path 劫持
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql' SET search_path = public;
+
+-- 2. 收回 rls_auto_enable 函式之公開 (PUBLIC / anon / authenticated) 執行權限
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_proc p 
+        JOIN pg_namespace n ON p.pronamespace = n.oid 
+        WHERE n.nspname = 'public' AND p.proname = 'rls_auto_enable'
+    ) THEN
+        REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+    END IF;
+END $$;
+```
+
+## Migration 7（冒險戰利品快照表與倉庫級聯外鍵）：
+```sql
+-- 1. 建立 adventure_gained_item 冒險戰利品快照表
+CREATE TABLE IF NOT EXISTS adventure_gained_item (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    adventure_entry_id UUID NOT NULL REFERENCES adventure_entry(id) ON DELETE CASCADE,
+    item_name VARCHAR(255) NOT NULL,
+    item_type VARCHAR(50) NOT NULL,
+    rarity VARCHAR(50),
+    quantity INTEGER DEFAULT 1,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adventure_gained_item_entry 
+    ON adventure_gained_item(adventure_entry_id, created_at ASC);
+
+-- 觸發器：自動維護 updated_at
+CREATE TRIGGER update_adventure_gained_item_updated_at
+    BEFORE UPDATE ON adventure_gained_item
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- 2. inventory_item 增加 adventure_entry_id 外鍵關聯
+ALTER TABLE inventory_item 
+    ADD COLUMN IF NOT EXISTS adventure_entry_id UUID 
+        REFERENCES adventure_entry(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_inventory_item_adventure_id 
+    ON inventory_item(adventure_entry_id);
+
+-- 3. 歷史資料平滑回填 (Backfill)
+UPDATE inventory_item i
+SET adventure_entry_id = e.id
+FROM adventure_entry e
+WHERE i.character_id = e.character_id 
+  AND (i.source = e.adventure_name OR i.source = e.adventure_code)
+  AND i.adventure_entry_id IS NULL;
+
+INSERT INTO adventure_gained_item (id, adventure_entry_id, item_name, item_type, rarity, quantity, notes, created_at)
+SELECT gen_random_uuid(), i.adventure_entry_id, i.item_name, i.item_type::text, i.rarity::text, i.quantity, i.notes, i.created_at
+FROM inventory_item i
+WHERE i.adventure_entry_id IS NOT NULL;
+```
+
+---
+
+## Migration 8（倉庫背包與冒險快照項精準綁定）：
+```sql
+-- 1. inventory_item 增加 adventure_gained_item_id 外鍵關聯 (ON DELETE CASCADE)
+ALTER TABLE inventory_item 
+    ADD COLUMN IF NOT EXISTS adventure_gained_item_id UUID 
+        REFERENCES adventure_gained_item(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_inventory_item_gained_id 
+    ON inventory_item(adventure_gained_item_id);
+
+-- 2. 歷史資料平滑回填
+UPDATE inventory_item i
+SET adventure_gained_item_id = agi.id
+FROM adventure_gained_item agi
+WHERE i.adventure_entry_id = agi.adventure_entry_id
+  AND i.item_name = agi.item_name
+  AND i.adventure_gained_item_id IS NULL;
+---
+
+## Migration 9（角色資料表新增子職欄位 subclass）：
+```sql
+ALTER TABLE "character" 
+    ADD COLUMN IF NOT EXISTS subclass VARCHAR(100);
+```
+
+---
+
+## Migration 10（角色資料表新增頭像欄位 avatar_url）：
+```sql
+ALTER TABLE "character" 
+    ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+```
+
+---
+
+## Migration 11（倉庫物品新增是否需同調欄位 requires_attunement）：
+```sql
+ALTER TABLE inventory_item 
+    ADD COLUMN IF NOT EXISTS requires_attunement BOOLEAN DEFAULT FALSE;
+```
+
+---
+
 ## 資料表關聯圖
 
 ```
@@ -257,6 +400,10 @@ users
 ├── user_oauth_accounts  (1:N，CASCADE DELETE)
 └── character            (1:N，CASCADE DELETE)
     ├── adventure_entry        (1:N，CASCADE DELETE)
-    │   └── downtime_activity  (1:N，CASCADE DELETE)
+    │   ├── downtime_activity  (1:N，CASCADE DELETE)
+    │   ├── adventure_gained_item (1:N，CASCADE DELETE)
+    │   │   └── inventory_item (1:1/1:N 精準綁定，CASCADE DELETE)
+    │   └── inventory_item     (1:N，CASCADE DELETE，手動道具為 NULL)
     └── inventory_item         (1:N，CASCADE DELETE)
 ```
+

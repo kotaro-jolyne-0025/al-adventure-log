@@ -1,5 +1,7 @@
 
 
+import { ItemRarity } from './inventory.model';
+
 // ── DowntimeActivity ─────────────────────────────────────────────────────────
 
 export interface DowntimeActivity {
@@ -12,6 +14,28 @@ export interface DowntimeActivity {
 
 export interface DowntimeActivityRequest {
   description: string;
+}
+
+// ── AdventureGainedItem (冒險獲得物品快照) ───────────────────────────────────
+
+export interface AdventureGainedItem {
+  id: string;           // UUID
+  adventureEntryId: string;
+  itemName: string;
+  itemType: 'PERMANENT' | 'CONSUMABLE';
+  rarity?: ItemRarity | null;
+  quantity?: number;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdventureGainedItemRequest {
+  itemName: string;
+  itemType: 'PERMANENT' | 'CONSUMABLE';
+  rarity?: ItemRarity | null;
+  quantity?: number;
+  notes?: string | null;
 }
 
 // ── AdventureEntry ───────────────────────────────────────────────────────────

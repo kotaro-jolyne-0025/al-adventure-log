@@ -11,7 +11,9 @@
         <result property="characterName" column="character_name"/>
         <result property="playerName"    column="player_name"/>
         <result property="race"          column="race"/>
+        <result property="subclass"      column="subclass"/>
         <result property="faction"       column="faction"/>
+        <result property="avatarUrl"     column="avatar_url"/>
         <result property="createdAt"     column="c_created_at"/>
         <result property="updatedAt"     column="c_updated_at"/>
         <result property="currentClassesString" column="current_classes_string"/>
@@ -24,7 +26,9 @@
             c.character_name,
             c.player_name,
             c.race,
+            c.subclass,
             c.faction,
+            c.avatar_url,
             c.current_classes_string,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -39,7 +43,9 @@
             c.character_name,
             c.player_name,
             c.race,
+            c.subclass,
             c.faction,
+            c.avatar_url,
             c.current_classes_string,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -55,7 +61,9 @@
             c.character_name,
             c.player_name,
             c.race,
+            c.subclass,
             c.faction,
+            c.avatar_url,
             c.current_classes_string,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -70,7 +78,9 @@
             c.character_name,
             c.player_name,
             c.race,
+            c.subclass,
             c.faction,
+            c.avatar_url,
             c.current_classes_string,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -79,14 +89,16 @@
     </select>
 
     <insert id="insert">
-        INSERT INTO "character" (id, user_id, character_name, player_name, race, faction, current_classes_string, created_at, updated_at)
+        INSERT INTO "character" (id, user_id, character_name, player_name, race, subclass, faction, avatar_url, current_classes_string, created_at, updated_at)
         VALUES (
             #{id}::uuid,
             #{userId}::uuid,
             #{characterName},
             #{playerName},
             #{race},
+            #{subclass},
             #{faction},
+            #{avatarUrl},
             #{currentClassesString},
             NOW(),
             NOW()
@@ -99,7 +111,9 @@
             character_name = #{characterName},
             player_name    = #{playerName},
             race           = #{race},
+            subclass       = #{subclass},
             faction        = #{faction},
+            avatar_url     = #{avatarUrl},
             current_classes_string = #{currentClassesString},
             updated_at     = NOW()
         WHERE id = #{id}::uuid

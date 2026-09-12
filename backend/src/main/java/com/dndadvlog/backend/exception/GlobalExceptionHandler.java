@@ -45,7 +45,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleGeneral(
             Exception ex, HttpServletRequest request) {
         log.error("💥 Internal server error on [{}]:", request.getRequestURI(), ex);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "伺服器發生錯誤：" + ex.getMessage(), request.getRequestURI());
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "伺服器內部發生錯誤，請稍後再試", request.getRequestURI());
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(
