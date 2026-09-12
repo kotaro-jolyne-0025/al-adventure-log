@@ -56,8 +56,8 @@
   height: 56px;
   border-radius: 12px;
   overflow: hidden;
-  background: #1e1b4b;
-  border: 1px solid rgba(168, 85, 247, 0.35);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -65,7 +65,7 @@
   font-size: 1.4rem;
   font-weight: 700;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-sm);
 
   .char-hero-img {
     width: 100%;

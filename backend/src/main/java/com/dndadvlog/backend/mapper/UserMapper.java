@@ -15,4 +15,6 @@ public interface UserMapper {
     void insert(User user);
 
     void update(User user);
+
+    void updatePassword(@Param("id") UUID id, @Param("passwordHash") String passwordHash);
 }

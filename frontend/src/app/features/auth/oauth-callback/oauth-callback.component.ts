@@ -76,18 +76,24 @@ export class OAuthCallbackComponent implements OnInit {
       return;
     }
 
-    // 1. 檢查 Query Params 中的 code
+    // 1. 檢查 Query Params 中的 code 與 state
     const queryParams = this.route.snapshot.queryParams;
     let tokenOrCode = queryParams['code'];
 
-    // 2. 檢查 Hash Fragments (Google OAuth implicit flow #id_token=... 或 access_token=...)
-    if (!tokenOrCode && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      tokenOrCode = hashParams.get('id_token') || hashParams.get('access_token');
+    // 驗證 Discord OAuth 的 state 參數 (CSRF 防護)
+    if (provider === 'DISCORD') {
+      const expectedState = sessionStorage.getItem('oauth_state_discord');
+      const receivedState = queryParams['state'];
+      sessionStorage.removeItem('oauth_state_discord');
+
+      if (expectedState && receivedState !== expectedState) {
+        this.handleError('登入安全性校驗失敗 (CSRF State 不符)，請重新登入');
+        return;
+      }
     }
 
     if (!tokenOrCode) {
-      this.handleError('未接收到第三方授權憑證 (Code / Token)');
+      this.handleError('未接收到第三方授權碼 (Authorization Code)');
       return;
     }
 

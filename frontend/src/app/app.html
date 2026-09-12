@@ -6,8 +6,8 @@
       </button>
     }
 
-    <div class="brand-container" routerLink="/characters">
-      <svg lucideDices class="brand-icon" [size]="22"></svg>
+    <div class="brand-container" [routerLink]="authService.isAuthenticated() ? '/characters' : '/'">
+      <img src="logo.png" alt="D&amp;D 冒險紀錄表 Logo" class="brand-logo-img" />
       <span class="brand-title">D&amp;D 冒險紀錄表</span>
     </div>
 
@@ -45,6 +45,10 @@
           <mat-icon>badge</mat-icon>
           <span>修改顯示名稱</span>
         </button>
+        <button mat-menu-item routerLink="/legal">
+          <mat-icon>gavel</mat-icon>
+          <span>版權與免責聲明</span>
+        </button>
         <mat-divider></mat-divider>
         <button mat-menu-item (click)="logout()" class="logout-menu-item">
           <mat-icon class="logout-icon">logout</mat-icon>
@@ -66,3 +70,4 @@
 <main class="app-content">
   <router-outlet />
 </main>
+

@@ -12,7 +12,7 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "密碼不能為空")
-    @Size(min = 6, message = "密碼長度至少需要 6 個字元")
+    @Size(min = 8, message = "密碼長度至少需要 8 個字元")
     private String password;
 
     @NotBlank(message = "顯示名稱不能為空")

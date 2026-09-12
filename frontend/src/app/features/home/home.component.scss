@@ -1,0 +1,207 @@
+.landing-page-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 120px);
+  padding: 3rem 1.5rem;
+  background-color: var(--bg-canvas);
+
+  @media (max-width: 600px) {
+    padding: 1.75rem 1rem;
+    min-height: calc(100vh - 80px);
+  }
+}
+
+.landing-content {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+
+  @media (max-width: 600px) {
+    gap: 2rem;
+  }
+}
+
+/* ── Hero Section ── */
+.hero-section {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+
+  .hero-logo-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+
+    .hero-logo-img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+
+      @media (max-width: 600px) {
+        width: 60px;
+        height: 60px;
+      }
+    }
+  }
+
+  .hero-title {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.025em;
+
+    @media (max-width: 600px) {
+      font-size: 1.75rem;
+    }
+  }
+
+  .hero-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    max-width: 540px;
+    margin: 0;
+    line-height: 1.6;
+
+    @media (max-width: 600px) {
+      font-size: 0.95rem;
+    }
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    width: 100%;
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .btn-hero-action {
+      height: 46px;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: var(--radius-md, 10px);
+      padding: 0 1.75rem;
+      min-width: 130px;
+      border: 1px solid var(--border-color, #dadce0);
+      background-color: var(--bg-surface, #ffffff);
+      color: var(--color-primary, #2563eb);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: var(--bg-surface-hover, #f8fafc);
+        border-color: var(--color-primary, #2563eb);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+      }
+
+      @media (max-width: 480px) {
+        width: 100%;
+      }
+    }
+  }
+}
+
+/* ── 2x2 核心特色卡片網格 ── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .feature-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg, 14px);
+    padding: 1.5rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+      transform: translateY(-2px);
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      background-color: var(--bg-surface-hover, var(--bg-surface));
+    }
+
+    .feature-card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .feature-card-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin: 0;
+      line-height: 1.55;
+    }
+  }
+}
+
+/* ── 頁尾聲明 ── */
+.landing-footer {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+
+  .wotc-disclaimer {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .footer-links {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+
+    .legal-link-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-secondary);
+      text-decoration: underline;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.15s ease;
+
+      &:hover {
+        color: var(--color-primary);
+      }
+    }
+  }
+}

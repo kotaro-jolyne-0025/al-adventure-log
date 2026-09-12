@@ -4,12 +4,12 @@
 
 ## 技術選型
 
-| 層級 | 技術 | 部署位置 |
-|---|---|---|
-| 前端 | Angular 22 + PWA | Google Cloud (Firebase Hosting 全球 CDN) |
-| 後端 | Spring Boot 4.1（Java 17）| Google Cloud Run (asia-east1 台灣) |
-| 資料庫 | PostgreSQL | Supabase（永久免費）|
-| API 風格 | REST | — |
+| 層級 | 技術 |
+|---|---|
+| 前端 | Angular 22 + PWA |
+| 後端 | Spring Boot 4.1（Java 17）|
+| 資料庫 | PostgreSQL |
+| API 風格 | REST |
 
 ## 專案結構
 
@@ -68,22 +68,17 @@ spring.datasource.password=<password>
 - **休整期活動管理**：可在冒險表單內直接新增休整期活動，不需另開頁面
 - **PWA 支援**：可安裝至 Windows / Mac / 手機桌面，支援離線瀏覽快取
 
----
-
-## 🚀 Zeabur 部署說明 (方案 A：後端原生 + 前端 Nginx 反代)
-
-### 1. 後端 (Spring Boot - 原生建置)
-1. 於 Zeabur 建立新服務，連結 GitHub repo，子目錄填寫 `backend`（Zeabur 自動以 Maven 原生打包啟動）。
-2. 於後端服務的 **Variables** 設定：
-   - `DB_URL` = `jdbc:postgresql://<supabase-host>:5432/postgres`
-   - `DB_USERNAME` = `postgres.<id>`
-   - `DB_PASSWORD` = `<supabase-password>`
-3. 在後端服務的 **Networking（網路）** 設定內網存取（例如 `dnd-adventure-log-sideproject.zeabur.internal:8080`），後端**無需對外開放公網**。
-
-### 2. 前端 (Angular + Nginx 反向代理)
-1. 於 Zeabur 建立新服務，連結 GitHub repo，子目錄填寫 `frontend`（Zeabur 自動偵測 `frontend/Dockerfile` 進行兩階段建置）。
-2. 於前端服務的 **Variables** 設定：
-   - `BACKEND_URL` = 後端內網網址（例如 `http://dnd-adventure-log-sideproject.zeabur.internal:8080`）
-3. 於前端服務的 **Networking（網路）** 綁定公開網域（例如 `https://adv-log.zeabur.app`）。
 
 
+## ⚖️ 授權與版權聲明 (License & Legal)
+
+### 開源授權 (CC BY-NC-SA 4.0)
+本專案原始碼採用 **[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/)** 授權條款。
+- **姓名標示 (Attribution)**：您必須標示原作者（Kiran / 可嵐）。
+- **非商業性 (NonCommercial)**：您**不得**將本專案用於商業目的（包含但不限於：收費服務、販售程式碼、或設立付費牆）。
+- **相同方式分享 (ShareAlike)**：若您修改或建立衍生作品，必須採用與本專案相同的 CC BY-NC-SA 4.0 授權公開您的原始碼。
+
+### 威世智同好內容政策 (WotC Fan Content Policy)
+本專案為非官方的同好內容（Fan Content），遵循 [威世智同好內容政策 (Fan Content Policy)](https://company.wizards.com/zh-Hant/legal/fancontentpolicy) 建立。
+- 本專案未經威世智（Wizards of the Coast）核准或贊助。
+- 本專案所使用的部分材料為威世智之財產。©Wizards of the Coast LLC.

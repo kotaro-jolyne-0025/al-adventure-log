@@ -51,4 +51,12 @@
         WHERE id = #{id}::uuid
     </update>
 
+    <update id="updatePassword">
+        UPDATE users
+        SET
+            password_hash = #{passwordHash},
+            updated_at = NOW()
+        WHERE id = #{id}::uuid
+    </update>
+
 </mapper>

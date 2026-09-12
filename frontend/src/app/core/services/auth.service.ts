@@ -86,6 +86,20 @@ export class AuthService {
     );
   }
 
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API_URL}/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API_URL}/reset-password`, { token, newPassword });
+  }
+
+  verifyResetToken(token: string): Observable<{ valid: boolean }> {
+    return this.http.get<{ valid: boolean }>(`${this.API_URL}/verify-reset-token`, {
+      params: { token },
+    });
+  }
+
   fetchCurrentUser(): Observable<User> {
     return this.http.get<User>(`${this.API_URL}/me`).pipe(
       tap((user) => {

@@ -1,0 +1,103 @@
+<div class="legal-page-layout">
+  <div class="legal-page-container">
+    <div class="page-top-bar">
+      <button mat-button (click)="goBack()" class="btn-back">
+        <svg lucideArrowLeft [size]="18"></svg>
+        <span>返回</span>
+      </button>
+      <span class="last-updated">最後修訂日期：2026 年 9 月</span>
+    </div>
+
+    <mat-card class="legal-main-card">
+      <mat-card-header class="page-header">
+        <div>
+          <mat-card-title class="page-title">版權與免責聲明</mat-card-title>
+          <mat-card-subtitle class="page-subtitle">Legal Notices &amp; Disclaimers</mat-card-subtitle>
+        </div>
+      </mat-card-header>
+
+      <mat-card-content class="page-content">
+        <div class="intro-box">
+          <p class="intro-text">
+            歡迎使用<strong>「D&amp;D 冒險紀錄表」</strong>（D&amp;D Adventure Log）。本網站旨在為桌上角色扮演遊戲《龍與地下城》之玩家與地下城主提供個人冒險日誌與角色歷程管理工具。為了保障所有使用者、社群及版權所有方之權益，請詳細閱讀以下聲明：
+          </p>
+        </div>
+
+        <section class="legal-section">
+          <div class="section-body">
+            <h2 class="section-title">一、 同好內容政策 (Fan Content Policy)</h2>
+            <div class="lang-card">
+              <blockquote class="official-quote zh-quote">
+                <strong>「D&amp;D 冒險紀錄表」</strong> 屬於非官方的同好內容，並在同好內容政策的允許範圍內。未經威世智核准或背書。此內容的部分材料為威世智的財產。&copy;威世智有限公司。
+              </blockquote>
+            </div>
+
+            <div class="lang-card">
+              <blockquote class="official-quote en-quote">
+                <strong>D&amp;D Adventure Log</strong> is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.
+              </blockquote>
+            </div>
+
+            <div class="external-cta">
+              <a href="https://company.wizards.com/zh-Hant/legal/fancontentpolicy" target="_blank" rel="noopener noreferrer" class="official-policy-btn">
+                <span>閱讀完整威世智同好內容政策</span>
+                <svg lucideExternalLink [size]="16"></svg>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="legal-section">
+          <div class="section-body">
+            <h2 class="section-title">二、 商標權與標誌規範 (Trademarks &amp; Logos)</h2>
+            <p class="paragraph-text text-secondary-custom">
+              Dungeons &amp; Dragons、D&amp;D、以及其各自的標誌皆為 Wizards of the Coast LLC 在美國及全球其他國家與地區之註冊商標。
+            </p>
+            <p class="paragraph-text text-secondary-custom">
+              本站嚴格遵守威世智政策「不使用威世智的標誌與商標」之規則，絕不使用威世智之官方標誌作為網站識別。本站提及之所有遊戲名詞與術語，僅作為玩家個人記錄與同好交流使用，無任何主張原作者智慧財產權之意圖。
+            </p>
+          </div>
+        </section>
+
+        <section class="legal-section">
+          <div class="section-body">
+            <h2 class="section-title">三、 使用者內容免責聲明 (User Content &amp; Liability)</h2>
+            <p class="paragraph-text text-secondary-custom">
+              本站提供之服務僅為個人資料整理之技術工具。使用者自行輸入或上傳之任何自創設定與文字描述，須自行保證不侵犯任何第三方之智慧財產權。若同好內容引發法律索賠，依政策規定須由使用者自行對自身創作承擔完全之法律責任。
+            </p>
+          </div>
+        </section>
+
+        <section class="legal-section">
+          <div class="section-body">
+            <h2 class="section-title">四、 免費與非商業開放原則 (Non-Commercial)</h2>
+            <p class="paragraph-text text-secondary-custom">
+              本網站嚴格遵循「免費就是免費」之規範：
+            </p>
+            <ul class="custom-list text-secondary-custom">
+              <li>全站核心功能免費供廣大玩家使用。</li>
+              <li>不要求使用者付費、不進行問卷強迫下載。</li>
+              <li>不設定付費訂閱牆、無商業廣告插播，絕不將威世智智慧財產用於任何形式之商業營利。</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="legal-section">
+          <div class="section-body">
+            <h2 class="section-title">五、 隱私保護原則 (Privacy)</h2>
+            <p class="paragraph-text text-secondary-custom">
+              我們重視您的個人隱私。本站僅在您註冊或使用第三方（Google / Discord）登入時收集必要的基本資料（Email、公開暱稱與頭像），僅作為身分驗證與個人日誌存取使用。本站絕不會將您的資料出售、揭露或用於任何商業行銷。
+            </p>
+          </div>
+        </section>
+      </mat-card-content>
+
+      <mat-card-actions class="page-footer-actions">
+        <button mat-stroked-button color="primary" (click)="goBack()" class="btn-return">
+          <svg lucideArrowLeft [size]="16"></svg>
+          <span>返回上一頁</span>
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

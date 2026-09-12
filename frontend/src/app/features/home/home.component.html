@@ -1,0 +1,64 @@
+<div class="landing-page-container">
+  <div class="landing-content">
+    <!-- Hero Section -->
+    <header class="hero-section">
+      <div class="hero-logo-wrapper">
+        <img src="logo.png" alt="D&amp;D 冒險紀錄表 Logo" class="hero-logo-img" />
+      </div>
+
+      <h1 class="hero-title">D&amp;D 冒險紀錄表</h1>
+      <p class="hero-subtitle">解放雙手，告別手寫紙本。專為 D&amp;D 冒險者聯盟玩家打造的免費線上紀錄工具。</p>
+
+      <div class="hero-actions">
+        @if (authService.isAuthenticated()) {
+        <a mat-stroked-button color="primary" routerLink="/characters" class="btn-hero-action">
+          前往我的角色列表
+        </a>
+        } @else {
+        <a mat-stroked-button color="primary" routerLink="/login" class="btn-hero-action">
+          登入
+        </a>
+        <a mat-stroked-button color="primary" routerLink="/register" class="btn-hero-action">
+          註冊帳號
+        </a>
+        }
+      </div>
+    </header>
+
+    <!-- 2x2 核心特色卡片網格 (無 Emoji，典雅微光排版) -->
+    <section class="features-grid">
+      <div class="feature-card">
+        <h2 class="feature-card-title">多角色檔案管理</h2>
+        <p class="feature-card-desc">集中管理您的所有角色，即時掌握等級、職業、金幣、休整期。</p>
+      </div>
+
+      <div class="feature-card">
+        <h2 class="feature-card-title">跑團紀錄追蹤</h2>
+        <p class="feature-card-desc">詳細記錄每場模組名稱、DM 資訊、升級、金幣與休整期變動。</p>
+      </div>
+
+      <div class="feature-card">
+        <h2 class="feature-card-title">魔法物品與裝備庫</h2>
+        <p class="feature-card-desc">分類管理永久性魔法物品與消耗品。</p>
+      </div>
+
+      <div class="feature-card">
+        <h2 class="feature-card-title">多裝置友善</h2>
+        <p class="feature-card-desc">支援手機與電腦介面。</p>
+      </div>
+    </section>
+
+    <!-- 頁尾聲明 (WotC 同好政策與法律連結) -->
+    <footer class="landing-footer">
+      <p class="wotc-disclaimer">
+        本站為非官方同好工具，遵循威世智 (Wizards of the Coast) 之同好內容政策 (Fan Content Policy)。
+      </p>
+      <div class="footer-links">
+        <span>&copy; 2026 Kiran (可嵐) · </span>
+        <a routerLink="/legal" class="legal-link-btn">
+          版權與免責聲明
+        </a>
+      </div>
+    </footer>
+  </div>
+</div>

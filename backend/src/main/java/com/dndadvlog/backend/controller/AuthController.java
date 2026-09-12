@@ -39,6 +39,26 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        log.info("📢 [POST /api/auth/forgot-password] 收到忘記密碼申請: {}", request.getEmail());
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "若此 Email 存在於系統中，已發送重設密碼信件至您的電子信箱"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<java.util.Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        log.info("📢 [POST /api/auth/reset-password] 收到重設密碼請求");
+        authService.resetPassword(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "密碼重設成功，請使用新密碼重新登入"));
+    }
+
+    @GetMapping("/verify-reset-token")
+    public ResponseEntity<java.util.Map<String, Object>> verifyResetToken(@RequestParam String token) {
+        authService.verifyResetToken(token);
+        return ResponseEntity.ok(java.util.Map.of("valid", true));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) {

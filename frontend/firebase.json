@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "dnd-adv-log",
+    "site": "aladvlog",
     "public": "dist/frontend/browser",
     "ignore": [
       "firebase.json",

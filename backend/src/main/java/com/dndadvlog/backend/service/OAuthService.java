@@ -175,7 +175,7 @@ public class OAuthService {
 
     private OAuthUserInfo exchangeDiscordCode(String code, String redirectUri) {
         try {
-            // 1. 向 Discord 換取 Access Token
+            // 1. 向 Discord 換取 Access Token (v10)
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
             formData.add("client_id", discordClientId);
             formData.add("client_secret", discordClientSecret);
@@ -184,7 +184,7 @@ public class OAuthService {
             formData.add("redirect_uri", redirectUri);
 
             String tokenResponse = restClient.post()
-                    .uri("https://discord.com/api/oauth2/token")
+                    .uri("https://discord.com/api/v10/oauth2/token")
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(formData)
                     .retrieve()
@@ -197,9 +197,9 @@ public class OAuthService {
                 throw new BusinessException("無法取得 Discord Access Token");
             }
 
-            // 2. 獲取 Discord 使用者資料
+            // 2. 獲取 Discord 使用者資料 (v10)
             String userResponse = restClient.get()
-                    .uri("https://discord.com/api/users/@me")
+                    .uri("https://discord.com/api/v10/users/@me")
                     .header("Authorization", "Bearer " + accessToken)
                     .retrieve()
                     .body(String.class);
@@ -215,12 +215,41 @@ public class OAuthService {
                 avatarUrl = String.format("https://cdn.discordapp.com/avatars/%s/%s.png", discordId, avatarHash);
             }
 
+            // 3. 主動撤銷 Access Token（用完即棄，減少暴露風險）
+            revokeDiscordToken(accessToken);
+
             return new OAuthUserInfo("DISCORD", discordId, email, username, avatarUrl);
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientException | JsonProcessingException e) {
             log.error("Discord OAuth 交換失敗: {}", e.getMessage());
             throw new BusinessException("Discord 登入驗證失敗: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 主動撤銷 Discord OAuth2 Token
+     * 參考: https://docs.discord.com/developers/topics/oauth2#token-revocation-example
+     */
+    private void revokeDiscordToken(String token) {
+        try {
+            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            formData.add("token", token);
+            formData.add("token_type_hint", "access_token");
+            formData.add("client_id", discordClientId);
+            formData.add("client_secret", discordClientSecret);
+
+            restClient.post()
+                    .uri("https://discord.com/api/v10/oauth2/token/revoke")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.debug("Discord access token 已成功撤銷");
+        } catch (Exception e) {
+            // Revoke 失敗不影響登入流程，僅記錄警告
+            log.warn("Discord token 撤銷失敗（不影響登入）: {}", e.getMessage());
         }
     }
 }

@@ -9,17 +9,26 @@ import { InventoryListComponent } from './features/inventory/inventory-list/inve
 import { InventoryFormComponent } from './features/inventory/inventory-form/inventory-form.component';
 import { LoginComponent } from './features/auth/login/login.component';
 import { RegisterComponent } from './features/auth/register/register.component';
+import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
 import { OAuthCallbackComponent } from './features/auth/oauth-callback/oauth-callback.component';
+import { HomeComponent } from './features/home/home.component';
+import { LegalPageComponent } from './features/legal/legal-page/legal-page.component';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
+  // ── 首頁 Landing Page（公開可訪問） ────────────────────────────────────────
+  { path: '', component: HomeComponent, pathMatch: 'full' },
+
   // ── Epic 0: 身份驗證 ────────────────────────────────────────────────────────
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'auth/callback/:provider', component: OAuthCallbackComponent },
 
-  // 預設導向角色列表
-  { path: '', redirectTo: 'characters', pathMatch: 'full' },
+  // ── Epic 7: 版權與免責聲明（公開可訪問） ────────────────────────────────────
+  { path: 'legal', component: LegalPageComponent },
 
   // ── Epic 1: 角色管理（需登入） ────────────────────────────────────────────────
   { path: 'characters', component: CharacterListComponent, canActivate: [authGuard] },

@@ -385,10 +385,21 @@ ALTER TABLE "character"
 
 ---
 
-## Migration 11（倉庫物品新增是否需同調欄位 requires_attunement）：
+---
+
+## Migration 12（密碼重設 Token 表 password_reset_tokens）：
 ```sql
-ALTER TABLE inventory_item 
-    ADD COLUMN IF NOT EXISTS requires_attunement BOOLEAN DEFAULT FALSE;
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    expiry_time TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user_id ON password_reset_tokens(user_id);
 ```
 
 ---
@@ -398,6 +409,7 @@ ALTER TABLE inventory_item
 ```
 users
 ├── user_oauth_accounts  (1:N，CASCADE DELETE)
+├── password_reset_tokens (1:N，CASCADE DELETE)
 └── character            (1:N，CASCADE DELETE)
     ├── adventure_entry        (1:N，CASCADE DELETE)
     │   ├── downtime_activity  (1:N，CASCADE DELETE)

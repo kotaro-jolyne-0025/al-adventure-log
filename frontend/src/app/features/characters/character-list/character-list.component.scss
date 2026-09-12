@@ -110,13 +110,13 @@
   aspect-ratio: 1 / 1;
   border-radius: 14px;
   overflow: hidden;
-  background: #1e1b4b;
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-sm);
 
   @media (max-width: 600px) {
     width: 104px;

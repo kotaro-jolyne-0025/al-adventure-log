@@ -1,9 +1,6 @@
 <div class="auth-page-container">
   <mat-card class="auth-card">
     <mat-card-header class="auth-header">
-      <div class="brand-logo">
-        <svg lucideScroll [size]="44"></svg>
-      </div>
       <mat-card-title>建立冒險者帳號</mat-card-title>
       <mat-card-subtitle>開啟您的 D&D 冒險聯盟旅程</mat-card-subtitle>
     </mat-card-header>
@@ -40,15 +37,22 @@
           <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())" [attr.aria-label]="'切換密碼顯示'">
             <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
           </button>
-          <mat-hint>至少需要 6 個字元</mat-hint>
+          <mat-hint>至少需要 8 個字元</mat-hint>
           <mat-error *ngIf="registerForm.get('password')?.hasError('required')">請輸入密碼</mat-error>
-          <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">密碼長度至少需要 6 個字元</mat-error>
+          <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">密碼長度至少需要 8 個字元</mat-error>
         </mat-form-field>
 
         <button mat-raised-button color="primary" type="submit" class="btn-submit full-width" [disabled]="registerForm.invalid || isLoading()">
           <mat-spinner *ngIf="isLoading()" diameter="20" class="spinner"></mat-spinner>
           <span *ngIf="!isLoading()">確認註冊</span>
         </button>
+
+        <div class="legal-notice-hint">
+          <span>點擊註冊即表示您已閱讀並同意本站之</span>
+          <a routerLink="/legal" class="legal-link-btn">
+            版權與免責聲明
+          </a>
+        </div>
       </form>
     </mat-card-content>
 

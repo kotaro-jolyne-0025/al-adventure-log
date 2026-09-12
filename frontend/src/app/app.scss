@@ -63,6 +63,14 @@
     opacity: 0.9;
   }
 
+  .brand-logo-img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  }
+
   .brand-icon {
     display: inline-flex;
     align-items: center;
@@ -200,6 +208,13 @@
   }
 }
 
-.app-content {
-  min-height: calc(100dvh - 60px);
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
+
+.app-content {
+  flex: 1 0 auto;
+}
+

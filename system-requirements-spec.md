@@ -53,11 +53,23 @@
 | provider_user_id | 文字 (255) | ✅ | 第三方使用者 ID |
 | email | 文字 (255) | ❌ | 第三方回傳之 Email |
 
-#### 2.0.3 功能清單
+#### 2.0.3 重設密碼資料欄位 (password_reset_tokens)
+| 欄位名稱 | 類型 | 必填 | 說明 |
+|---|---|---|---|
+| id | UUID | ✅ | 主鍵，自動生成 |
+| user_id | UUID | ✅ | 外鍵關聯 users(id) ON DELETE CASCADE |
+| token | 文字（最多 255 字）| ✅ | 重設驗證 Token |
+| expiry_time | TIMESTAMP | ✅ | Token 過期時間（預設有效期限 15 分鐘） |
+| used_at | TIMESTAMP | ❌ | 使用時間（NULL 表示尚未被使用） |
+| created_at | TIMESTAMP | ✅ | 建立時間 |
+
+#### 2.0.4 功能清單
 | 功能 | 說明 |
 |---|---|
-| 帳號密碼註冊 | 輸入 Email、密碼（>=6字元）、顯示名稱註冊並自動登入 |
+| 帳號密碼註冊 | 輸入 Email、密碼（>=8字元）、顯示名稱註冊並自動登入 |
 | 帳號密碼登入 | 輸入 Email 與密碼進行身分校驗，發放 JWT Token |
+| 忘記密碼申請 | 輸入已註冊 Email，系統生成 15 分鐘內有效之安全 Token 並寄送重設信件 |
+| 重設密碼確認 | 透過 Token 驗證身分，輸入新密碼（>=8字元）完成重設並引導登入 |
 | Google OAuth 登入 | 前端/後端串接 Google OAuth 2.0 授權，自動建立或登入帳號 |
 | Discord OAuth 登入 | 前端/後端串接 Discord OAuth 2.0 授權，自動建立或登入帳號 |
 | 修改個人顯示名稱 | 玩家可隨時開啟彈窗自訂修改顯示名稱 (暱稱)，即時同步全站導覽列與後端資料庫 |
@@ -175,6 +187,28 @@
 | 編輯物品 | 修改物品資料（含數量、稀有度、來源、備註）|
 | 消耗物品 | 點擊「使用 ( -1 )」快速扣減消耗品數量，用盡時自倉庫移除；**倉庫道具之日常消耗不影響來源冒險記錄的歷史快照** |
 | 刪除物品 | 刪除單筆物品；僅自倉庫背包移除，**來源冒險記錄之獲得快照維持不變** |
+
+---
+
+### 2.6 版權聲明與法律合規規範（Legal & Compliance）
+
+#### 2.6.1 聲明條款類別與內容
+| 聲明類別 | 必備性 | 繁中內容摘要（威世智官方指定） | 英文標準原文 (Mandatory Notice) |
+|---|---|---|---|
+| **威世智同好內容標準宣告** | **必備 (Mandatory)** | **「D&D 冒險紀錄表」** 屬於非官方的同好內容，並在同好內容政策的允許範圍內。未經威世智核准或背書。此內容的部分材料為威世智的財產。©威世智有限公司。 | **D&D Adventure Log** is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. |
+| **商標權與標誌規範宣告** | 政策遵循 | Dungeons & Dragons, D&D, 以及其各自的標誌皆為 Wizards of the Coast LLC（威世智有限公司）的註冊商標。本站遵守政策不使用官方商標作為標識，遊戲名詞僅作識別與同好交流使用。 | Dungeons & Dragons, D&D, and their respective logos are registered trademarks of Wizards of the Coast LLC. |
+| **UGC 使用者內容免責** | 責任自負 | 上傳者須保證其自製筆記、角色卡或冒險日誌不侵犯第三方版權。若同好內容引發法律爭端，依政策由上傳者自行承擔責任，本站與威世智不負連帶責任。 | Users are responsible for ensuring that uploaded notes, logs, or custom items do not infringe on third-party copyrights. The platform disclaims liability for UGC. |
+| **免費分享與非商業宣告** | 政策合規 (Free is Free) | 依循「免費就是免費」原則，全站免費開放、不銷售同好內容、無商業廣告、不使用官方影片/音樂，嚴禁商業營利。 | This website strictly follows the "Free is Free" policy and is non-commercial and free for community use. |
+
+#### 2.6.2 展示規格與三層架構
+1. **全域頁腳（Global Footer - `AppFooterComponent`）**：
+   - 部署於全站各主要頁面底部，於淺色（Style A）與深色（Style B）主題下維持清晰閱讀對比度。
+   - 專注呈現純淨、乾淨的雙語官方指定標準宣告卡片（英文標準原文與繁中指定宣告）。
+2. **獨立公開頁面與即時彈窗（`/legal` & `LegalNoticeDialog`）**：
+   - 提供公開獨立路由 `/legal`，無需登入即可瀏覽完整條款。
+   - 全域封裝為 Dialog/Modal，在日誌編輯或角色管理中點擊可即時開窗閱讀，不中斷操作流程。
+3. **註冊流程合規提示（`RegisterComponent`）**：
+   - 註冊按鈕下方明確標註條款同意提示，點擊可開啟條款彈窗。
 
 ---
 

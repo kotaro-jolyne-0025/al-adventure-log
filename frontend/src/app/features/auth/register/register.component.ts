@@ -11,8 +11,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
 
-import { LucideScroll } from '@lucide/angular';
-
 @Component({
   selector: 'app-register',
   standalone: true,
@@ -26,7 +24,6 @@ import { LucideScroll } from '@lucide/angular';
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    LucideScroll,
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
@@ -44,7 +41,7 @@ export class RegisterComponent {
   readonly registerForm: FormGroup = this.fb.group({
     displayName: ['', [Validators.required, Validators.maxLength(100)]],
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    password: ['', [Validators.required, Validators.minLength(8)]],
   });
 
   onSubmit(): void {
@@ -68,3 +65,4 @@ export class RegisterComponent {
     });
   }
 }
+

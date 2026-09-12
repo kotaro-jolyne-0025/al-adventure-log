@@ -14,7 +14,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const isAuthRequest =
     req.url.includes('/api/auth/login') ||
     req.url.includes('/api/auth/register') ||
-    req.url.includes('/api/auth/oauth');
+    req.url.includes('/api/auth/oauth') ||
+    req.url.includes('/api/auth/forgot-password') ||
+    req.url.includes('/api/auth/reset-password') ||
+    req.url.includes('/api/auth/verify-reset-token');
 
   if (token && isApiRequest && !isAuthRequest) {
     authReq = req.clone({
