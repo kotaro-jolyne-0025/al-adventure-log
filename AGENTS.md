@@ -15,6 +15,7 @@
 | [`database-schema.md`](file:///d:/dnd%20adv%20log/database-schema.md) | **資料庫綱要與 Migration SQL**（Supabase PostgreSQL 表結構與歷次 ALTER 語句） |
 | [`user-stories.md`](file:///d:/dnd%20adv%20log/user-stories.md) | **使用者故事與驗收條件** |
 | [`.agents/rules/project-conventions.md`](file:///d:/dnd%20adv%20log/.agents/rules/project-conventions.md) | **專案開發規範與架構標準**（代碼風格、分層職責、Signals 規範） |
+| [`.agents/skills/git-guidelines/SKILL.md`](file:///d:/dnd%20adv%20log/.agents/skills/git-guidelines/SKILL.md) | **Git 操作指南與安全規範**（嚴禁未經許可自動 commit/push、單次授權原則） |
 
 ---
 
