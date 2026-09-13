@@ -61,3 +61,6 @@ zeabur-deploy-fix-plan.md
 
 # 本機工作任務追蹤（不公開至遠端）
 backlog.md
+
+# Agent 配置與本地技能/規則
+.agents/
