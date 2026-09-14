@@ -18,6 +18,8 @@ public interface InventoryItemMapper {
 
     InventoryItem findByAdventureGainedItemId(@Param("gainedItemId") UUID gainedItemId);
 
+    List<InventoryItem> findByAdventureEntryId(@Param("adventureEntryId") UUID adventureEntryId);
+
     void insert(InventoryItem item);
 
     void update(InventoryItem item);

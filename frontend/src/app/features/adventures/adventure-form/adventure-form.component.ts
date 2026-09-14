@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TextFieldModule } from '@angular/cdk/text-field';
@@ -63,6 +64,7 @@ export interface DowntimeActivityItem {
     MatProgressSpinnerModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatCheckboxModule,
     MatTooltipModule,
     TextFieldModule,
     LucideCoins,
@@ -207,6 +209,7 @@ export class AdventureFormComponent implements OnInit {
     id?: string;
     itemName: string;
     rarity: ItemRarity | '';
+    requiresAttunement?: boolean;
     notes: string;
   }[]>([]);
 
@@ -437,6 +440,7 @@ export class AdventureFormComponent implements OnInit {
               id: item.id,
               itemName: item.itemName,
               rarity: (item.rarity ?? '') as ItemRarity | '',
+              requiresAttunement: Boolean(item.requiresAttunement),
               notes: item.notes ?? '',
             }));
           const consumables = items
@@ -469,6 +473,7 @@ export class AdventureFormComponent implements OnInit {
             id: item.id,
             itemName: item.itemName,
             rarity: item.rarity ?? ('' as ItemRarity | ''),
+            requiresAttunement: Boolean(item.requiresAttunement),
             notes: item.notes ?? '',
           }));
         const consumables = items
@@ -693,7 +698,7 @@ export class AdventureFormComponent implements OnInit {
   protected addGainedItem(): void {
     this.gainedMagicItems.update(list => [
       ...list,
-      { itemName: '', rarity: '', notes: '' },
+      { itemName: '', rarity: '', requiresAttunement: false, notes: '' },
     ]);
     const current = Number(this.form.get('magicItemsChange')?.value) || 0;
     this.form.patchValue({ magicItemsChange: current + 1 });
@@ -718,6 +723,12 @@ export class AdventureFormComponent implements OnInit {
   protected updateGainedItemRarity(index: number, rarity: ItemRarity | ''): void {
     this.gainedMagicItems.update(list =>
       list.map((item, i) => i === index ? { ...item, rarity } : item)
+    );
+  }
+
+  protected updateGainedItemAttunement(index: number, attune: boolean): void {
+    this.gainedMagicItems.update(list =>
+      list.map((item, i) => i === index ? { ...item, requiresAttunement: attune } : item)
     );
   }
 
@@ -785,6 +796,7 @@ export class AdventureFormComponent implements OnInit {
           itemName: item.itemName.trim() || '未命名魔法物品',
           itemType: 'PERMANENT',
           rarity: item.rarity || null,
+          requiresAttunement: Boolean(item.requiresAttunement),
           notes: item.notes.trim() || null,
         };
         return this.adventureService.updateGainedItem(entryId, item.id!, snapshotReq);
@@ -798,6 +810,7 @@ export class AdventureFormComponent implements OnInit {
           itemName: item.itemName.trim() || '未命名魔法物品',
           itemType: 'PERMANENT',
           rarity: item.rarity || null,
+          requiresAttunement: Boolean(item.requiresAttunement),
           notes: item.notes.trim() || null,
         };
         return this.adventureService.addGainedItem(entryId, snapshotReq).pipe(
@@ -808,6 +821,7 @@ export class AdventureFormComponent implements OnInit {
               itemType: 'PERMANENT',
               itemName: item.itemName.trim() || '未命名魔法物品',
               rarity: item.rarity || null,
+              requiresAttunement: Boolean(item.requiresAttunement),
               source: sourceAdventureName,
               notes: item.notes.trim() || null,
             };
