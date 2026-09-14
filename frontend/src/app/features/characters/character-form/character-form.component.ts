@@ -14,7 +14,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -23,6 +23,7 @@ import { CharacterService } from '../../../core/services/character.service';
 import { CharacterRequest } from '../../../core/models/character.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { AvatarCropperDialogComponent } from '../avatar-cropper-dialog/avatar-cropper-dialog.component';
+import { LucideArrowLeft, LucideLock, LucideImagePlus, LucideRefreshCw, LucideUpload, LucideTrash2, LucideShield, LucidePlus, LucideSave } from '@lucide/angular';
 
 @Component({
   selector: 'app-character-form',
@@ -36,10 +37,9 @@ import { AvatarCropperDialogComponent } from '../avatar-cropper-dialog/avatar-cr
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-  ],
+  , LucideArrowLeft, LucideLock, LucideImagePlus, LucideRefreshCw, LucideUpload, LucideTrash2, LucideShield, LucidePlus, LucideSave],
   templateUrl: './character-form.component.html',
   styleUrl: './character-form.component.scss',
 })

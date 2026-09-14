@@ -3,13 +3,13 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">
-        <mat-icon class="title-icon">groups</mat-icon>
+        <svg lucideUsers [size]="20" class="title-icon"></svg>
         我的角色
       </h1>
       <p class="page-subtitle">管理角色、冒險紀錄表與倉庫</p>
     </div>
     <button mat-flat-button color="primary" class="btn-create-char" (click)="onCreateCharacter()">
-      <mat-icon>add</mat-icon>
+      <svg lucidePlus [size]="20"></svg>
       建立新角色
     </button>
   </div>
@@ -36,12 +36,12 @@
   @if (!isLoading() && characters().length === 0) {
     <div class="empty-state clean-card">
       <div class="empty-icon-wrap">
-        <mat-icon class="empty-icon">person_add</mat-icon>
+        <svg lucideUserPlus [size]="20" class="empty-icon"></svg>
       </div>
       <h2 class="empty-title">尚無角色</h2>
       <p class="empty-desc">建立您的第一個 D&amp;D 冒險者，開始記錄冒險紀錄表！</p>
       <button mat-flat-button color="primary" (click)="onCreateCharacter()" class="empty-btn">
-        <mat-icon>add</mat-icon>
+        <svg lucidePlus [size]="20"></svg>
         建立新角色
       </button>
     </div>
@@ -101,13 +101,13 @@
               <button mat-button class="footer-action-btn"
                 matTooltip="編輯角色資訊"
                 (click)="onEditCharacter($event, char.id)">
-                <mat-icon>edit</mat-icon>
+                <svg lucidePenLine [size]="20"></svg>
                 <span>編輯</span>
               </button>
               <button mat-button class="footer-action-btn delete-btn"
                 matTooltip="刪除角色"
                 (click)="onDeleteCharacter($event, char)">
-                <mat-icon>delete_outline</mat-icon>
+                <svg lucideTrash2 [size]="20"></svg>
                 <span>刪除</span>
               </button>
             </div>

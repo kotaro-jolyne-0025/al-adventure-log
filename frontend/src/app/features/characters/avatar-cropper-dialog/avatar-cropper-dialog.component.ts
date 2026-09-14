@@ -10,8 +10,8 @@ import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
-import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
+import { LucideCrop, LucideZoomOut, LucideZoomIn, LucideRotateCcw, LucideCheck } from '@lucide/angular';
 
 export interface AvatarCropperDialogData {
   imageSource: string | File;
@@ -26,12 +26,11 @@ export interface AvatarCropperDialogData {
     MatDialogModule,
     MatButtonModule,
     MatSliderModule,
-    MatIconModule,
-  ],
+    , LucideCrop, LucideZoomOut, LucideZoomIn, LucideRotateCcw, LucideCheck],
   template: `
     <div class="cropper-dialog">
       <h2 mat-dialog-title class="dialog-title">
-        <mat-icon class="title-icon">crop</mat-icon>
+        <svg lucideCrop [size]="20" class="title-icon"></svg>
         <span>裁切角色大頭照</span>
       </h2>
 
@@ -59,7 +58,7 @@ export interface AvatarCropperDialogData {
 
         <!-- Controls Bar -->
         <div class="controls-row">
-          <mat-icon class="zoom-icon">zoom_out</mat-icon>
+          <svg lucideZoomOut [size]="20" class="zoom-icon"></svg>
           <mat-slider
             [min]="minScale()"
             [max]="maxScale()"
@@ -72,14 +71,14 @@ export interface AvatarCropperDialogData {
               (ngModelChange)="onScaleChange($event)"
             />
           </mat-slider>
-          <mat-icon class="zoom-icon">zoom_in</mat-icon>
+          <svg lucideZoomIn [size]="20" class="zoom-icon"></svg>
           <button
             mat-icon-button
             (click)="resetTransform()"
             matTooltip="重設位置與縮放"
             class="btn-reset"
           >
-            <mat-icon>restart_alt</mat-icon>
+            <svg lucideRotateCcw [size]="20"></svg>
           </button>
         </div>
       </mat-dialog-content>
@@ -92,7 +91,7 @@ export interface AvatarCropperDialogData {
           (click)="onConfirm()"
           [disabled]="!imageLoaded()"
         >
-          <mat-icon>check</mat-icon>
+          <svg lucideCheck [size]="20"></svg>
           <span>確認套用</span>
         </button>
       </mat-dialog-actions>

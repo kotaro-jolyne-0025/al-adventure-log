@@ -6,10 +6,11 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
+import { LucideAlertCircle, LucideLock, LucideEye, LucideEyeOff, LucideCheckCircle, LucideUnlink, LucideKeyRound, LucideCheck } from '@lucide/angular';
 
 export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   const newPassword = control.get('newPassword')?.value;
@@ -31,9 +32,8 @@ export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): V
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule,
-  ],
+  , LucideAlertCircle, LucideLock, LucideEye, LucideEyeOff, LucideCheckCircle, LucideUnlink, LucideKeyRound],
   templateUrl: './reset-password.component.html',
   styleUrl: './reset-password.component.scss',
 })

@@ -4,7 +4,6 @@ import { RouterOutlet, RouterLink, Router, NavigationEnd } from '@angular/router
 import { filter } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -12,6 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
 import { EditProfileDialogComponent } from './features/auth/edit-profile-dialog/edit-profile-dialog.component';
+import { LucideAngularModule, LucideArrowLeft, LucideSun, LucideMoon, LucideUser, LucideChevronDown, LucideUsers, LucideIdCard, LucideGavel, LucideLogOut } from 'lucide-angular';
 
 @Component({
   selector: 'app-root',
@@ -22,11 +22,12 @@ import { EditProfileDialogComponent } from './features/auth/edit-profile-dialog/
     RouterLink,
     MatToolbarModule,
     MatButtonModule,
-    MatIconModule,
     MatMenuModule,
     MatDividerModule,
     MatDialogModule,
     MatTooltipModule,
+    LucideAngularModule,
+    LucideArrowLeft, LucideSun, LucideMoon, LucideUser, LucideChevronDown, LucideUsers, LucideIdCard, LucideGavel, LucideLogOut
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

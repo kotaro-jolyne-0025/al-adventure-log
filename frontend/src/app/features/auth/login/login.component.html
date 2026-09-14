@@ -8,7 +8,7 @@
     <mat-card-content class="auth-content">
       <!-- 錯誤提示 -->
       <div *ngIf="errorMessage()" class="auth-error-alert">
-        <mat-icon>error_outline</mat-icon>
+        <svg lucideAlertCircle [size]="20"></svg>
         <span>{{ errorMessage() }}</span>
       </div>
 
@@ -35,7 +35,7 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>電子郵件 (Email)</mat-label>
           <input matInput type="email" formControlName="email" placeholder="example@domain.com" autocomplete="email" />
-          <mat-icon matPrefix>email</mat-icon>
+          <svg lucideMail [size]="20" matPrefix></svg>
           <mat-error *ngIf="loginForm.get('email')?.hasError('required')">請輸入電子郵件</mat-error>
           <mat-error *ngIf="loginForm.get('email')?.hasError('email')">請輸入正確的 Email 格式</mat-error>
         </mat-form-field>
@@ -43,9 +43,9 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>密碼</mat-label>
           <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" autocomplete="current-password" />
-          <mat-icon matPrefix>lock</mat-icon>
+          <svg lucideLock [size]="20" matPrefix></svg>
           <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())" [attr.aria-label]="'切換密碼顯示'">
-            <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            @if (hidePassword()) { <svg lucideEyeOff [size]="20"></svg> } @else { <svg lucideEye [size]="20"></svg> }
           </button>
           <mat-error *ngIf="loginForm.get('password')?.hasError('required')">請輸入密碼</mat-error>
         </mat-form-field>

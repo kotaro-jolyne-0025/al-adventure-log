@@ -6,13 +6,14 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
 
 import { environment } from '../../../../environments/environment';
+import { LucideMail, LucideAlertCircle, LucideLock, LucideEye, LucideEyeOff } from '@lucide/angular';
 
 declare const google: any;
 
@@ -27,10 +28,9 @@ declare const google: any;
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule,
     MatDividerModule,
-  ],
+  , LucideMail, LucideAlertCircle, LucideLock, LucideEye, LucideEyeOff],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })

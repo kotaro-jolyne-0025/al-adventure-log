@@ -2,7 +2,7 @@
   <mat-toolbar class="app-toolbar">
     @if (showBack()) {
       <button mat-icon-button (click)="goBack()" class="top-nav-back-btn" matTooltip="返回角色列表">
-        <mat-icon>arrow_back</mat-icon>
+        <svg lucideArrowLeft [size]="20"></svg>
       </button>
     }
 
@@ -20,15 +20,15 @@
       [matTooltip]="themeService.isDark() ? '切換為淺色模式 (風格 A)' : '切換為深色模式 (風格 B)'"
       class="theme-toggle-btn"
       aria-label="切換深淺色模式">
-      <mat-icon class="theme-icon">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      @if (themeService.isDark()) { <svg lucideSun [size]="24" class="theme-icon"></svg> } @else { <svg lucideMoon [size]="24" class="theme-icon"></svg> }
     </button>
 
     <!-- 已登入狀態 -->
     @if (authService.currentUser(); as user) {
       <button mat-button [matMenuTriggerFor]="userMenu" class="user-pill-btn">
-        <mat-icon class="user-icon">person</mat-icon>
+        <svg lucideUser [size]="20" class="user-icon"></svg>
         <span class="user-name">{{ user.displayName }}</span>
-        <mat-icon class="dropdown-icon">expand_more</mat-icon>
+        <svg lucideChevronDown [size]="20" class="dropdown-icon"></svg>
       </button>
 
       <mat-menu #userMenu="matMenu" xPosition="before" class="app-user-menu">
@@ -38,20 +38,20 @@
         </div>
         <mat-divider></mat-divider>
         <button mat-menu-item routerLink="/characters">
-          <mat-icon>group</mat-icon>
+          <svg lucideUsers [size]="20"></svg>
           <span>我的角色列表</span>
         </button>
         <button mat-menu-item (click)="openEditProfileDialog()">
-          <mat-icon>badge</mat-icon>
+          <svg lucideIdCard [size]="20"></svg>
           <span>修改顯示名稱</span>
         </button>
         <button mat-menu-item routerLink="/legal">
-          <mat-icon>gavel</mat-icon>
+          <svg lucideGavel [size]="20"></svg>
           <span>版權與免責聲明</span>
         </button>
         <mat-divider></mat-divider>
         <button mat-menu-item (click)="logout()" class="logout-menu-item">
-          <mat-icon class="logout-icon">logout</mat-icon>
+          <svg lucideLogOut [size]="20" class="logout-icon"></svg>
           <span class="logout-text">登出系統</span>
         </button>
       </mat-menu>
