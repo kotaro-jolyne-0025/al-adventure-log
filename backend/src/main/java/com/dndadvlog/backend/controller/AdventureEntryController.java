@@ -149,4 +149,42 @@ public class AdventureEntryController {
         adventureEntryService.deleteGainedItem(id, principal.getId());
         return ResponseEntity.noContent().build();
     }
+
+    // Story Awards (故事獎勵)
+    @GetMapping("/api/entries/{entryId}/story-awards")
+    public List<StoryAwardResponse> getStoryAwards(
+            @PathVariable UUID entryId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("⭐ [GET /api/entries/{}/story-awards] 查詢故事獎勵列表, userId={}", entryId, principal.getId());
+        return adventureEntryService.getStoryAwards(entryId, principal.getId());
+    }
+
+    @PostMapping("/api/entries/{entryId}/story-awards")
+    public ResponseEntity<StoryAwardResponse> createStoryAward(
+            @PathVariable UUID entryId,
+            @RequestBody StoryAwardRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("➕ [POST /api/entries/{}/story-awards] 新增故事獎勵: {}, userId={}", entryId, request.getAwardName(), principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(adventureEntryService.createStoryAward(entryId, request, principal.getId()));
+    }
+
+    @PutMapping("/api/entries/{entryId}/story-awards/{awardId}")
+    public StoryAwardResponse updateStoryAward(
+            @PathVariable UUID entryId,
+            @PathVariable UUID awardId,
+            @RequestBody StoryAwardRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("✏️ [PUT /api/entries/{}/story-awards/{}] 更新故事獎勵: {}, userId={}", entryId, awardId, request.getAwardName(), principal.getId());
+        return adventureEntryService.updateStoryAward(entryId, awardId, request, principal.getId());
+    }
+
+    @DeleteMapping("/api/story-awards/{id}")
+    public ResponseEntity<Void> deleteStoryAward(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("🗑️ [DELETE /api/story-awards/{}] 刪除故事獎勵, userId={}", id, principal.getId());
+        adventureEntryService.deleteStoryAward(id, principal.getId());
+        return ResponseEntity.noContent().build();
+    }
 }
