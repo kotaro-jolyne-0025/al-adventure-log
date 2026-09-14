@@ -1,17 +1,16 @@
-import {
-  Component,
-  ElementRef,
-  Inject,
-  OnInit,
-  ViewChild,
-  signal,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ElementRef, Inject, OnInit, ViewChild, signal } from '@angular/core';
+
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
 import { FormsModule } from '@angular/forms';
-import { LucideCrop, LucideZoomOut, LucideZoomIn, LucideRotateCcw, LucideCheck } from '@lucide/angular';
+import {
+  LucideCrop,
+  LucideZoomOut,
+  LucideZoomIn,
+  LucideRotateCcw,
+  LucideCheck,
+} from '@lucide/angular';
 
 export interface AvatarCropperDialogData {
   imageSource: string | File;
@@ -21,12 +20,17 @@ export interface AvatarCropperDialogData {
   selector: 'app-avatar-cropper-dialog',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     MatDialogModule,
     MatButtonModule,
     MatSliderModule,
-    , LucideCrop, LucideZoomOut, LucideZoomIn, LucideRotateCcw, LucideCheck],
+    ,
+    LucideCrop,
+    LucideZoomOut,
+    LucideZoomIn,
+    LucideRotateCcw,
+    LucideCheck,
+  ],
   template: `
     <div class="cropper-dialog">
       <h2 mat-dialog-title class="dialog-title">
@@ -35,9 +39,7 @@ export interface AvatarCropperDialogData {
       </h2>
 
       <mat-dialog-content class="dialog-content">
-        <p class="crop-hint">
-          可拖曳圖片移動位置，或使用下方滑桿縮放大小以配合肖像框
-        </p>
+        <p class="crop-hint">可拖曳圖片移動位置，或使用下方滑桿縮放大小以配合肖像框</p>
 
         <!-- Canvas Container -->
         <div class="canvas-wrapper">
@@ -59,17 +61,8 @@ export interface AvatarCropperDialogData {
         <!-- Controls Bar -->
         <div class="controls-row">
           <svg lucideZoomOut [size]="20" class="zoom-icon"></svg>
-          <mat-slider
-            [min]="minScale()"
-            [max]="maxScale()"
-            [step]="0.01"
-            class="zoom-slider"
-          >
-            <input
-              matSliderThumb
-              [ngModel]="scale()"
-              (ngModelChange)="onScaleChange($event)"
-            />
+          <mat-slider [min]="minScale()" [max]="maxScale()" [step]="0.01" class="zoom-slider">
+            <input matSliderThumb [ngModel]="scale()" (ngModelChange)="onScaleChange($event)" />
           </mat-slider>
           <svg lucideZoomIn [size]="20" class="zoom-icon"></svg>
           <button
@@ -85,12 +78,7 @@ export interface AvatarCropperDialogData {
 
       <mat-dialog-actions align="end" class="dialog-actions">
         <button mat-button mat-dialog-close>取消</button>
-        <button
-          mat-flat-button
-          color="primary"
-          (click)="onConfirm()"
-          [disabled]="!imageLoaded()"
-        >
+        <button mat-flat-button color="primary" (click)="onConfirm()" [disabled]="!imageLoaded()">
           <svg lucideCheck [size]="20"></svg>
           <span>確認套用</span>
         </button>
@@ -217,7 +205,7 @@ export class AvatarCropperDialogComponent implements OnInit {
 
   constructor(
     private dialogRef: MatDialogRef<AvatarCropperDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: AvatarCropperDialogData
+    @Inject(MAT_DIALOG_DATA) public data: AvatarCropperDialogData,
   ) {}
 
   ngOnInit(): void {
@@ -242,10 +230,7 @@ export class AvatarCropperDialogComponent implements OnInit {
     this.img.onload = () => {
       this.imageLoaded.set(true);
       // 計算初始縮放比例，使圖片最短邊符合裁切框
-      const fitScale = Math.max(
-        this.CROP_SIZE / this.img.width,
-        this.CROP_SIZE / this.img.height
-      );
+      const fitScale = Math.max(this.CROP_SIZE / this.img.width, this.CROP_SIZE / this.img.height);
       this.minScale.set(Math.max(0.1, fitScale * 0.5));
       this.maxScale.set(Math.max(3.0, fitScale * 4));
       this.scale.set(fitScale);
@@ -321,7 +306,7 @@ export class AvatarCropperDialogComponent implements OnInit {
     const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
     const newScale = Math.min(
       this.maxScale(),
-      Math.max(this.minScale(), this.scale() * zoomFactor)
+      Math.max(this.minScale(), this.scale() * zoomFactor),
     );
     this.onScaleChange(newScale);
   }
@@ -336,13 +321,7 @@ export class AvatarCropperDialogComponent implements OnInit {
 
     // 1. 繪製縮放平移後的底圖
     const s = this.scale();
-    ctx.drawImage(
-      this.img,
-      this.offsetX,
-      this.offsetY,
-      this.img.width * s,
-      this.img.height * s
-    );
+    ctx.drawImage(this.img, this.offsetX, this.offsetY, this.img.width * s, this.img.height * s);
 
     // 2. 繪製半透明暗色遮罩（圓角正方形挖孔）
     ctx.save();
@@ -357,7 +336,7 @@ export class AvatarCropperDialogComponent implements OnInit {
       this.CROP_Y,
       this.CROP_SIZE,
       this.CROP_SIZE,
-      this.CROP_RADIUS
+      this.CROP_RADIUS,
     );
     ctx.fill('evenodd');
 
@@ -371,7 +350,7 @@ export class AvatarCropperDialogComponent implements OnInit {
       this.CROP_Y,
       this.CROP_SIZE,
       this.CROP_SIZE,
-      this.CROP_RADIUS
+      this.CROP_RADIUS,
     );
     ctx.stroke();
 
@@ -397,7 +376,7 @@ export class AvatarCropperDialogComponent implements OnInit {
     y: number,
     w: number,
     h: number,
-    r: number
+    r: number,
   ): void {
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + w - r, y);
@@ -429,17 +408,7 @@ export class AvatarCropperDialogComponent implements OnInit {
     const sw = this.CROP_SIZE / s;
     const sh = this.CROP_SIZE / s;
 
-    outCtx.drawImage(
-      this.img,
-      sx,
-      sy,
-      sw,
-      sh,
-      0,
-      0,
-      outputSize,
-      outputSize
-    );
+    outCtx.drawImage(this.img, sx, sy, sw, sh, 0, 0, outputSize, outputSize);
 
     // 優先匯出 WebP (quality 0.88)，若瀏覽器不支援會自動 fallback 為 image/png
     let resultDataUrl = outCanvas.toDataURL('image/webp', 0.88);

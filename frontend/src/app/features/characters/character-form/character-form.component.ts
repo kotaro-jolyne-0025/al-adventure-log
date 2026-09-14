@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   FormArray,
@@ -23,13 +23,22 @@ import { CharacterService } from '../../../core/services/character.service';
 import { CharacterRequest } from '../../../core/models/character.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { AvatarCropperDialogComponent } from '../avatar-cropper-dialog/avatar-cropper-dialog.component';
-import { LucideArrowLeft, LucideLock, LucideImagePlus, LucideRefreshCw, LucideUpload, LucideTrash2, LucideShield, LucidePlus, LucideSave } from '@lucide/angular';
+import {
+  LucideArrowLeft,
+  LucideLock,
+  LucideImagePlus,
+  LucideRefreshCw,
+  LucideUpload,
+  LucideTrash2,
+  LucideShield,
+  LucidePlus,
+  LucideSave,
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-character-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     FormsModule,
     MatCardModule,
@@ -39,7 +48,17 @@ import { LucideArrowLeft, LucideLock, LucideImagePlus, LucideRefreshCw, LucideUp
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-  , LucideArrowLeft, LucideLock, LucideImagePlus, LucideRefreshCw, LucideUpload, LucideTrash2, LucideShield, LucidePlus, LucideSave],
+    ,
+    LucideArrowLeft,
+    LucideLock,
+    LucideImagePlus,
+    LucideRefreshCw,
+    LucideUpload,
+    LucideTrash2,
+    LucideShield,
+    LucidePlus,
+    LucideSave,
+  ],
   templateUrl: './character-form.component.html',
   styleUrl: './character-form.component.scss',
 })
@@ -53,9 +72,19 @@ export class CharacterFormComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
 
   protected readonly CLASS_OPTIONS = [
-    '戰士', '法師', '牧師', '遊蕩者', '遊俠',
-    '吟遊詩人', '德魯伊', '武僧', '聖騎士', '契術師',
-    '術士', '野蠻人', '奇械師',
+    '戰士',
+    '法師',
+    '牧師',
+    '遊蕩者',
+    '遊俠',
+    '吟遊詩人',
+    '德魯伊',
+    '武僧',
+    '聖騎士',
+    '契術師',
+    '術士',
+    '野蠻人',
+    '奇械師',
   ];
 
   protected isEditMode = signal(false);
@@ -76,20 +105,20 @@ export class CharacterFormComponent implements OnInit {
   ]);
 
   protected addClass(): void {
-    this.classEntries.update(list => [...list, { className: '', level: 1 }]);
+    this.classEntries.update((list) => [...list, { className: '', level: 1 }]);
   }
 
   protected removeClass(index: number): void {
-    this.classEntries.update(list => list.filter((_, i) => i !== index));
+    this.classEntries.update((list) => list.filter((_, i) => i !== index));
   }
 
   protected totalLevel = computed(() =>
-    this.classEntries().reduce((sum, e) => sum + (e.level || 0), 0)
+    this.classEntries().reduce((sum, e) => sum + (e.level || 0), 0),
   );
 
   protected updateClassName(index: number, value: string): void {
-    this.classEntries.update(list =>
-      list.map((e, i) => i === index ? { ...e, className: value } : e)
+    this.classEntries.update((list) =>
+      list.map((e, i) => (i === index ? { ...e, className: value } : e)),
     );
   }
 
@@ -97,15 +126,15 @@ export class CharacterFormComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const num = parseInt(input.value, 10);
     if (isNaN(num) || num < 1) return;
-    this.classEntries.update(list =>
-      list.map((e, i) => i === index ? { ...e, level: num } : e)
+    this.classEntries.update((list) =>
+      list.map((e, i) => (i === index ? { ...e, level: num } : e)),
     );
   }
 
   private buildClassesString(): string | null {
-    const filled = this.classEntries().filter(e => e.className.trim());
+    const filled = this.classEntries().filter((e) => e.className.trim());
     if (filled.length === 0) return null;
-    return filled.map(e => `${e.className.trim()}${e.level}`).join('/');
+    return filled.map((e) => `${e.className.trim()}${e.level}`).join('/');
   }
 
   ngOnInit(): void {
@@ -129,11 +158,14 @@ export class CharacterFormComponent implements OnInit {
         this.avatarUrl.set(character.avatarUrl ?? null);
         // 解析職業字串 → 選擇器
         if (character.currentClassesString) {
-          const parsed = character.currentClassesString.split('/').map(seg => {
-            const match = seg.trim().match(/^(.+?)([\d]+)$/);
-            if (match) return { className: match[1].trim(), level: parseInt(match[2], 10) };
-            return { className: seg.trim(), level: 1 };
-          }).filter(e => e.className);
+          const parsed = character.currentClassesString
+            .split('/')
+            .map((seg) => {
+              const match = seg.trim().match(/^(.+?)([\d]+)$/);
+              if (match) return { className: match[1].trim(), level: parseInt(match[2], 10) };
+              return { className: seg.trim(), level: 1 };
+            })
+            .filter((e) => e.className);
           if (parsed.length > 0) this.classEntries.set(parsed);
         }
       },
@@ -188,9 +220,7 @@ export class CharacterFormComponent implements OnInit {
   protected onSubmit(): void {
     if (this.isEditMode()) {
       // 編輯模式下僅驗證基本欄位
-      const basicValid =
-        this.form.get('characterName')!.valid &&
-        this.form.get('race')!.valid;
+      const basicValid = this.form.get('characterName')!.valid && this.form.get('race')!.valid;
       if (!basicValid) {
         this.form.get('characterName')!.markAsTouched();
         this.form.get('race')!.markAsTouched();
@@ -228,7 +258,9 @@ export class CharacterFormComponent implements OnInit {
     } else {
       this.characterService.create(req).subscribe({
         next: (created) => {
-          this.snackBar.open(`角色「${created.characterName}」已建立！`, '關閉', { duration: 2500 });
+          this.snackBar.open(`角色「${created.characterName}」已建立！`, '關閉', {
+            duration: 2500,
+          });
           this.router.navigate(['/characters', created.id, 'adventures']);
         },
         error: () => {

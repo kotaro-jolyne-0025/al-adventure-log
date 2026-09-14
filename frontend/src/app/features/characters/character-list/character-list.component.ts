@@ -11,10 +11,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CharacterService } from '../../../core/services/character.service';
 import { Character } from '../../../core/models/character.model';
 import {
-import { LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus } from '@lucide/angular';
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus } from '@lucide/angular';
 
 @Component({
   selector: 'app-character-list',
@@ -25,7 +25,8 @@ import { LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, Lucid
     MatProgressSpinnerModule,
     MatChipsModule,
     MatTooltipModule,
-  , LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus],
+    LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus
+  ],
   templateUrl: './character-list.component.html',
   styleUrl: './character-list.component.scss',
 })

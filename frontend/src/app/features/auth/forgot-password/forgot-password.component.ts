@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -16,7 +16,6 @@ import { LucideMailCheck, LucideInfo, LucideMail, LucideAlertCircle } from '@luc
   selector: 'app-forgot-password',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     RouterLink,
     MatCardModule,
@@ -24,7 +23,11 @@ import { LucideMailCheck, LucideInfo, LucideMail, LucideAlertCircle } from '@luc
     MatInputModule,
     MatButtonModule,
     MatProgressSpinnerModule,
-  , LucideMailCheck, LucideInfo, LucideAlertCircle],
+    ,
+    LucideMailCheck,
+    LucideInfo,
+    LucideAlertCircle,
+  ],
   templateUrl: './forgot-password.component.html',
   styleUrl: './forgot-password.component.scss',
 })
