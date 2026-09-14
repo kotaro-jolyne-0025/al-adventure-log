@@ -210,7 +210,10 @@
                     </span>
                   }
                   @if (item.requiresAttunement) {
-                    <span class="attunement-pill">需同調</span>
+                    <span class="attunement-pill">
+                      <svg lucideInfinity [size]="12"></svg>
+                      需同調
+                    </span>
                   }
                 </div>
                 @if (item.notes) {

@@ -7,7 +7,11 @@
         倉庫
       </h2>
       <span class="count-pill">
-        {{ activeTab() === 0 ? permanentItems().length : consumableItems().length }} 件物品
+        {{ activeTab() === 0 ? permanentItems().length : consumableItems().length }}
+        @if (hasActiveFilters()) {
+        <span class="count-filtered">/ {{ activeTab() === 0 ? rawPermanentCount() : rawConsumableCount() }}</span>
+        }
+        件物品
       </span>
     </div>
     <div class="header-actions">
@@ -18,10 +22,7 @@
           <svg lucideSlidersHorizontal [size]="16" class="capsule-icon"></svg>
           <span class="capsule-text">{{ sortFieldLabel() }}</span>
           <svg lucideChevronDown [size]="15" class="capsule-arrow"></svg>
-          <select
-            class="invisible-native-select"
-            [value]="sortField()"
-            (change)="onSortFieldChange($event)"
+          <select class="invisible-native-select" [value]="sortField()" (change)="onSortFieldChange($event)"
             aria-label="選擇倉庫排序依據">
             <option value="rarity">稀有度</option>
             <option value="createdAt">取得時間</option>
@@ -32,15 +33,12 @@
         <div class="capsule-divider"></div>
 
         <!-- 方向反轉（右側） -->
-        <button
-          type="button"
-          class="capsule-section button-section"
-          (click)="toggleSortOrder()"
+        <button type="button" class="capsule-section button-section" (click)="toggleSortOrder()"
           [matTooltip]="directionTooltip()">
           @if (sortOrder() === 'desc') {
-            <svg lucideArrowDown [size]="16" class="capsule-icon dir-icon"></svg>
+          <svg lucideArrowDown [size]="16" class="capsule-icon dir-icon"></svg>
           } @else {
-            <svg lucideArrowUp [size]="16" class="capsule-icon dir-icon icon-asc"></svg>
+          <svg lucideArrowUp [size]="16" class="capsule-icon dir-icon icon-asc"></svg>
           }
           <span class="capsule-text">{{ directionLabel() }}</span>
         </button>
@@ -54,176 +52,240 @@
   </div>
 
   <!-- Tabs -->
-  <mat-tab-group
-    [selectedIndex]="activeTab()"
-    (selectedIndexChange)="activeTab.set($event)"
-    animationDuration="150ms"
+  <mat-tab-group [selectedIndex]="activeTab()" (selectedIndexChange)="activeTab.set($event)" animationDuration="150ms"
     class="inventory-sub-tabs">
     <mat-tab>
       <ng-template mat-tab-label>
         <svg lucideSparkles [size]="18" class="tab-icon"></svg>
-        <span>魔法物品 ({{ permanentItems().length }})</span>
+        <span>魔法物品 ({{ permanentItems().length }}
+          @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawPermanentCount() }}</span> }
+          )</span>
       </ng-template>
     </mat-tab>
     <mat-tab>
       <ng-template mat-tab-label>
         <svg lucideFlaskConical [size]="18" class="tab-icon"></svg>
-        <span>消耗品 ({{ consumableItems().length }})</span>
+        <span>消耗品 ({{ consumableItems().length }}
+          @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawConsumableCount() }}</span> }
+          )</span>
       </ng-template>
     </mat-tab>
   </mat-tab-group>
 
-  <!-- Loading -->
-  @if (isLoading()) {
-    <div class="items-list">
-      @for (item of [1, 2, 3, 4]; track $index) {
-        <div class="clean-card item-row-card skeleton-row">
-          <div class="skeleton-box" style="width: 40%; height: 20px;"></div>
-          <div class="skeleton-box" style="width: 80px; height: 24px; border-radius: 9999px;"></div>
-          <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
-        </div>
+  <!-- 🔍 搜尋 & 篩選列 -->
+  <div class="filter-panel">
+    <!-- 搜尋框 -->
+    <div class="search-bar" [class.search-bar--active]="searchQuery().trim().length > 0">
+      <svg lucideSearch [size]="17" class="search-icon"></svg>
+      <input class="search-input" type="text" placeholder="搜尋物品名稱、來源" [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)" aria-label="搜尋倉庫物品" />
+      @if (searchQuery().trim().length > 0) {
+      <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" aria-label="清除搜尋">
+        <svg lucideX [size]="15"></svg>
+      </button>
       }
     </div>
+
+    <!-- 篩選 Chips 列 -->
+    <div class="filter-chips-row">
+      <!-- 稀有度 Chips -->
+      @for (rarity of RARITY_OPTIONS; track rarity) {
+      <button type="button" class="filter-chip" [class.filter-chip--active]="isRaritySelected(rarity)"
+        [style.--chip-color]="rarityColors[rarity]" (click)="toggleRarityFilter(rarity)"
+        [attr.aria-pressed]="isRaritySelected(rarity)">
+        {{ RARITY_SHORT_LABELS[rarity] }}
+      </button>
+      }
+
+      <!-- 需同調篩選 Chip -->
+      @if (activeTab() === 0) {
+      <button type="button" class="filter-chip filter-chip--attune" [class.filter-chip--active]="filterAttunementOnly()"
+        (click)="toggleAttunementFilter()" [attr.aria-pressed]="filterAttunementOnly()">
+        <svg lucideInfinity [size]="13" class="chip-icon"></svg>
+        需同調
+      </button>
+      }
+
+      <!-- 清除所有篩選 -->
+      @if (hasActiveFilters()) {
+      <button type="button" class="filter-chip-clear" (click)="clearAllFilters()">
+        <svg lucideX [size]="13"></svg>
+        清除篩選
+      </button>
+      }
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (isLoading()) {
+  <div class="items-list">
+    @for (item of [1, 2, 3, 4]; track $index) {
+    <div class="clean-card item-row-card skeleton-row">
+      <div class="skeleton-box" style="width: 40%; height: 20px;"></div>
+      <div class="skeleton-box" style="width: 80px; height: 24px; border-radius: 9999px;"></div>
+      <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
+    </div>
+    }
+  </div>
   }
 
   <!-- Tab 0: 永久性魔法物品 -->
   @if (!isLoading() && activeTab() === 0) {
-    @if (permanentItems().length === 0) {
-      <div class="empty-state clean-card">
-        <div class="empty-icon-wrap">
-          <svg lucideSparkles [size]="48" class="empty-icon"></svg>
-        </div>
-        <h3 class="empty-title">尚無魔法物品</h3>
-        <p class="empty-desc">在冒險紀錄表記錄戰利品，或點擊下方新增！</p>
-        <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
-          <svg lucidePlus [size]="18" class="btn-icon"></svg>
-          <span>新增魔法物品</span>
-        </button>
-      </div>
-    } @else {
-      <div class="items-list">
-        @for (item of permanentItems(); track item.id) {
-          <div class="clean-card item-row-card clickable" (click)="onEditItem($event, item.id)">
-            <!-- 1. 左側主體：物品名稱 + 來源與備註 -->
-            <div class="row-left-main">
-              <div class="name-block">
-                <h4 class="item-title" [matTooltip]="item.itemName">{{ item.itemName }}</h4>
-                @if (item.source) {
-                  <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
-                    <span class="meta-item">
-                      <svg lucideBookmark [size]="12" class="source-icon"></svg>
-                      <span>來源：{{ item.source }}</span>
-                    </span>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <!-- 2. 中間：稀有度與同調標籤 -->
-            <div class="row-center-tags">
-              @if (item.rarity) {
-                <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
-                  {{ rarityLabels[item.rarity] }}
-                </span>
-              }
-              @if (item.requiresAttunement) {
-                <span class="attunement-pill">需同調</span>
-              }
-            </div>
-
-            <!-- 3. 右側：取得時間 + 編輯/刪除按鈕 -->
-            <div class="row-right-actions" (click)="$event.stopPropagation()">
-              @if (item.createdAt) {
-                <span class="date-text">
-                  <svg lucideClock [size]="12" class="date-icon"></svg>
-                  <span>{{ item.createdAt | date:'yyyy/MM/dd' }}</span>
-                </span>
-              }
-              <div class="crud-btns">
-                <button mat-icon-button class="action-btn" matTooltip="編輯物品" (click)="onEditItem($event, item.id)">
-                  <svg lucidePencil [size]="16"></svg>
-                </button>
-                <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品" (click)="onDeleteItem($event, item)">
-                  <svg lucideTrash2 [size]="16"></svg>
-                </button>
-              </div>
-            </div>
+  @if (rawPermanentCount() === 0) {
+  <div class="empty-state clean-card">
+    <div class="empty-icon-wrap">
+      <svg lucideSparkles [size]="48" class="empty-icon"></svg>
+    </div>
+    <h3 class="empty-title">尚無魔法物品</h3>
+    <p class="empty-desc">在冒險紀錄表記錄戰利品，或點擊下方新增！</p>
+    <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
+      <svg lucidePlus [size]="18" class="btn-icon"></svg>
+      <span>新增魔法物品</span>
+    </button>
+  </div>
+  } @else if (permanentItems().length === 0) {
+  <div class="empty-state clean-card">
+    <div class="empty-icon-wrap">
+      <svg lucideSearch [size]="40" class="empty-icon"></svg>
+    </div>
+    <h3 class="empty-title">找不到符合的物品</h3>
+    <p class="empty-desc">請嘗試其他關鍵字，或 <button class="link-btn" (click)="clearAllFilters()">清除所有篩選</button></p>
+  </div>
+  } @else {
+  <div class="items-list">
+    @for (item of permanentItems(); track item.id) {
+    <div class="clean-card item-row-card clickable" (click)="onEditItem($event, item.id)">
+      <!-- 1. 左側主體：物品名稱 + 來源與備註 -->
+      <div class="row-left-main">
+        <div class="name-block">
+          <h4 class="item-title" [matTooltip]="item.itemName">{{ item.itemName }}</h4>
+          @if (item.source) {
+          <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
+            <span class="meta-item">
+              <svg lucideBookmark [size]="12" class="source-icon"></svg>
+              <span>來源：{{ item.source }}</span>
+            </span>
           </div>
+          }
+        </div>
+      </div>
+
+      <!-- 2. 中間：稀有度與同調標籤 -->
+      <div class="row-center-tags">
+        @if (item.rarity) {
+        <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
+          {{ rarityLabels[item.rarity] }}
+        </span>
+        }
+        @if (item.requiresAttunement) {
+        <span class="attunement-pill">
+          <svg lucideInfinity [size]="12"></svg>
+          需同調
+        </span>
         }
       </div>
+
+      <!-- 3. 右側：取得時間 + 編輯/刪除按鈕 -->
+      <div class="row-right-actions" (click)="$event.stopPropagation()">
+        @if (item.createdAt) {
+        <span class="date-text">
+          <svg lucideClock [size]="12" class="date-icon"></svg>
+          <span>{{ item.createdAt | date:'yyyy/MM/dd' }}</span>
+        </span>
+        }
+        <div class="crud-btns">
+          <button mat-icon-button class="action-btn" matTooltip="編輯物品" (click)="onEditItem($event, item.id)">
+            <svg lucidePencil [size]="16"></svg>
+          </button>
+          <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品" (click)="onDeleteItem($event, item)">
+            <svg lucideTrash2 [size]="16"></svg>
+          </button>
+        </div>
+      </div>
+    </div>
     }
+  </div>
+  }
   }
 
   <!-- Tab 1: 消耗品與藥水卷軸 -->
   @if (!isLoading() && activeTab() === 1) {
-    @if (consumableItems().length === 0) {
-      <div class="empty-state clean-card">
-        <div class="empty-icon-wrap">
-          <svg lucideFlaskConical [size]="48" class="empty-icon"></svg>
-        </div>
-        <h3 class="empty-title">尚無消耗品</h3>
-        <p class="empty-desc">記錄您冒險所獲得的治療藥水、法術卷軸等消耗物資！</p>
-        <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
-          <svg lucidePlus [size]="18" class="btn-icon"></svg>
-          <span>新增消耗品</span>
-        </button>
-      </div>
-    } @else {
-      <div class="items-list">
-        @for (item of consumableItems(); track item.id) {
-          <div class="clean-card item-row-card consumable-row-card clickable" (click)="onEditItem($event, item.id)">
-            <!-- 1. 左側主體：物品名稱 + 來源 -->
-            <div class="row-left-main">
-              <div class="name-block">
-                <h4 class="item-title" [matTooltip]="item.itemName">{{ item.itemName }}</h4>
-                @if (item.source) {
-                  <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
-                    <span class="meta-item">
-                      <svg lucideBookmark [size]="12" class="source-icon"></svg>
-                      <span>來源：{{ item.source }}</span>
-                    </span>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <!-- 2. 獨立數量欄位（垂直齊頭對齊） -->
-            <div class="row-qty-col">
-              <span class="qty-badge" [matTooltip]="'庫存數量：' + (item.quantity || 1)">
-                <span class="qty-x">×</span>{{ item.quantity || 1 }}
-              </span>
-            </div>
-
-            <!-- 3. 中間：稀有度標籤 -->
-            <div class="row-center-tags">
-              @if (item.rarity) {
-                <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
-                  {{ rarityLabels[item.rarity] }}
-                </span>
-              }
-            </div>
-
-            <!-- 4. 右側：取得時間 + 使用/編輯/刪除按鈕 -->
-            <div class="row-right-actions" (click)="$event.stopPropagation()">
-              @if (item.createdAt) {
-                <span class="date-text">
-                  <svg lucideClock [size]="12" class="date-icon"></svg>
-                  <span>{{ item.createdAt | date:'yyyy/MM/dd' }}</span>
-                </span>
-              }
-
-              <div class="crud-btns">
-                <button mat-icon-button class="action-btn" matTooltip="編輯物品" (click)="onEditItem($event, item.id)">
-                  <svg lucidePencil [size]="16"></svg>
-                </button>
-                <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品" (click)="onDeleteItem($event, item)">
-                  <svg lucideTrash2 [size]="16"></svg>
-                </button>
-              </div>
-            </div>
+  @if (rawConsumableCount() === 0) {
+  <div class="empty-state clean-card">
+    <div class="empty-icon-wrap">
+      <svg lucideFlaskConical [size]="48" class="empty-icon"></svg>
+    </div>
+    <h3 class="empty-title">尚無消耗品</h3>
+    <p class="empty-desc">記錄您冒險所獲得的治療藥水、法術卷軸等消耗物資！</p>
+    <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
+      <svg lucidePlus [size]="18" class="btn-icon"></svg>
+      <span>新增消耗品</span>
+    </button>
+  </div>
+  } @else if (consumableItems().length === 0) {
+  <div class="empty-state clean-card">
+    <div class="empty-icon-wrap">
+      <svg lucideSearch [size]="40" class="empty-icon"></svg>
+    </div>
+    <h3 class="empty-title">找不到符合的物品</h3>
+    <p class="empty-desc">請嘗試其他關鍵字，或 <button class="link-btn" (click)="clearAllFilters()">清除所有篩選</button></p>
+  </div>
+  } @else {
+  <div class="items-list">
+    @for (item of consumableItems(); track item.id) {
+    <div class="clean-card item-row-card consumable-row-card clickable" (click)="onEditItem($event, item.id)">
+      <!-- 1. 左側主體：物品名稱 + 來源 -->
+      <div class="row-left-main">
+        <div class="name-block">
+          <h4 class="item-title" [matTooltip]="item.itemName">{{ item.itemName }}</h4>
+          @if (item.source) {
+          <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
+            <span class="meta-item">
+              <svg lucideBookmark [size]="12" class="source-icon"></svg>
+              <span>來源：{{ item.source }}</span>
+            </span>
           </div>
+          }
+        </div>
+      </div>
+
+      <!-- 2. 獨立數量欄位（垂直齊頭對齊） -->
+      <div class="row-qty-col">
+        <span class="qty-badge" [matTooltip]="'庫存數量：' + (item.quantity || 1)">
+          <span class="qty-x">×</span>{{ item.quantity || 1 }}
+        </span>
+      </div>
+
+      <!-- 3. 中間：稀有度標籤 -->
+      <div class="row-center-tags">
+        @if (item.rarity) {
+        <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
+          {{ rarityLabels[item.rarity] }}
+        </span>
         }
       </div>
+
+      <!-- 4. 右側：取得時間 + 使用/編輯/刪除按鈕 -->
+      <div class="row-right-actions" (click)="$event.stopPropagation()">
+        @if (item.createdAt) {
+        <span class="date-text">
+          <svg lucideClock [size]="12" class="date-icon"></svg>
+          <span>{{ item.createdAt | date:'yyyy/MM/dd' }}</span>
+        </span>
+        }
+
+        <div class="crud-btns">
+          <button mat-icon-button class="action-btn" matTooltip="編輯物品" (click)="onEditItem($event, item.id)">
+            <svg lucidePencil [size]="16"></svg>
+          </button>
+          <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品" (click)="onDeleteItem($event, item)">
+            <svg lucideTrash2 [size]="16"></svg>
+          </button>
+        </div>
+      </div>
+    </div>
     }
+  </div>
+  }
   }
 </div>

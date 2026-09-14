@@ -14,6 +14,7 @@ import { InventoryService } from '../../../core/services/inventory.service';
 import {
   InventoryItem,
   ItemType,
+  ItemRarity,
   ITEM_RARITY_LABELS,
   RARITY_COLORS,
 } from '../../../core/models/inventory.model';
@@ -35,6 +36,9 @@ import {
   LucideTrash2,
   LucideSlidersHorizontal,
   LucideChevronDown,
+  LucideSearch,
+  LucideX,
+  LucideInfinity,
 } from '@lucide/angular';
 
 export type InventorySortField = 'createdAt' | 'rarity';
@@ -74,6 +78,9 @@ const RARITY_WEIGHT: Record<string, number> = {
     LucideTrash2,
     LucideSlidersHorizontal,
     LucideChevronDown,
+    LucideSearch,
+    LucideX,
+    LucideInfinity,
   ],
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.scss',
@@ -92,6 +99,31 @@ export class InventoryListComponent implements OnInit {
   protected isLoading = signal(true);
   protected activeTab = signal(0); // 0=PERMANENT, 1=CONSUMABLE
   protected characterId!: string;
+
+  // --- 搜尋 & 篩選狀態 ---
+  protected readonly searchQuery = signal('');
+  protected readonly selectedRarities = signal<Set<ItemRarity>>(new Set());
+  protected readonly filterAttunementOnly = signal(false);
+
+  /** 是否有任何篩選條件啟用 */
+  protected readonly hasActiveFilters = computed(() =>
+    this.searchQuery().trim().length > 0 ||
+    this.selectedRarities().size > 0 ||
+    this.filterAttunementOnly()
+  );
+
+  /** 所有可選稀有度選項（順序固定） */
+  protected readonly RARITY_OPTIONS: ItemRarity[] = [
+    'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'
+  ];
+  protected readonly RARITY_SHORT_LABELS: Record<ItemRarity, string> = {
+    COMMON: '普通',
+    UNCOMMON: '非普通',
+    RARE: '珍稀',
+    VERY_RARE: '極珍稀',
+    LEGENDARY: '傳說',
+    ARTIFACT: '神器',
+  };
 
   // 排序欄位與方向
   protected readonly sortField = signal<InventorySortField>(
@@ -123,18 +155,58 @@ export class InventoryListComponent implements OnInit {
     return order === 'desc' ? '目前：由新至舊（點擊切換為由舊至新）' : '目前：由舊至新（點擊切換為由新至舊）';
   });
 
+  /** 套用搜尋 + 篩選後的物品 */
+  private filterItems(items: InventoryItem[]): InventoryItem[] {
+    const q = this.searchQuery().trim().toLowerCase();
+    const rarities = this.selectedRarities();
+    const attuneOnly = this.filterAttunementOnly();
+    return items.filter(item => {
+      if (q && !(item.itemName.toLowerCase().includes(q) || (item.source ?? '').toLowerCase().includes(q))) return false;
+      if (rarities.size > 0 && item.rarity && !rarities.has(item.rarity)) return false;
+      if (attuneOnly && !item.requiresAttunement) return false;
+      return true;
+    });
+  }
+
   protected permanentItems = computed(() => {
     const list = this.allItems().filter((i) => i.itemType === 'PERMANENT');
-    return this.sortItems(list, this.sortField(), this.sortOrder());
+    return this.sortItems(this.filterItems(list), this.sortField(), this.sortOrder());
   });
 
   protected consumableItems = computed(() => {
     const list = this.allItems().filter((i) => i.itemType === 'CONSUMABLE');
-    return this.sortItems(list, this.sortField(), this.sortOrder());
+    return this.sortItems(this.filterItems(list), this.sortField(), this.sortOrder());
   });
+
+  /** 原始（未篩選）數量，用於顯示 total count */
+  protected readonly rawPermanentCount = computed(() => this.allItems().filter(i => i.itemType === 'PERMANENT').length);
+  protected readonly rawConsumableCount = computed(() => this.allItems().filter(i => i.itemType === 'CONSUMABLE').length);
+
 
   readonly rarityLabels = ITEM_RARITY_LABELS;
   readonly rarityColors = RARITY_COLORS;
+
+  protected isRaritySelected(rarity: ItemRarity): boolean {
+    return this.selectedRarities().has(rarity);
+  }
+
+  protected toggleRarityFilter(rarity: ItemRarity): void {
+    this.selectedRarities.update(set => {
+      const next = new Set(set);
+      next.has(rarity) ? next.delete(rarity) : next.add(rarity);
+      return next;
+    });
+  }
+
+  protected toggleAttunementFilter(): void {
+    this.filterAttunementOnly.update(v => !v);
+  }
+
+  protected clearAllFilters(): void {
+    this.searchQuery.set('');
+    this.selectedRarities.set(new Set());
+    this.filterAttunementOnly.set(false);
+  }
 
   ngOnInit(): void {
     this.characterId =
