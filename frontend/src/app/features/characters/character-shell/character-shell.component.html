@@ -25,7 +25,7 @@
             <div class="name-line">
               <h1 class="char-name" [matTooltip]="character()!.characterName">{{ character()!.characterName }}</h1>
               <button mat-icon-button (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色">
-                <mat-icon>edit</mat-icon>
+                <svg lucidePenLine [size]="20"></svg>
               </button>
             </div>
             <p class="char-meta">
@@ -46,7 +46,7 @@
 
         <div class="hero-actions">
           <button mat-stroked-button (click)="onEdit()" class="btn-edit-hero">
-            <mat-icon>edit</mat-icon>
+            <svg lucidePenLine [size]="20"></svg>
             <span>編輯角色</span>
           </button>
         </div>
@@ -103,13 +103,13 @@
       class="character-tabs">
       <mat-tab>
         <ng-template mat-tab-label>
-          <mat-icon class="tab-icon">menu_book</mat-icon>
+          <svg lucideBookOpen [size]="20" class="tab-icon"></svg>
           <span>冒險紀錄表</span>
         </ng-template>
       </mat-tab>
       <mat-tab>
         <ng-template mat-tab-label>
-          <mat-icon class="tab-icon">inventory_2</mat-icon>
+          <svg lucideBox [size]="20" class="tab-icon"></svg>
           <span>倉庫</span>
         </ng-template>
       </mat-tab>

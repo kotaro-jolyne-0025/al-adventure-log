@@ -4,14 +4,15 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
+import { LucideAlertCircle } from '@lucide/angular';
 
 @Component({
   selector: 'app-oauth-callback',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatProgressSpinnerModule, MatCardModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, RouterLink, MatProgressSpinnerModule, MatCardModule, MatButtonModule, , LucideAlertCircle],
   template: `
     <div class="callback-container">
       <mat-card class="callback-card">
@@ -22,7 +23,7 @@ import { AuthService } from '../../../core/services/auth.service';
         </div>
 
         <div *ngIf="errorMessage()" class="error-state">
-          <mat-icon color="warn" class="error-icon">error</mat-icon>
+          <svg lucideAlertCircle [size]="20" color="warn" class="error-icon"></svg>
           <h3>第三方登入失敗</h3>
           <p>{{ errorMessage() }}</p>
           <button mat-raised-button color="primary" routerLink="/login">返回登入頁</button>

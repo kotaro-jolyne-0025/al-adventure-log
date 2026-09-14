@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatIconModule } from '@angular/material/icon';
+
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -24,14 +24,13 @@ import { LucideCoins, LucideTent, LucideSparkles } from '@lucide/angular';
     CommonModule,
     RouterOutlet,
     MatTabsModule,
-    MatIconModule,
     MatButtonModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
     LucideCoins,
     LucideTent,
     LucideSparkles,
-  ],
+  , LucidePenLine, LucideBookOpen, LucideBox],
   templateUrl: './character-shell.component.html',
   styleUrl: './character-shell.component.scss',
 })

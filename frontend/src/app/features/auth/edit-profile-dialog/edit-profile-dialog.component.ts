@@ -5,11 +5,12 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
 import { User } from '../../../core/models/auth.model';
+import { LucidePenLine, LucideIdCard } from '@lucide/angular';
 
 @Component({
   selector: 'app-edit-profile-dialog',
@@ -21,12 +22,11 @@ import { User } from '../../../core/models/auth.model';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule,
-  ],
+  , LucidePenLine, LucideIdCard],
   template: `
     <h2 mat-dialog-title class="dialog-title">
-      <mat-icon color="primary">edit</mat-icon>
+      <svg lucidePenLine [size]="20" color="primary"></svg>
       修改玩家顯示名稱
     </h2>
 
@@ -35,7 +35,7 @@ import { User } from '../../../core/models/auth.model';
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>玩家顯示名稱</mat-label>
           <input matInput formControlName="displayName" placeholder="請輸入新的暱稱" autocomplete="off" />
-          <mat-icon matPrefix>badge</mat-icon>
+          <svg lucideIdCard [size]="20" matPrefix></svg>
           <mat-error *ngIf="form.get('displayName')?.hasError('required')">顯示名稱不能為空</mat-error>
           <mat-error *ngIf="form.get('displayName')?.hasError('maxlength')">名稱不能超過 100 字</mat-error>
         </mat-form-field>
