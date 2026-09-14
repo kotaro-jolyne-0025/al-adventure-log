@@ -65,7 +65,6 @@ export class CharacterFormComponent implements OnInit {
 
   protected form: FormGroup = this.fb.group({
     characterName: ['', Validators.required],
-    playerName: [this.authService.currentUser()?.displayName || '', Validators.required],
     race: ['', Validators.required],
     subclass: [''],
     faction: [''],
@@ -115,11 +114,6 @@ export class CharacterFormComponent implements OnInit {
       this.isEditMode.set(true);
       this.characterId = id;
       this.loadCharacter(this.characterId);
-    } else {
-      const user = this.authService.currentUser();
-      if (user?.displayName && !this.form.get('playerName')?.value) {
-        this.form.patchValue({ playerName: user.displayName });
-      }
     }
   }
 
@@ -128,7 +122,6 @@ export class CharacterFormComponent implements OnInit {
       next: (character) => {
         this.form.patchValue({
           characterName: character.characterName,
-          playerName: character.playerName,
           race: character.race,
           subclass: character.subclass ?? '',
           faction: character.faction ?? '',
@@ -197,11 +190,9 @@ export class CharacterFormComponent implements OnInit {
       // 編輯模式下僅驗證基本欄位
       const basicValid =
         this.form.get('characterName')!.valid &&
-        this.form.get('playerName')!.valid &&
         this.form.get('race')!.valid;
       if (!basicValid) {
         this.form.get('characterName')!.markAsTouched();
-        this.form.get('playerName')!.markAsTouched();
         this.form.get('race')!.markAsTouched();
         return;
       }
@@ -216,7 +207,6 @@ export class CharacterFormComponent implements OnInit {
     const raw = this.form.getRawValue();
     const req: CharacterRequest = {
       characterName: raw.characterName.trim(),
-      playerName: raw.playerName.trim(),
       race: raw.race.trim(),
       subclass: raw.subclass?.trim() || null,
       faction: raw.faction?.trim() || null,

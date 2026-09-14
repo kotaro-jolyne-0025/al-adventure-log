@@ -60,14 +60,6 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>玩家名稱 *</mat-label>
-            <input matInput formControlName="playerName" />
-            @if (form.get('playerName')?.hasError('required') && form.get('playerName')?.touched) {
-            <mat-error>玩家名稱為必填</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
             <mat-label>種族 *</mat-label>
             <input matInput formControlName="race" />
             @if (form.get('race')?.hasError('required') && form.get('race')?.touched) {
