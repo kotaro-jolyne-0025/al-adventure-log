@@ -9,7 +9,7 @@
     <div class="detail-header">
       <div class="header-left">
         <button mat-icon-button class="btn-back" (click)="onBack()" matTooltip="返回冒險紀錄表">
-          <mat-icon>arrow_back</mat-icon>
+          <svg lucideArrowLeft [size]="18"></svg>
         </button>
         <div>
           <div class="adv-code-row">
@@ -17,7 +17,7 @@
               <span class="adv-code-tag">{{ entry()!.adventureCode }}</span>
             }
             <span class="adv-date-tag">
-              <mat-icon class="date-icon">event</mat-icon>
+              <svg lucideCalendar [size]="14" class="date-icon"></svg>
               {{ entry()!.playDate ? (entry()!.playDate! | date:'yyyy/MM/dd') : '未指定日期' }}
             </span>
           </div>
@@ -29,11 +29,11 @@
 
       <div class="header-actions">
         <button mat-flat-button color="primary" class="btn-edit" (click)="onEdit()">
-          <mat-icon>edit</mat-icon>
+          <svg lucidePencil [size]="16"></svg>
           <span>編輯</span>
         </button>
         <button mat-icon-button color="warn" matTooltip="刪除此紀錄" (click)="onDelete()">
-          <mat-icon>delete</mat-icon>
+          <svg lucideTrash2 [size]="18"></svg>
         </button>
       </div>
     </div>
@@ -41,7 +41,7 @@
     <!-- 📋 冒險資訊與等級 -->
     <div class="detail-section-card clean-card">
       <div class="section-card-header">
-        <mat-icon class="section-icon">info</mat-icon>
+        <svg lucideInfo [size]="18" class="section-icon"></svg>
         <h2 class="section-title">冒險資訊</h2>
       </div>
 
@@ -71,7 +71,7 @@
               <span class="level-box-label">起始狀態</span>
               <span class="level-box-value">{{ formatClassesDisplay(entry()!.startingClassesString, entry()!.startingLevel) }}</span>
             </div>
-            <mat-icon class="level-arrow">arrow_forward</mat-icon>
+            <svg lucideArrowRight [size]="16" class="level-arrow"></svg>
             <div class="level-box highlight">
               <span class="level-box-label">結算狀態</span>
               <span class="level-box-value">{{ formatClassesDisplay(entry()!.endingClassesString, entry()!.endingLevel) }}</span>
@@ -84,7 +84,7 @@
     <!-- 💰 資源變動 -->
     <div class="detail-section-card clean-card">
       <div class="section-card-header">
-        <mat-icon class="section-icon" style="color: var(--color-gold);">account_balance_wallet</mat-icon>
+        <svg lucideCoins [size]="18" class="section-icon" style="color: var(--color-gold);"></svg>
         <h2 class="section-title">資源變動</h2>
       </div>
 
@@ -191,7 +191,7 @@
     @if (magicItems().length > 0 || (entry()!.magicItemsChange ?? 0) > 0) {
       <div class="detail-section-card clean-card">
         <div class="section-card-header">
-          <mat-icon class="section-icon" style="color: var(--color-primary);">auto_awesome</mat-icon>
+          <svg lucideSparkles [size]="18" class="section-icon" style="color: var(--color-primary);"></svg>
           <h2 class="section-title">獲得魔法物品</h2>
         </div>
 
@@ -232,7 +232,7 @@
     @if (consumableItems().length > 0) {
       <div class="detail-section-card clean-card">
         <div class="section-card-header">
-          <mat-icon class="section-icon" style="color: var(--color-positive);">science</mat-icon>
+          <svg lucideFlaskConical [size]="18" class="section-icon" style="color: var(--color-positive);"></svg>
           <h2 class="section-title">獲得消耗品</h2>
         </div>
 
@@ -260,10 +260,37 @@
       </div>
     }
 
+    <!-- ⭐ 故事獎勵 (Story Awards) -->
+    @if (storyAwards().length > 0) {
+      <div class="detail-section-card clean-card">
+        <div class="section-card-header">
+          <svg lucideStar [size]="18" class="section-icon" style="color: var(--color-gold);"></svg>
+          <h2 class="section-title">故事獎勵 (Story Awards)</h2>
+        </div>
+
+        <div class="items-list-grid">
+          @for (award of storyAwards(); track award.id) {
+            <div class="item-entry-card story-award-card">
+              <div class="item-top-line">
+                <span class="item-name-bold">
+                  <svg lucideStar [size]="16" class="inline-item-icon story-award-icon"></svg>
+                  {{ award.awardName }}
+                </span>
+                <span class="story-award-pill">故事獎勵</span>
+              </div>
+              @if (award.description) {
+                <p class="item-desc story-award-desc">{{ award.description }}</p>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
     <!-- 📝 備註與休整期活動 -->
     <div class="detail-section-card clean-card">
       <div class="section-card-header">
-        <mat-icon class="section-icon">notes</mat-icon>
+        <svg lucideFileText [size]="18" class="section-icon"></svg>
         <h2 class="section-title">備註與休整期活動</h2>
       </div>
 
@@ -288,7 +315,7 @@
             <div class="downtime-items-list">
               @for (dt of entry()!.downtimeActivities; track dt.id) {
                 <div class="downtime-row">
-                  <mat-icon class="downtime-dot-icon">fiber_manual_record</mat-icon>
+                  <svg lucideCircle [size]="6" class="downtime-dot-icon" fill="currentColor"></svg>
                   <span class="downtime-desc">{{ dt.description }}</span>
                 </div>
               }

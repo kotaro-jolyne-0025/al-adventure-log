@@ -40,6 +40,22 @@ export interface AdventureGainedItemRequest {
   notes?: string | null;
 }
 
+// ── StoryAward (故事獎勵) ───────────────────────────────────────────────────
+
+export interface StoryAward {
+  id: string;           // UUID
+  adventureEntryId: string;
+  awardName: string;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StoryAwardRequest {
+  awardName: string;
+  description?: string | null;
+}
+
 // ── AdventureEntry ───────────────────────────────────────────────────────────
 
 export interface AdventureEntry {
@@ -68,6 +84,7 @@ export interface AdventureEntry {
   adventureNotes?: string;
   soulCoinChargesUsed?: string;
   downtimeActivities: DowntimeActivity[];
+  storyAwards?: StoryAward[];
   createdAt?: string;
   updatedAt?: string;
 }

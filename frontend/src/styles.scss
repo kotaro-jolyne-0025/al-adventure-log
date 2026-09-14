@@ -402,4 +402,22 @@ body {
   }
 }
 
+/* ==========================================================================
+   Lucide SVG & Material Component Global Overrides
+   ========================================================================== */
 
+// 1. 修正純文字段落中 SVG 圖示的視覺偏移 (因應中文字 baseline)
+svg[lucide] {
+  display: inline-block;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
+
+// 2. 修正所有 Material 按鈕內部對齊與中文字行高 (一高一低問題)
+.mat-mdc-button-base .mdc-button__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1 !important;
+}

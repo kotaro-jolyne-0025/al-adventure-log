@@ -2,7 +2,6 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -25,6 +24,7 @@ import {
   LucideChevronRight,
   LucideSearch,
   LucideX,
+  LucideStar,
 } from '@lucide/angular';
 
 export type AdventureSortField = 'playDate' | 'createdAt';
@@ -36,7 +36,6 @@ export type AdventureSortField = 'playDate' | 'createdAt';
     CommonModule,
     DatePipe,
     MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
     LucideCoins,
@@ -54,6 +53,7 @@ export type AdventureSortField = 'playDate' | 'createdAt';
     LucideChevronRight,
     LucideSearch,
     LucideX,
+    LucideStar,
   ],
   templateUrl: './adventure-list.component.html',
   styleUrl: './adventure-list.component.scss',
@@ -118,7 +118,8 @@ export class AdventureListComponent implements OnInit {
     return this.sortedEntries().filter(e =>
       (e.adventureName ?? '').toLowerCase().includes(q) ||
       (e.adventureCode ?? '').toLowerCase().includes(q) ||
-      (e.dmName ?? '').toLowerCase().includes(q)
+      (e.dmName ?? '').toLowerCase().includes(q) ||
+      (e.storyAwards?.some(a => (a.awardName ?? '').toLowerCase().includes(q)))
     );
   });
 
