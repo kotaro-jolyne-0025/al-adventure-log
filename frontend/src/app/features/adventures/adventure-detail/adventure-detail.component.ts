@@ -18,7 +18,7 @@ import {
   ConfirmDialogData,
 } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
-import { LucideCoins, LucideTent, LucideSparkles, LucideFlaskConical } from '@lucide/angular';
+import { LucideCoins, LucideTent, LucideSparkles, LucideFlaskConical, LucideInfinity } from '@lucide/angular';
 
 @Component({
   selector: 'app-adventure-detail',
@@ -36,6 +36,7 @@ import { LucideCoins, LucideTent, LucideSparkles, LucideFlaskConical } from '@lu
     LucideTent,
     LucideSparkles,
     LucideFlaskConical,
+    LucideInfinity,
   ],
   templateUrl: './adventure-detail.component.html',
   styleUrl: './adventure-detail.component.scss',

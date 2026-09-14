@@ -29,6 +29,9 @@ body.theme-light {
   --color-primary-hover: #4338ca;
   --color-gold: #d97706;
   --color-gold-bg: #fef3c7;
+  --color-attunement: #d97706;
+  --color-attunement-bg: #fef3c7;
+  --color-attunement-border: rgba(217, 119, 6, 0.25);
   --color-positive: #059669;
   --color-positive-bg: #d1fae5;
   --color-negative: #e11d48;
@@ -93,6 +96,9 @@ body.theme-dark {
   --color-primary-hover: #9333ea;
   --color-gold: #fbbf24;
   --color-gold-bg: rgba(251, 191, 36, 0.15);
+  --color-attunement: #fbbf24;
+  --color-attunement-bg: rgba(251, 191, 36, 0.15);
+  --color-attunement-border: rgba(251, 191, 36, 0.3);
   --color-positive: #34d399;
   --color-positive-bg: rgba(52, 211, 153, 0.15);
   --color-negative: #fb7185;
@@ -271,14 +277,20 @@ body {
 .attunement-pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  gap: 3px;
+  padding: 2px 7px;
   border-radius: var(--radius-full);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.2px;
-  color: #b45309;
-  background-color: #fef3c7;
-  border: 1px solid rgba(180, 83, 9, 0.25);
+  color: var(--color-attunement, #d97706);
+  background-color: var(--color-attunement-bg, #fef3c7);
+  border: 1px solid var(--color-attunement-border, rgba(217, 119, 6, 0.25));
+
+  svg {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
 }
 
 // 狀態徽章 (Badge)
