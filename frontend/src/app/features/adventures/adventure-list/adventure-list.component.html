@@ -6,7 +6,11 @@
         <svg lucideBookOpen [size]="22" class="title-icon"></svg>
         冒險紀錄表
       </h2>
-      <span class="count-pill">{{ entries().length }} 筆紀錄</span>
+      <span class="count-pill">
+        {{ entries().length }}
+        @if (isSearching()) { <span class="count-filtered">/ {{ rawEntries().length }}</span> }
+        筆紀錄
+      </span>
     </div>
     <div class="header-actions">
       <!-- 🌟 一體化膠囊排序工具列 -->
@@ -16,10 +20,7 @@
           <svg lucideSlidersHorizontal [size]="16" class="capsule-icon"></svg>
           <span class="capsule-text">{{ sortFieldLabel() }}</span>
           <svg lucideChevronDown [size]="15" class="capsule-arrow"></svg>
-          <select
-            class="invisible-native-select"
-            [value]="sortField()"
-            (change)="onSortFieldChange($event)"
+          <select class="invisible-native-select" [value]="sortField()" (change)="onSortFieldChange($event)"
             aria-label="選擇排序依據">
             <option value="playDate">遊玩日期</option>
             <option value="createdAt">建立時間</option>
@@ -30,15 +31,12 @@
         <div class="capsule-divider"></div>
 
         <!-- 方向反轉（右側） -->
-        <button
-          type="button"
-          class="capsule-section button-section"
-          (click)="toggleSortOrder()"
+        <button type="button" class="capsule-section button-section" (click)="toggleSortOrder()"
           [matTooltip]="directionTooltip()">
           @if (sortOrder() === 'desc') {
-            <svg lucideArrowDown [size]="16" class="capsule-icon dir-icon"></svg>
+          <svg lucideArrowDown [size]="16" class="capsule-icon dir-icon"></svg>
           } @else {
-            <svg lucideArrowUp [size]="16" class="capsule-icon dir-icon icon-asc"></svg>
+          <svg lucideArrowUp [size]="16" class="capsule-icon dir-icon icon-asc"></svg>
           }
           <span class="capsule-text">{{ directionLabel() }}</span>
         </button>
@@ -51,114 +49,140 @@
     </div>
   </div>
 
-  <!-- Loading Skeletons -->
-  @if (isLoading()) {
-    <div class="timeline-container">
-      @for (item of [1, 2, 3]; track $index) {
-        <div class="chronicle-card clean-card">
-          <div class="skeleton-box" style="width: 40%; height: 16px; margin-bottom: 12px;"></div>
-          <div class="skeleton-box" style="width: 70%; height: 24px; margin-bottom: 12px;"></div>
-          <div class="skeleton-box" style="width: 100%; height: 32px;"></div>
-        </div>
+  <!-- 🔍 搜尋列 -->
+  <div class="search-bar-wrap">
+    <div class="search-bar" [class.search-bar--active]="isSearching()">
+      <svg lucideSearch [size]="17" class="search-icon"></svg>
+      <input class="search-input" type="text" placeholder="搜尋冒險名稱、代碼、DM" [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)" aria-label="搜尋冒險紀錄" />
+      @if (isSearching()) {
+      <button type="button" class="search-clear-btn" (click)="clearSearch()" aria-label="清除搜尋">
+        <svg lucideX [size]="15"></svg>
+      </button>
       }
     </div>
+  </div>
+
+  <!-- Loading Skeletons -->
+  @if (isLoading()) {
+  <div class="timeline-container">
+    @for (item of [1, 2, 3]; track $index) {
+    <div class="chronicle-card clean-card">
+      <div class="skeleton-box" style="width: 40%; height: 16px; margin-bottom: 12px;"></div>
+      <div class="skeleton-box" style="width: 70%; height: 24px; margin-bottom: 12px;"></div>
+      <div class="skeleton-box" style="width: 100%; height: 32px;"></div>
+    </div>
+    }
+  </div>
   }
 
-  <!-- Empty State -->
-  @if (!isLoading() && entries().length === 0) {
-    <div class="empty-state clean-card">
-      <div class="empty-icon-wrap">
-        <svg lucideBookOpen [size]="48" class="empty-icon"></svg>
-      </div>
-      <h3 class="empty-title">尚無冒險紀錄</h3>
-      <p class="empty-desc">點擊下方按鈕開始建立第一筆冒險紀錄！</p>
-      <button mat-flat-button color="primary" (click)="onAddEntry()" class="empty-btn">
-        <svg lucidePlus [size]="18" class="btn-icon"></svg>
-        <span>新增冒險紀錄</span>
-      </button>
+  <!-- Empty State：無任何冒險紀錄 -->
+  @if (!isLoading() && rawEntries().length === 0) {
+  <div class="empty-state clean-card">
+    <div class="empty-icon-wrap">
+      <svg lucideBookOpen [size]="48" class="empty-icon"></svg>
     </div>
+    <h3 class="empty-title">尚無冒險紀錄</h3>
+    <p class="empty-desc">點擊下方按鈕開始建立第一筆冒險紀錄！</p>
+    <button mat-flat-button color="primary" (click)="onAddEntry()" class="empty-btn">
+      <svg lucidePlus [size]="18" class="btn-icon"></svg>
+      <span>新增冒險紀錄</span>
+    </button>
+  </div>
+  }
+
+  <!-- Empty State：搜尋無結果 -->
+  @if (!isLoading() && rawEntries().length > 0 && entries().length === 0) {
+  <div class="empty-state clean-card">
+    <div class="empty-icon-wrap">
+      <svg lucideSearch [size]="40" class="empty-icon"></svg>
+    </div>
+    <h3 class="empty-title">找不到符合的紀錄</h3>
+    <p class="empty-desc">請嘗試其他關鍵字，或 <button class="link-btn" (click)="clearSearch()">清除搜尋</button></p>
+  </div>
   }
 
   <!-- Adventure Chronicle Cards Timeline -->
   @if (!isLoading() && entries().length > 0) {
-    <div class="timeline-container">
-      @for (row of entries(); track row.id) {
-        <div class="chronicle-card clean-card clickable" (click)="onViewEntry(row.id)">
-          
-          <!-- Card Top Bar -->
-          <div class="card-meta-bar">
-            <div class="meta-left">
-              @if (row.adventureCode) {
-                <span class="adv-code">{{ row.adventureCode }}</span>
-              }
-              <span class="adv-date">
-                <svg lucideCalendar [size]="13" class="meta-icon"></svg>
-                {{ row.playDate ? (row.playDate | date:'yyyy/MM/dd') : '未指定日期' }}
-              </span>
-              @if (sortField() === 'createdAt' && row.createdAt) {
-                <span class="adv-created-tag" matTooltip="資料庫建立時間">
-                  <svg lucideClock [size]="13" class="meta-icon"></svg>
-                  建立：{{ row.createdAt | date:'yyyy/MM/dd' }}
-                </span>
-              }
-              @if (row.dmName) {
-                <span class="adv-dm">
-                  <svg lucideUser [size]="13" class="meta-icon"></svg>
-                  DM: {{ row.dmName }}
-                </span>
-              }
-            </div>
-            <div class="meta-right">
-              <svg lucideChevronRight [size]="18" class="chevron-icon"></svg>
-            </div>
-          </div>
+  <div class="timeline-container">
+    @for (row of entries(); track row.id) {
+    <div class="chronicle-card clean-card clickable" (click)="onViewEntry(row.id)">
 
-          <!-- Adventure Title -->
-          <h3 class="adv-title">
-            {{ row.adventureName || row.adventureCode || '冒險紀錄' }}
-          </h3>
-
-          <!-- Deltas / Resource Badges -->
-          <div class="badges-row">
-            <!-- Level badge (純文字無 icon，清晰俐落) -->
-            <span class="delta-badge badge-level" [class.badge-level-up]="row.endingLevel && row.startingLevel && row.endingLevel > row.startingLevel">
-              {{ getLevelProgress(row) }}
-            </span>
-
-            <!-- Gold change (琥珀金) -->
-            @if (formatGoldChange(row); as gold) {
-              <span class="delta-badge badge-gold">
-                <svg lucideCoins [size]="13" class="badge-icon"></svg>
-                {{ gold }}
-              </span>
-            }
-
-            <!-- Downtime change (翡翠綠) -->
-            @if (formatDowntimeChange(row); as dt) {
-              <span class="delta-badge badge-downtime">
-                <svg lucideTent [size]="13" class="badge-icon"></svg>
-                {{ dt }}
-              </span>
-            }
-
-            <!-- Magic item change (奧術紫) -->
-            @if (formatMagicItemChange(row); as mi) {
-              <span class="delta-badge badge-magic">
-                <svg lucideSparkles [size]="13" class="badge-icon"></svg>
-                {{ mi }}
-              </span>
-            }
-          </div>
-
-          <!-- Notes Preview -->
-          @if (row.adventureNotes) {
-            <p class="notes-preview">
-              {{ row.adventureNotes }}
-            </p>
+      <!-- Card Top Bar -->
+      <div class="card-meta-bar">
+        <div class="meta-left">
+          @if (row.adventureCode) {
+          <span class="adv-code">{{ row.adventureCode }}</span>
           }
-
+          <span class="adv-date">
+            <svg lucideCalendar [size]="13" class="meta-icon"></svg>
+            {{ row.playDate ? (row.playDate | date:'yyyy/MM/dd') : '未指定日期' }}
+          </span>
+          @if (sortField() === 'createdAt' && row.createdAt) {
+          <span class="adv-created-tag" matTooltip="資料庫建立時間">
+            <svg lucideClock [size]="13" class="meta-icon"></svg>
+            建立：{{ row.createdAt | date:'yyyy/MM/dd' }}
+          </span>
+          }
+          @if (row.dmName) {
+          <span class="adv-dm">
+            <svg lucideUser [size]="13" class="meta-icon"></svg>
+            DM: {{ row.dmName }}
+          </span>
+          }
         </div>
+        <div class="meta-right">
+          <svg lucideChevronRight [size]="18" class="chevron-icon"></svg>
+        </div>
+      </div>
+
+      <!-- Adventure Title -->
+      <h3 class="adv-title">
+        {{ row.adventureName || row.adventureCode || '冒險紀錄' }}
+      </h3>
+
+      <!-- Deltas / Resource Badges -->
+      <div class="badges-row">
+        <!-- Level badge (純文字無 icon，清晰俐落) -->
+        <span class="delta-badge badge-level"
+          [class.badge-level-up]="row.endingLevel && row.startingLevel && row.endingLevel > row.startingLevel">
+          {{ getLevelProgress(row) }}
+        </span>
+
+        <!-- Gold change (琥珀金) -->
+        @if (formatGoldChange(row); as gold) {
+        <span class="delta-badge badge-gold">
+          <svg lucideCoins [size]="13" class="badge-icon"></svg>
+          {{ gold }}
+        </span>
+        }
+
+        <!-- Downtime change (翡翠綠) -->
+        @if (formatDowntimeChange(row); as dt) {
+        <span class="delta-badge badge-downtime">
+          <svg lucideTent [size]="13" class="badge-icon"></svg>
+          {{ dt }}
+        </span>
+        }
+
+        <!-- Magic item change (奧術紫) -->
+        @if (formatMagicItemChange(row); as mi) {
+        <span class="delta-badge badge-magic">
+          <svg lucideSparkles [size]="13" class="badge-icon"></svg>
+          {{ mi }}
+        </span>
+        }
+      </div>
+
+      <!-- Notes Preview -->
+      @if (row.adventureNotes) {
+      <p class="notes-preview">
+        {{ row.adventureNotes }}
+      </p>
       }
+
     </div>
+    }
+  </div>
   }
 </div>
