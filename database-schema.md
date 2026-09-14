@@ -385,6 +385,12 @@ ALTER TABLE "character"
 
 ---
 
+## Migration 11（倉庫道具資料表新增是否需同調欄位 requires_attunement）：
+```sql
+ALTER TABLE inventory_item 
+    ADD COLUMN IF NOT EXISTS requires_attunement BOOLEAN DEFAULT FALSE;
+```
+
 ---
 
 ## Migration 12（密碼重設 Token 表 password_reset_tokens）：
@@ -404,6 +410,18 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_user_id ON password_reset_tokens(u
 
 ---
 
+## Migration 13（角色玩家名稱解耦與冒險獲得物品同調支援）：
+```sql
+-- 1. 角色資料表 player_name 欄位改為可為 NULL（完全依賴 user_id 關聯 users.display_name）
+ALTER TABLE "character" ALTER COLUMN player_name DROP NOT NULL;
+
+-- 2. 冒險獲得物品快照表 adventure_gained_item 新增 requires_attunement 欄位
+ALTER TABLE adventure_gained_item 
+    ADD COLUMN IF NOT EXISTS requires_attunement BOOLEAN DEFAULT FALSE;
+```
+
+---
+
 ## 資料表關聯圖
 
 ```
@@ -418,4 +436,5 @@ users
     │   └── inventory_item     (1:N，CASCADE DELETE，手動道具為 NULL)
     └── inventory_item         (1:N，CASCADE DELETE)
 ```
+
 
