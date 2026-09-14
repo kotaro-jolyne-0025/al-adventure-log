@@ -262,6 +262,14 @@
                 </mat-form-field>
               </div>
 
+              <div class="checkbox-row attunement-toggle-row">
+                <mat-checkbox [checked]="item.requiresAttunement"
+                              (change)="updateGainedItemAttunement(i, $event.checked)"
+                              color="primary">
+                  需同調 (Requires Attunement)
+                </mat-checkbox>
+              </div>
+
               <mat-form-field appearance="outline" class="full-width" style="margin-top: 4px;">
                 <mat-label>備註</mat-label>
                 <textarea matInput cdkTextareaAutosize [cdkAutosizeMinRows]="2" [cdkAutosizeMaxRows]="10"

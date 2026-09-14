@@ -24,6 +24,7 @@ export interface AdventureGainedItem {
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
+  requiresAttunement?: boolean;
   quantity?: number;
   notes?: string | null;
   createdAt?: string;
@@ -34,6 +35,7 @@ export interface AdventureGainedItemRequest {
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
+  requiresAttunement?: boolean;
   quantity?: number;
   notes?: string | null;
 }
