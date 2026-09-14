@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
@@ -12,52 +12,66 @@ import { LucideAlertCircle } from '@lucide/angular';
 @Component({
   selector: 'app-oauth-callback',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatProgressSpinnerModule, MatCardModule, MatButtonModule, , LucideAlertCircle],
+  imports: [
+    RouterLink,
+    MatProgressSpinnerModule,
+    MatCardModule,
+    MatButtonModule,
+    ,
+    LucideAlertCircle,
+  ],
   template: `
     <div class="callback-container">
       <mat-card class="callback-card">
-        <div *ngIf="isLoading()" class="loading-state">
-          <mat-spinner diameter="48"></mat-spinner>
-          <h3>正在進行第三方帳號登入...</h3>
-          <p>請稍候，系統正在為您同步資料</p>
-        </div>
+        @if (isLoading()) {
+          <div class="loading-state">
+            <mat-spinner diameter="48"></mat-spinner>
+            <h3>正在進行第三方帳號登入...</h3>
+            <p>請稍候，系統正在為您同步資料</p>
+          </div>
+        }
 
-        <div *ngIf="errorMessage()" class="error-state">
-          <svg lucideAlertCircle [size]="20" color="warn" class="error-icon"></svg>
-          <h3>第三方登入失敗</h3>
-          <p>{{ errorMessage() }}</p>
-          <button mat-raised-button color="primary" routerLink="/login">返回登入頁</button>
-        </div>
+        @if (errorMessage()) {
+          <div class="error-state">
+            <svg lucideAlertCircle [size]="20" color="warn" class="error-icon"></svg>
+            <h3>第三方登入失敗</h3>
+            <p>{{ errorMessage() }}</p>
+            <button mat-raised-button color="primary" routerLink="/login">返回登入頁</button>
+          </div>
+        }
       </mat-card>
     </div>
   `,
-  styles: [`
-    .callback-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: calc(100vh - 120px);
-      padding: 1.5rem;
-    }
-    .callback-card {
-      width: 100%;
-      max-width: 420px;
-      padding: 2.5rem 1.5rem;
-      border-radius: 16px;
-      text-align: center;
-    }
-    .loading-state, .error-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-    .error-icon {
-      font-size: 3rem;
-      width: 3rem;
-      height: 3rem;
-    }
-  `],
+  styles: [
+    `
+      .callback-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 120px);
+        padding: 1.5rem;
+      }
+      .callback-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 2.5rem 1.5rem;
+        border-radius: 16px;
+        text-align: center;
+      }
+      .loading-state,
+      .error-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      .error-icon {
+        font-size: 3rem;
+        width: 3rem;
+        height: 3rem;
+      }
+    `,
+  ],
 })
 export class OAuthCallbackComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -70,7 +84,8 @@ export class OAuthCallbackComponent implements OnInit {
 
   ngOnInit(): void {
     const providerParam = (this.route.snapshot.paramMap.get('provider') || '').toUpperCase();
-    const provider = providerParam === 'GOOGLE' || providerParam === 'DISCORD' ? providerParam : null;
+    const provider =
+      providerParam === 'GOOGLE' || providerParam === 'DISCORD' ? providerParam : null;
 
     if (!provider) {
       this.handleError('不支援的第三方認證來源');
@@ -100,21 +115,25 @@ export class OAuthCallbackComponent implements OnInit {
 
     const redirectUri = window.location.origin + window.location.pathname;
 
-    this.authService.loginOAuth({
-      provider,
-      tokenOrCode,
-      redirectUri,
-    }).subscribe({
-      next: (res) => {
-        this.isLoading.set(false);
-        this.snackBar.open(`登入成功，歡迎 ${res.user.displayName}！`, '關閉', { duration: 3000 });
-        this.router.navigate(['/characters']);
-      },
-      error: (err) => {
-        const msg = err.error?.message || '第三方登入處理失敗';
-        this.handleError(msg);
-      },
-    });
+    this.authService
+      .loginOAuth({
+        provider,
+        tokenOrCode,
+        redirectUri,
+      })
+      .subscribe({
+        next: (res) => {
+          this.isLoading.set(false);
+          this.snackBar.open(`登入成功，歡迎 ${res.user.displayName}！`, '關閉', {
+            duration: 3000,
+          });
+          this.router.navigate(['/characters']);
+        },
+        error: (err) => {
+          const msg = err.error?.message || '第三方登入處理失敗';
+          this.handleError(msg);
+        },
+      });
   }
 
   private handleError(msg: string): void {

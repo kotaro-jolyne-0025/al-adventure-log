@@ -30,7 +30,7 @@ public class AdventureEntryController {
     }
 
     @GetMapping("/api/characters/{characterId}/entries/defaults")
-    public com.dndadvlog.backend.dto.EntryDefaultsResponse getDefaults(
+    public EntryDefaultsResponse getDefaults(
             @PathVariable UUID characterId,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("⚙️ [GET /api/characters/{}/entries/defaults] 取得新記錄預設起始值, userId={}", characterId, principal.getId());
