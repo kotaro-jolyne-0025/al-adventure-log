@@ -422,6 +422,29 @@ ALTER TABLE adventure_gained_item
 
 ---
 
+## Migration 14（故事獎勵表 adventure_story_award）：
+```sql
+-- 1. 建立 adventure_story_award 資料表
+CREATE TABLE IF NOT EXISTS adventure_story_award (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    adventure_entry_id UUID NOT NULL REFERENCES adventure_entry(id) ON DELETE CASCADE,
+    award_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adventure_story_award_entry 
+    ON adventure_story_award(adventure_entry_id, created_at ASC);
+
+-- 2. 觸發器：自動維護 updated_at
+CREATE TRIGGER update_adventure_story_award_updated_at
+    BEFORE UPDATE ON adventure_story_award
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+```
+
+---
+
 ## 資料表關聯圖
 
 ```
@@ -433,6 +456,7 @@ users
     │   ├── downtime_activity  (1:N，CASCADE DELETE)
     │   ├── adventure_gained_item (1:N，CASCADE DELETE)
     │   │   └── inventory_item (1:1/1:N 精準綁定，CASCADE DELETE)
+    │   ├── adventure_story_award (1:N，CASCADE DELETE)
     │   └── inventory_item     (1:N，CASCADE DELETE，手動道具為 NULL)
     └── inventory_item         (1:N，CASCADE DELETE)
 ```
