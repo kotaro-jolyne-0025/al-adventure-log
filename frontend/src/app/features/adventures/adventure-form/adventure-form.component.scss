@@ -53,13 +53,17 @@
     border-left: 4px solid var(--color-primary);
   }
 
+  &.phase-story-award {
+    border-left: 4px solid var(--color-gold);
+  }
+
   &.phase-downtime {
     border-left: 4px solid var(--color-positive);
   }
 
   &.phase-settlement {
-    border-left: 4px solid var(--color-gold);
-    background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(217, 119, 6, 0.03) 100%);
+    border-left: 4px solid var(--color-info);
+    background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(2, 132, 199, 0.03) 100%);
   }
 }
 
@@ -81,9 +85,10 @@
     &.downtime { color: var(--color-positive); }
     &.magic { color: var(--color-primary); }
     &.consumable { color: var(--color-positive); }
+    &.story-award { color: #d97706; }
     &.phase-icon-adventure { color: var(--color-primary); }
     &.phase-icon-downtime { color: var(--color-positive); }
-    &.phase-icon-settlement { color: var(--color-gold); }
+    &.phase-icon-settlement { color: var(--color-info); }
   }
 }
 
@@ -556,6 +561,7 @@
   background: rgba(148, 163, 184, 0.12);
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: var(--radius-full);
+  line-height: 1;
 }
 
 .new-tag {
@@ -569,6 +575,7 @@
   background: rgba(99, 102, 241, 0.12);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-full);
+  line-height: 1;
 }
 
 .attunement-toggle-row {

@@ -1,6 +1,6 @@
 <div class="page-container">
   <div class="page-header">
-    <button mat-icon-button (click)="onBack()" matTooltip="返回"><mat-icon>arrow_back</mat-icon></button>
+    <button mat-icon-button (click)="onBack()" matTooltip="返回"><svg lucideArrowLeft [size]="20"></svg></button>
     <h1 class="page-title">{{ isEditMode() ? '編輯冒險紀錄' : '新增冒險紀錄' }}</h1>
   </div>
 
@@ -81,7 +81,7 @@
           <div class="section-header">
             <span class="section-sub-title">結束職業與等級</span>
             <button type="button" mat-stroked-button (click)="addClass()">
-              <mat-icon>add</mat-icon> 新增職業（兼職）
+              <svg lucidePlus [size]="16"></svg> 新增職業（兼職）
             </button>
           </div>
 
@@ -89,10 +89,10 @@
           <div class="level-match-status" [class.status-match]="isLevelBalanced()"
             [class.status-mismatch]="!isLevelBalanced()">
             @if (isLevelBalanced()) {
-            <mat-icon class="status-icon">check_circle</mat-icon>
+            <svg lucideCheckCircle2 [size]="16" class="status-icon"></svg>
             <span>等級加總 ({{ classesTotalLevel() }}) 與結束等級 ({{ endingLevel() }}) 一致</span>
             } @else {
-            <mat-icon class="status-icon">error_outline</mat-icon>
+            <svg lucideAlertCircle [size]="16" class="status-icon"></svg>
             <span>等級加總 ({{ classesTotalLevel() }}) 與結束等級 ({{ endingLevel() }}) 不符，請調整職業等級</span>
             }
           </div>
@@ -117,7 +117,7 @@
 
               @if (classEntries().length > 1) {
               <button type="button" mat-icon-button color="warn" (click)="removeClass(i)" matTooltip="移除此職業">
-                <mat-icon>delete</mat-icon>
+                <svg lucideTrash2 [size]="16"></svg>
               </button>
               }
             </div>
@@ -220,7 +220,7 @@
               <span class="sub-title-text">獲得魔法物品</span>
             </div>
             <button type="button" mat-stroked-button color="primary" (click)="addGainedItem()">
-              <mat-icon>add</mat-icon> 新增魔法物品
+              <svg lucidePlus [size]="16"></svg> 新增魔法物品
             </button>
           </div>
 
@@ -231,13 +231,13 @@
                 <div class="item-header-title">
                   <span class="gained-item-index">#{{ i + 1 }} 魔法物品</span>
                   @if (isEditMode() && item.id) {
-                    <span class="snapshot-tag">已入庫</span>
+                  <span class="snapshot-tag">已入庫</span>
                   } @else if (isEditMode() && !item.id) {
-                    <span class="new-tag">新增</span>
+                  <span class="new-tag">新增</span>
                   }
                 </div>
                 <button type="button" mat-icon-button color="warn" (click)="removeGainedItem(i)" matTooltip="移除此物品">
-                  <mat-icon>delete</mat-icon>
+                  <svg lucideTrash2 [size]="16"></svg>
                 </button>
               </div>
 
@@ -250,8 +250,7 @@
 
                 <mat-form-field appearance="outline" class="flex-1">
                   <mat-label>稀有度</mat-label>
-                  <mat-select [value]="item.rarity"
-                    (selectionChange)="updateGainedItemRarity(i, $event.value)">
+                  <mat-select [value]="item.rarity" (selectionChange)="updateGainedItemRarity(i, $event.value)">
                     <mat-option value="">— 未設定 —</mat-option>
                     @for (r of rarities; track r) {
                     @if (r !== '') {
@@ -264,8 +263,7 @@
 
               <div class="checkbox-row attunement-toggle-row">
                 <mat-checkbox [checked]="item.requiresAttunement"
-                              (change)="updateGainedItemAttunement(i, $event.checked)"
-                              color="primary">
+                  (change)="updateGainedItemAttunement(i, $event.checked)" color="primary">
                   需同調 (Requires Attunement)
                 </mat-checkbox>
               </div>
@@ -273,8 +271,7 @@
               <mat-form-field appearance="outline" class="full-width" style="margin-top: 4px;">
                 <mat-label>備註</mat-label>
                 <textarea matInput cdkTextareaAutosize [cdkAutosizeMinRows]="2" [cdkAutosizeMaxRows]="10"
-                  [value]="item.notes"
-                  (input)="updateGainedItemNotes(i, $any($event.target).value)"></textarea>
+                  [value]="item.notes" (input)="updateGainedItemNotes(i, $any($event.target).value)"></textarea>
               </mat-form-field>
             </div>
             }
@@ -293,7 +290,7 @@
               <span class="sub-title-text">獲得消耗品</span>
             </div>
             <button type="button" mat-stroked-button color="primary" (click)="addGainedConsumableItem()">
-              <mat-icon>add</mat-icon> 新增消耗品
+              <svg lucidePlus [size]="16"></svg> 新增消耗品
             </button>
           </div>
 
@@ -304,14 +301,14 @@
                 <div class="item-header-title">
                   <span class="gained-item-index">#{{ i + 1 }} 消耗品</span>
                   @if (isEditMode() && item.id) {
-                    <span class="snapshot-tag">已入庫</span>
+                  <span class="snapshot-tag">已入庫</span>
                   } @else if (isEditMode() && !item.id) {
-                    <span class="new-tag">新增</span>
+                  <span class="new-tag">新增</span>
                   }
                 </div>
                 <button type="button" mat-icon-button color="warn" (click)="removeGainedConsumableItem(i)"
                   matTooltip="移除此物品">
-                  <mat-icon>delete</mat-icon>
+                  <svg lucideTrash2 [size]="16"></svg>
                 </button>
               </div>
 
@@ -361,7 +358,64 @@
     </mat-card>
 
     <!-- ═══════════════════════════════════════════════════════ -->
-    <!-- ⛺ 區塊二：休整期資源變動與活動（卡片清單模式）           -->
+    <!-- ⭐ 區塊二：故事獎勵 (Story Awards)                       -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <mat-card class="form-card phase-card phase-story-award">
+      <mat-card-header>
+        <div class="card-header-between full-width">
+          <mat-card-title class="card-title-flex">
+            <svg lucideStar [size]="20" class="title-icon story-award"></svg>
+            故事獎勵 (Story Awards)
+          </mat-card-title>
+          <button type="button" mat-stroked-button color="primary" (click)="addStoryAward()">
+            <svg lucidePlus [size]="16"></svg> 新增故事獎勵
+          </button>
+        </div>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="gained-items-list" style="margin-top: 8px;">
+          @for (award of storyAwards(); track $index; let i = $index) {
+          <div class="gained-item-card" [class.snapshot-card]="isEditMode() && award.id">
+            <div class="gained-item-header">
+              <div class="item-header-title">
+                <span class="gained-item-index">#{{ i + 1 }} 故事獎勵</span>
+                @if (isEditMode() && award.id) {
+                <span class="snapshot-tag">已記錄</span>
+                } @else if (isEditMode() && !award.id) {
+                <span class="new-tag">新增</span>
+                }
+              </div>
+              <button type="button" mat-icon-button color="warn" (click)="removeStoryAward(i)" matTooltip="移除此故事獎勵">
+                <svg lucideTrash2 [size]="16"></svg>
+              </button>
+            </div>
+
+            <div class="field-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>故事獎勵名稱 *</mat-label>
+                <input matInput [value]="award.awardName"
+                  (input)="updateStoryAwardName(i, $any($event.target).value)" />
+              </mat-form-field>
+            </div>
+
+            <mat-form-field appearance="outline" class="full-width" style="margin-top: 4px;">
+              <mat-label>敘述 / 效果說明</mat-label>
+              <textarea matInput cdkTextareaAutosize [cdkAutosizeMinRows]="2" [cdkAutosizeMaxRows]="10"
+                [value]="award.description"
+                (input)="updateStoryAwardDescription(i, $any($event.target).value)"></textarea>
+            </mat-form-field>
+          </div>
+          }
+
+          @if (storyAwards().length === 0) {
+          <p class="activity-empty">（尚無故事獎勵，可點擊右上角「新增故事獎勵」按鈕建立）</p>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- ⛺ 區塊三：休整期資源變動與活動（卡片清單模式）           -->
     <!-- ═══════════════════════════════════════════════════════ -->
     <mat-card class="form-card phase-card phase-downtime">
       <mat-card-header>
@@ -371,7 +425,7 @@
             休整期活動
           </mat-card-title>
           <button type="button" mat-stroked-button color="primary" (click)="addDowntimeActivity()">
-            <mat-icon>add</mat-icon> 新增休整期活動
+            <svg lucidePlus [size]="16"></svg> 新增休整期活動
           </button>
         </div>
       </mat-card-header>
@@ -383,13 +437,13 @@
               <div class="item-header-title">
                 <span class="gained-item-index">#{{ i + 1 }} 休整期活動</span>
                 @if (isEditMode() && act.id) {
-                  <span class="snapshot-tag">已有活動</span>
+                <span class="snapshot-tag">已有活動</span>
                 } @else if (isEditMode() && !act.id) {
-                  <span class="new-tag">新增</span>
+                <span class="new-tag">新增</span>
                 }
               </div>
               <button type="button" mat-icon-button color="warn" (click)="removeDowntimeActivity(i)" matTooltip="移除此活動">
-                <mat-icon>delete</mat-icon>
+                <svg lucideTrash2 [size]="16"></svg>
               </button>
             </div>
 
@@ -397,8 +451,7 @@
               <!-- 常用快捷預設 -->
               <mat-form-field appearance="outline" class="flex-1">
                 <mat-label>常用快捷預設</mat-label>
-                <mat-select [value]="act.presetLabel"
-                  (selectionChange)="onActivityPresetSelect(i, $event.value)">
+                <mat-select [value]="act.presetLabel" (selectionChange)="onActivityPresetSelect(i, $event.value)">
                   <mat-option value="">— 自訂活動 —</mat-option>
                   @for (preset of DOWNTIME_PRESETS; track preset.label) {
                   <mat-option [value]="preset.label">{{ preset.label }}</mat-option>
@@ -526,7 +579,7 @@
 
         @if (!isResourceValid()) {
         <div class="resource-warning-banner" style="margin-top: 16px;">
-          <mat-icon>error_outline</mat-icon>
+          <svg lucideAlertCircle [size]="16"></svg>
           <span>資源起始值與最終合計皆不得為負數，請確認各項輸入</span>
         </div>
         }
@@ -555,7 +608,7 @@
         @if (isSaving()) {
         <mat-spinner diameter="20"></mat-spinner>
         } @else {
-        <mat-icon>save</mat-icon>
+        <svg lucideSave [size]="18" class="btn-icon"></svg>
         }
         {{ isEditMode() ? '儲存變更' : '新增紀錄' }}
       </button>

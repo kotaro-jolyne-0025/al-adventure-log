@@ -3,14 +3,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
-import { AdventureEntry, AdventureGainedItem } from '../../../core/models/adventure.model';
+import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
 import { InventoryItem, ITEM_RARITY_LABELS, RARITY_COLORS } from '../../../core/models/inventory.model';
 import { catchError, forkJoin, of } from 'rxjs';
 import {
@@ -18,7 +17,22 @@ import {
   ConfirmDialogData,
 } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
-import { LucideCoins, LucideTent, LucideSparkles, LucideFlaskConical, LucideInfinity } from '@lucide/angular';
+import {
+  LucideCoins,
+  LucideTent,
+  LucideSparkles,
+  LucideFlaskConical,
+  LucideInfinity,
+  LucideStar,
+  LucideArrowLeft,
+  LucideCalendar,
+  LucidePencil,
+  LucideTrash2,
+  LucideInfo,
+  LucideArrowRight,
+  LucideFileText,
+  LucideCircle,
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-adventure-detail',
@@ -29,7 +43,6 @@ import { LucideCoins, LucideTent, LucideSparkles, LucideFlaskConical, LucideInfi
     DecimalPipe,
     MatCardModule,
     MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
     LucideCoins,
@@ -37,6 +50,15 @@ import { LucideCoins, LucideTent, LucideSparkles, LucideFlaskConical, LucideInfi
     LucideSparkles,
     LucideFlaskConical,
     LucideInfinity,
+    LucideStar,
+    LucideArrowLeft,
+    LucideCalendar,
+    LucidePencil,
+    LucideTrash2,
+    LucideInfo,
+    LucideArrowRight,
+    LucideFileText,
+    LucideCircle,
   ],
   templateUrl: './adventure-detail.component.html',
   styleUrl: './adventure-detail.component.scss',
@@ -52,6 +74,7 @@ export class AdventureDetailComponent implements OnInit {
   protected entry = signal<AdventureEntry | null>(null);
   protected magicItems = signal<(AdventureGainedItem | InventoryItem)[]>([]);
   protected consumableItems = signal<(AdventureGainedItem | InventoryItem)[]>([]);
+  protected storyAwards = signal<StoryAward[]>([]);
   protected isLoading = signal(true);
 
   readonly rarityLabels: Record<string, string> = ITEM_RARITY_LABELS;
@@ -73,9 +96,10 @@ export class AdventureDetailComponent implements OnInit {
     forkJoin({
       entry: this.adventureService.getById(this.characterId, this.entryId),
       gainedItems: this.adventureService.getGainedItems(this.entryId).pipe(catchError(() => of([]))),
+      storyAwards: this.adventureService.getStoryAwards(this.entryId).pipe(catchError(() => of([]))),
       items: this.inventoryService.getAllByCharacter(this.characterId).pipe(catchError(() => of([]))),
     }).subscribe({
-      next: ({ entry, gainedItems, items }) => {
+      next: ({ entry, gainedItems, storyAwards, items }) => {
         this.entry.set(entry);
         if (gainedItems && gainedItems.length > 0) {
           this.magicItems.set(gainedItems.filter(i => i.itemType === 'PERMANENT'));
@@ -84,6 +108,15 @@ export class AdventureDetailComponent implements OnInit {
           // 向後相容：若舊記錄尚未有快照，降級回倉庫比對
           this.processGainedItems(entry, items);
         }
+
+        if (storyAwards && storyAwards.length > 0) {
+          this.storyAwards.set(storyAwards);
+        } else if (entry.storyAwards && entry.storyAwards.length > 0) {
+          this.storyAwards.set(entry.storyAwards);
+        } else {
+          this.storyAwards.set([]);
+        }
+
         this.isLoading.set(false);
       },
       error: () => {

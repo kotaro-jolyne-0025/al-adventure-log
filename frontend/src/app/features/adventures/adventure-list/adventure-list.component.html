@@ -43,7 +43,7 @@
       </div>
 
       <button mat-flat-button color="primary" class="btn-add-adv" (click)="onAddEntry()">
-        <mat-icon>add</mat-icon>
+        <svg lucidePlus [size]="18" class="btn-icon"></svg>
         新增冒險紀錄
       </button>
     </div>
@@ -53,7 +53,7 @@
   <div class="search-bar-wrap">
     <div class="search-bar" [class.search-bar--active]="isSearching()">
       <svg lucideSearch [size]="17" class="search-icon"></svg>
-      <input class="search-input" type="text" placeholder="搜尋冒險名稱、代碼、DM" [value]="searchQuery()"
+      <input class="search-input" type="text" placeholder="搜尋冒險名稱、代碼、DM、故事獎勵" [value]="searchQuery()"
         (input)="searchQuery.set($any($event.target).value)" aria-label="搜尋冒險紀錄" />
       @if (isSearching()) {
       <button type="button" class="search-clear-btn" (click)="clearSearch()" aria-label="清除搜尋">
@@ -170,6 +170,14 @@
         <span class="delta-badge badge-magic">
           <svg lucideSparkles [size]="13" class="badge-icon"></svg>
           {{ mi }}
+        </span>
+        }
+
+        <!-- Story Awards (故事獎勵星星膠囊) -->
+        @for (award of row.storyAwards; track award.id) {
+        <span class="delta-badge badge-story-award" [matTooltip]="award.description || award.awardName">
+          <svg lucideStar [size]="13" class="badge-icon"></svg>
+          {{ award.awardName }}
         </span>
         }
       </div>
