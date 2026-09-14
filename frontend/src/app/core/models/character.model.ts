@@ -1,7 +1,7 @@
 export interface Character {
   id: string;           // UUID
   characterName: string;
-  playerName: string;
+  playerName?: string | null;
   race: string;
   subclass?: string | null;
   faction?: string | null;
@@ -13,7 +13,7 @@ export interface Character {
 
 export interface CharacterRequest {
   characterName: string;
-  playerName: string;
+  playerName?: string | null;
   race: string;
   subclass?: string | null;
   faction?: string | null;

@@ -9,7 +9,6 @@ public class CharacterRequest {
     @NotBlank(message = "角色名稱為必填")
     private String characterName;
 
-    @NotBlank(message = "玩家名稱為必填")
     private String playerName;
 
     @NotBlank(message = "種族為必填")
