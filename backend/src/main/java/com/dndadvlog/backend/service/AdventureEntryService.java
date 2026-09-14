@@ -7,11 +7,14 @@ import com.dndadvlog.backend.dto.AdventureGainedItemResponse;
 import com.dndadvlog.backend.dto.DowntimeActivityRequest;
 import com.dndadvlog.backend.dto.DowntimeActivityResponse;
 import com.dndadvlog.backend.dto.EntryDefaultsResponse;
+import com.dndadvlog.backend.dto.StoryAwardRequest;
+import com.dndadvlog.backend.dto.StoryAwardResponse;
 import com.dndadvlog.backend.entity.AdventureEntry;
 import com.dndadvlog.backend.entity.AdventureGainedItem;
 import com.dndadvlog.backend.entity.Character;
 import com.dndadvlog.backend.entity.DowntimeActivity;
 import com.dndadvlog.backend.entity.InventoryItem;
+import com.dndadvlog.backend.entity.StoryAward;
 import com.dndadvlog.backend.exception.BusinessException;
 import com.dndadvlog.backend.exception.ResourceNotFoundException;
 import com.dndadvlog.backend.mapper.AdventureEntryMapper;
@@ -19,6 +22,7 @@ import com.dndadvlog.backend.mapper.AdventureGainedItemMapper;
 import com.dndadvlog.backend.mapper.CharacterMapper;
 import com.dndadvlog.backend.mapper.DowntimeActivityMapper;
 import com.dndadvlog.backend.mapper.InventoryItemMapper;
+import com.dndadvlog.backend.mapper.StoryAwardMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,12 +45,17 @@ public class AdventureEntryService {
     private final CharacterMapper characterMapper;
     private final DowntimeActivityMapper downtimeActivityMapper;
     private final AdventureGainedItemMapper gainedItemMapper;
+    private final StoryAwardMapper storyAwardMapper;
     private final CharacterService characterService;
     private final InventoryItemMapper inventoryItemMapper;
 
     public List<AdventureEntryResponse> getEntriesByCharacter(UUID characterId, UUID userId) {
         characterService.findCharacter(characterId, userId);
         List<AdventureEntry> entries = entryMapper.findByCharacterIdOrderByPlayDateAsc(characterId);
+        entries.forEach(entry -> {
+            entry.setDowntimeActivities(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entry.getId()));
+            entry.setStoryAwards(storyAwardMapper.findByAdventureEntryId(entry.getId()));
+        });
         return entries.stream().map(this::toResponse).toList();
     }
 
@@ -441,6 +450,7 @@ public class AdventureEntryService {
         AdventureEntry entry = entryMapper.findById(entryId);
         if (entry == null) throw new ResourceNotFoundException("找不到冒險記錄 ID：" + entryId);
         entry.setDowntimeActivities(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entryId));
+        entry.setStoryAwards(storyAwardMapper.findByAdventureEntryId(entryId));
         return entry;
     }
 
@@ -469,6 +479,70 @@ public class AdventureEntryService {
         }
         findEntryAndVerifyOwner(item.getAdventureEntryId(), userId);
         return item;
+    }
+
+    // ── 故事獎勵 (Story Awards) ───────────────────────────────────────────────
+
+    public List<StoryAwardResponse> getStoryAwards(UUID entryId, UUID userId) {
+        findEntryAndVerifyOwner(entryId, userId);
+        return storyAwardMapper.findByAdventureEntryId(entryId)
+                .stream().map(this::toStoryAwardResponse).toList();
+    }
+
+    @Transactional
+    public StoryAwardResponse createStoryAward(UUID entryId, StoryAwardRequest request, UUID userId) {
+        findEntryAndVerifyOwner(entryId, userId);
+        if (request.getAwardName() == null || request.getAwardName().trim().isEmpty()) {
+            throw new BusinessException("故事獎勵名稱不可為空");
+        }
+        StoryAward award = new StoryAward();
+        award.setId(UUID.randomUUID());
+        award.setAdventureEntryId(entryId);
+        award.setAwardName(request.getAwardName().trim());
+        award.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        storyAwardMapper.insert(award);
+        return toStoryAwardResponse(findStoryAward(award.getId()));
+    }
+
+    @Transactional
+    public StoryAwardResponse updateStoryAward(UUID entryId, UUID awardId, StoryAwardRequest request, UUID userId) {
+        StoryAward award = findStoryAwardAndVerifyOwner(awardId, userId);
+        if (request.getAwardName() == null || request.getAwardName().trim().isEmpty()) {
+            throw new BusinessException("故事獎勵名稱不可為空");
+        }
+        award.setAwardName(request.getAwardName().trim());
+        award.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        storyAwardMapper.update(award);
+        return toStoryAwardResponse(findStoryAward(awardId));
+    }
+
+    @Transactional
+    public void deleteStoryAward(UUID awardId, UUID userId) {
+        findStoryAwardAndVerifyOwner(awardId, userId);
+        storyAwardMapper.deleteById(awardId);
+    }
+
+    private StoryAward findStoryAward(UUID awardId) {
+        StoryAward award = storyAwardMapper.findById(awardId);
+        if (award == null) throw new ResourceNotFoundException("找不到故事獎勵 ID：" + awardId);
+        return award;
+    }
+
+    private StoryAward findStoryAwardAndVerifyOwner(UUID awardId, UUID userId) {
+        StoryAward award = findStoryAward(awardId);
+        findEntryAndVerifyOwner(award.getAdventureEntryId(), userId);
+        return award;
+    }
+
+    private StoryAwardResponse toStoryAwardResponse(StoryAward award) {
+        StoryAwardResponse response = new StoryAwardResponse();
+        response.setId(award.getId());
+        response.setAdventureEntryId(award.getAdventureEntryId());
+        response.setAwardName(award.getAwardName());
+        response.setDescription(award.getDescription());
+        response.setCreatedAt(award.getCreatedAt());
+        response.setUpdatedAt(award.getUpdatedAt());
+        return response;
     }
 
     private AdventureEntryResponse toResponse(AdventureEntry entry) {
@@ -501,8 +575,12 @@ public class AdventureEntryService {
         response.setSoulCoinChargesUsed(entry.getSoulCoinChargesUsed());
         response.setCreatedAt(entry.getCreatedAt());
         response.setUpdatedAt(entry.getUpdatedAt());
-        response.setDowntimeActivities(entry.getDowntimeActivities()
-                .stream().map(this::toActivityResponse).toList());
+        response.setDowntimeActivities(entry.getDowntimeActivities() != null
+                ? entry.getDowntimeActivities().stream().map(this::toActivityResponse).toList()
+                : List.of());
+        response.setStoryAwards(entry.getStoryAwards() != null
+                ? entry.getStoryAwards().stream().map(this::toStoryAwardResponse).toList()
+                : List.of());
         return response;
     }
 
