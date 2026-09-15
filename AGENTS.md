@@ -1,6 +1,6 @@
-# AGENTS.md — D&D 冒險日誌專案 Agent 指引
+# AGENTS.md — 冒險紀錄表 Web版 專案 Agent 指引
 
-歡迎來到 **D&D 冒險日誌系統 (dnd-adventure-log)** 專案！本檔案為 AI Agent 提供本專案的高階指引與工作原則。
+歡迎來到 **冒險紀錄表 Web版 (dnd-adventure-log)** 專案！本檔案為 AI Agent 提供本專案的高階指引與工作原則。
 
 ---
 
