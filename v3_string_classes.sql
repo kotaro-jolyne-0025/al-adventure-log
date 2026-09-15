@@ -11,7 +11,7 @@ SET current_classes_string = (
     WHERE cl.character_id = c.id
 );
 
--- 將舊的 "冒險日誌" starting snapshot 彙整成字串：
+-- 將舊的 "冒險紀錄表" starting snapshot 彙整成字串：
 UPDATE adventure_entry ae
 SET starting_classes_string = (
     SELECT string_agg(s.class_name || ' Lv.' || s.level, ' / ' ORDER BY s.sort_order)
@@ -19,7 +19,7 @@ SET starting_classes_string = (
     WHERE s.adventure_entry_id = ae.id AND s.snapshot_type = 'starting'
 );
 
--- 將舊的 "冒險日誌" ending snapshot 彙整成字串：
+-- 將舊的 "冒險紀錄表" ending snapshot 彙整成字串：
 UPDATE adventure_entry ae
 SET ending_classes_string = (
     SELECT string_agg(s.class_name || ' Lv.' || s.level, ' / ' ORDER BY s.sort_order)
