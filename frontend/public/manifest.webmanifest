@@ -1,6 +1,6 @@
 {
-  "name": "D&D 冒險日誌",
-  "short_name": "冒險日誌",
+  "name": "冒險紀錄表 Web版",
+  "short_name": "冒險紀錄表",
   "description": "D&D 冒險聯盟（AL）冒險記錄數位化工具",
   "display": "standalone",
   "scope": "/",
