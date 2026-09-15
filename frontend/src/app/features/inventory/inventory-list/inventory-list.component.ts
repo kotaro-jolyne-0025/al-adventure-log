@@ -4,7 +4,6 @@ import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -61,7 +60,6 @@ const RARITY_WEIGHT: Record<string, number> = {
     MatTabsModule,
     MatCardModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatChipsModule,
     MatTooltipModule,
     LucideSparkles,
@@ -242,41 +240,51 @@ export class InventoryListComponent implements OnInit {
    *
    *   末排序 — 物品名稱 → ID（穩定排序）
    */
+  private getRarityWeight(item: InventoryItem): number {
+    return item.rarity ? (RARITY_WEIGHT[item.rarity] ?? 0) : 0;
+  }
+
+  private getValidTime(item: InventoryItem): number {
+    if (!item.createdAt) return 0;
+    const time = new Date(item.createdAt).getTime();
+    return isNaN(time) ? 0 : time;
+  }
+
+  /**
+   * 排序邏輯：
+   *
+   *   「稀有度」模式：
+   *     主排序 — 稀有度（方向由 order 控制）
+   *     次排序 — 取得時間（固定由新至舊）
+   *
+   *   「取得時間」模式：
+   *     主排序 — 取得時間（方向由 order 控制）
+   *     次排序 — 稀有度（固定由高至低）
+   *
+   *   末排序 — 物品名稱 → ID（穩定排序）
+   */
   private sortItems(
     items: InventoryItem[],
     field: InventorySortField,
     order: 'desc' | 'asc'
   ): InventoryItem[] {
-    return [...items].sort((a, b) => {
-      const rA = a.rarity ? (RARITY_WEIGHT[a.rarity] ?? 0) : 0;
-      const rB = b.rarity ? (RARITY_WEIGHT[b.rarity] ?? 0) : 0;
+    const isAsc = order === 'asc';
 
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      const validTimeA = isNaN(timeA) ? 0 : timeA;
-      const validTimeB = isNaN(timeB) ? 0 : timeB;
+    return [...items].sort((a, b) => {
+      const rarityDesc = this.getRarityWeight(b) - this.getRarityWeight(a);
+      const timeDesc = this.getValidTime(b) - this.getValidTime(a);
 
       if (field === 'createdAt') {
-        // 主排序：取得時間（方向由 order 控制）
-        const timeDiff = order === 'desc' ? validTimeB - validTimeA : validTimeA - validTimeB;
-        if (timeDiff !== 0) return timeDiff;
-
-        // 次排序：稀有度（固定高至低）
-        const rarityDiff = rB - rA;
-        if (rarityDiff !== 0) return rarityDiff;
+        if (timeDesc !== 0) return isAsc ? -timeDesc : timeDesc;
+        if (rarityDesc !== 0) return rarityDesc;
       } else {
-        // 主排序：稀有度（方向由 order 控制）
-        const rarityDiff = order === 'desc' ? rB - rA : rA - rB;
-        if (rarityDiff !== 0) return rarityDiff;
-
-        // 次排序：取得時間（固定由新至舊）
-        const timeDiff = validTimeB - validTimeA;
-        if (timeDiff !== 0) return timeDiff;
+        if (rarityDesc !== 0) return isAsc ? -rarityDesc : rarityDesc;
+        if (timeDesc !== 0) return timeDesc;
       }
 
-      // 末排序：物品名稱 → ID（穩定排序）
       const nameDiff = (a.itemName || '').localeCompare(b.itemName || '', 'zh-Hant');
       if (nameDiff !== 0) return nameDiff;
+
       return (a.id || '').localeCompare(b.id || '');
     });
   }
