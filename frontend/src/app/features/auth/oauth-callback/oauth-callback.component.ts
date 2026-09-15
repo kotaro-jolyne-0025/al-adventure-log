@@ -1,24 +1,23 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
-import { LucideAlertCircle } from '@lucide/angular';
+import { LucideCircleAlert } from '@lucide/angular';
 
 @Component({
   selector: 'app-oauth-callback',
   standalone: true,
   imports: [
     RouterLink,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     MatCardModule,
     MatButtonModule,
-    ,
-    LucideAlertCircle,
+    LucideCircleAlert,
   ],
   template: `
     <div class="callback-container">

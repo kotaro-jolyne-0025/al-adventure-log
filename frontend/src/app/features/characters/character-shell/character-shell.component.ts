@@ -4,7 +4,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CharacterService } from '../../../core/services/character.service';
 import { AdventureService } from '../../../core/services/adventure.service';
@@ -26,7 +26,7 @@ import { LucideCoins, LucideTent, LucideSparkles, LucidePenLine, LucideBookOpen,
     MatTabsModule,
     MatButtonModule,
     MatTooltipModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     LucideCoins,
     LucideTent,
     LucideSparkles,

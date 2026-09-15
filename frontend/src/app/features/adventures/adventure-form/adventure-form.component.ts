@@ -13,7 +13,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -39,8 +39,8 @@ import {
   LucideArrowLeft,
   LucidePlus,
   LucideTrash2,
-  LucideCheckCircle2,
-  LucideAlertCircle,
+  LucideCircleCheck,
+  LucideCircleAlert,
   LucideSave,
 } from '@lucide/angular';
 
@@ -72,7 +72,7 @@ export interface StoryAwardFormItem {
     MatInputModule,
     MatDatepickerModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     MatSelectModule,
     MatSlideToggleModule,
     MatCheckboxModule,
@@ -89,8 +89,8 @@ export interface StoryAwardFormItem {
     LucideArrowLeft,
     LucidePlus,
     LucideTrash2,
-    LucideCheckCircle2,
-    LucideAlertCircle,
+    LucideCircleCheck,
+    LucideCircleAlert,
     LucideSave,
   ],
   templateUrl: './adventure-form.component.html',

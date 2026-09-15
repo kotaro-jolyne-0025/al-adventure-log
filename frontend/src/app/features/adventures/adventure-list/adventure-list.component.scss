@@ -138,45 +138,36 @@
 }
 
 .capsule-icon {
-  font-size: 1.15rem;
-  width: 1.15rem;
-  height: 1.15rem;
   color: var(--color-primary);
-  flex-shrink: 0;
+
+  &.dir-icon {
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+
+    &.icon-asc {
+      color: var(--color-positive);
+    }
+  }
 }
 
 .capsule-text {
-  letter-spacing: 0.2px;
   white-space: nowrap;
   line-height: 1;
 }
 
 .capsule-arrow {
-  font-size: 1.15rem;
-  width: 1.15rem;
-  height: 1.15rem;
   color: var(--text-muted);
-  flex-shrink: 0;
-  margin-left: -2px;
+  transition: transform 0.2s ease;
 }
 
 .capsule-divider {
-  width: 1.5px;
-  height: 20px;
-  background: var(--border-subtle);
-  flex-shrink: 0;
+  width: 1px;
+  height: 18px;
+  background: var(--border-medium);
   margin: 0 2px;
+  flex-shrink: 0;
 }
 
-.button-section {
-  .dir-icon {
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  &:hover .dir-icon {
-    transform: scale(1.15);
-  }
-}
 
 .btn-add-adv {
   font-weight: 600;

@@ -15,7 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -46,9 +46,8 @@ import {
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     MatTooltipModule,
-    ,
     LucideArrowLeft,
     LucideLock,
     LucideImagePlus,

@@ -7,10 +7,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
-import { LucideMailCheck, LucideInfo, LucideMail, LucideAlertCircle } from '@lucide/angular';
+import { LucideMailCheck, LucideInfo, LucideMail, LucideCircleAlert } from '@lucide/angular';
 
 @Component({
   selector: 'app-forgot-password',
@@ -22,11 +22,11 @@ import { LucideMailCheck, LucideInfo, LucideMail, LucideAlertCircle } from '@luc
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
-    ,
+    MatProgressSpinner,
+    LucideMail,
     LucideMailCheck,
     LucideInfo,
-    LucideAlertCircle,
+    LucideCircleAlert,
   ],
   templateUrl: './forgot-password.component.html',
   styleUrl: './forgot-password.component.scss',

@@ -4,8 +4,6 @@ import {
   inject,
   signal,
   NgZone,
-  ElementRef,
-  ViewChild,
 } from '@angular/core';
 
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -15,7 +13,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
@@ -23,7 +21,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 import {
   LucideMail,
-  LucideAlertCircle,
+  LucideCircleAlert,
   LucideLock,
   LucideEye,
   LucideEyeOff,
@@ -41,11 +39,10 @@ declare const google: any;
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     MatDividerModule,
-    ,
     LucideMail,
-    LucideAlertCircle,
+    LucideCircleAlert,
     LucideLock,
     LucideEye,
     LucideEyeOff,
