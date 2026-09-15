@@ -14,6 +14,7 @@ public class AdventureGainedItemRequest {
     private String itemType;
 
     private String rarity;
+    private Boolean requiresAttunement;
     private Integer quantity;
     private String notes;
 }

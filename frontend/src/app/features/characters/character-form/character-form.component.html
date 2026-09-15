@@ -1,7 +1,7 @@
 <div class="page-container">
   <div class="page-header">
     <button mat-icon-button (click)="onBack()">
-      <mat-icon>arrow_back</mat-icon>
+      <svg lucideArrowLeft [size]="20"></svg>
     </button>
     <h1 class="page-title">{{ isEditMode() ? '編輯角色' : '新增角色' }}</h1>
   </div>
@@ -21,7 +21,7 @@
               <img [src]="avatarUrl()" alt="角色大頭照" class="avatar-preview-img" />
               } @else {
               <div class="avatar-placeholder">
-                <mat-icon class="placeholder-icon">add_photo_alternate</mat-icon>
+                <svg lucideImagePlus [size]="20" class="placeholder-icon"></svg>
                 <span class="placeholder-text">未設定</span>
               </div>
               }
@@ -33,13 +33,13 @@
                   (change)="onAvatarFileSelected($event)" />
                 <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()"
                   class="btn-upload-avatar">
-                  <mat-icon>{{ avatarUrl() ? 'sync' : 'upload' }}</mat-icon>
+                  @if (avatarUrl()) { <svg lucideRefreshCw [size]="20"></svg> } @else { <svg lucideUpload [size]="20"></svg> }
                   <span>{{ avatarUrl() ? '更換大頭照' : '上傳角色大頭照' }}</span>
                 </button>
 
                 @if (avatarUrl()) {
                 <button type="button" mat-button color="warn" (click)="removeAvatar()" class="btn-remove-avatar">
-                  <mat-icon>delete_outline</mat-icon>
+                  <svg lucideTrash2 [size]="20"></svg>
                   <span>移除</span>
                 </button>
                 }
@@ -56,14 +56,6 @@
             <input matInput formControlName="characterName" />
             @if (form.get('characterName')?.hasError('required') && form.get('characterName')?.touched) {
             <mat-error>角色名稱為必填</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>玩家名稱 *</mat-label>
-            <input matInput formControlName="playerName" />
-            @if (form.get('playerName')?.hasError('required') && form.get('playerName')?.touched) {
-            <mat-error>玩家名稱為必填</mat-error>
             }
           </mat-form-field>
 
@@ -92,7 +84,7 @@
             <div class="readonly-classes-list">
               @for (entry of classEntries(); track $index) {
               <span class="class-chip">
-                <mat-icon class="chip-icon">shield</mat-icon>
+                <svg lucideShield [size]="20" class="chip-icon"></svg>
                 {{ entry.className }} Lv.{{ entry.level }}
               </span>
               }
@@ -101,7 +93,7 @@
               }
             </div>
             <p class="readonly-hint">
-              <mat-icon class="hint-icon">lock</mat-icon>
+              <svg lucideLock [size]="20" class="hint-icon"></svg>
               職業與等級已鎖定。如需升級或兼職，請透過「冒險紀錄表」新增記錄推進。
             </p>
           </div>
@@ -109,7 +101,7 @@
           <div class="section-header" style="margin-top: 8px;">
             <h3 class="section-title" style="font-size:0.9rem; margin:0;">初始職業與等級</h3>
             <button type="button" mat-stroked-button (click)="addClass()">
-              <mat-icon>add</mat-icon> 新增職業（兼職）
+              <svg lucidePlus [size]="20"></svg> 新增職業（兼職）
             </button>
           </div>
           <div class="classes-list">
@@ -131,7 +123,7 @@
               @if (classEntries().length > 1) {
               <button type="button" mat-icon-button color="warn" style="margin-top: 8px;" (click)="removeClass(i)"
                 matTooltip="移除此職業">
-                <mat-icon>delete</mat-icon>
+                <svg lucideTrash2 [size]="20"></svg>
               </button>
               }
             </div>
@@ -152,7 +144,7 @@
             @if (isSaving()) {
             <mat-spinner diameter="20" class="btn-spinner"></mat-spinner>
             } @else {
-            <mat-icon>save</mat-icon>
+            <svg lucideSave [size]="20"></svg>
             }
             {{ isEditMode() ? '儲存變更' : '建立角色' }}
           </button>

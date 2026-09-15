@@ -10,6 +10,7 @@
         <result property="itemName"         column="item_name"/>
         <result property="itemType"         column="item_type"/>
         <result property="rarity"           column="rarity"/>
+        <result property="requiresAttunement" column="requires_attunement"/>
         <result property="quantity"         column="quantity"/>
         <result property="notes"            column="notes"/>
         <result property="createdAt"        column="created_at"/>
@@ -27,18 +28,19 @@
     </select>
 
     <insert id="insert">
-        INSERT INTO adventure_gained_item (id, adventure_entry_id, item_name, item_type, rarity, quantity, notes, created_at, updated_at)
-        VALUES (#{id}::uuid, #{adventureEntryId}::uuid, #{itemName}, #{itemType}, #{rarity}, #{quantity}, #{notes}, NOW(), NOW())
+        INSERT INTO adventure_gained_item (id, adventure_entry_id, item_name, item_type, rarity, requires_attunement, quantity, notes, created_at, updated_at)
+        VALUES (#{id}::uuid, #{adventureEntryId}::uuid, #{itemName}, #{itemType}, #{rarity}, COALESCE(#{requiresAttunement}, false), #{quantity}, #{notes}, NOW(), NOW())
     </insert>
 
     <update id="update">
         UPDATE adventure_gained_item SET
-            item_name  = #{itemName},
-            item_type  = #{itemType},
-            rarity     = #{rarity},
-            quantity   = #{quantity},
-            notes      = #{notes},
-            updated_at = NOW()
+            item_name           = #{itemName},
+            item_type           = #{itemType},
+            rarity              = #{rarity},
+            requires_attunement = COALESCE(#{requiresAttunement}, false),
+            quantity            = #{quantity},
+            notes               = #{notes},
+            updated_at          = NOW()
         WHERE id = #{id}::uuid
     </update>
 

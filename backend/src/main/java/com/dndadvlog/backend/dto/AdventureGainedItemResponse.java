@@ -12,6 +12,7 @@ public class AdventureGainedItemResponse {
     private String itemName;
     private String itemType;
     private String rarity;
+    private Boolean requiresAttunement;
     private Integer quantity;
     private String notes;
     private LocalDateTime createdAt;

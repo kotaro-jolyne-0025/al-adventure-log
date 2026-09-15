@@ -24,6 +24,7 @@ export interface AdventureGainedItem {
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
+  requiresAttunement?: boolean;
   quantity?: number;
   notes?: string | null;
   createdAt?: string;
@@ -34,8 +35,25 @@ export interface AdventureGainedItemRequest {
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
+  requiresAttunement?: boolean;
   quantity?: number;
   notes?: string | null;
+}
+
+// ── StoryAward (故事獎勵) ───────────────────────────────────────────────────
+
+export interface StoryAward {
+  id: string;           // UUID
+  adventureEntryId: string;
+  awardName: string;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StoryAwardRequest {
+  awardName: string;
+  description?: string | null;
 }
 
 // ── AdventureEntry ───────────────────────────────────────────────────────────
@@ -66,6 +84,7 @@ export interface AdventureEntry {
   adventureNotes?: string;
   soulCoinChargesUsed?: string;
   downtimeActivities: DowntimeActivity[];
+  storyAwards?: StoryAward[];
   createdAt?: string;
   updatedAt?: string;
 }

@@ -40,6 +40,10 @@
         SELECT * FROM inventory_item WHERE adventure_gained_item_id = #{gainedItemId}::uuid LIMIT 1
     </select>
 
+    <select id="findByAdventureEntryId" resultMap="itemMap">
+        SELECT * FROM inventory_item WHERE adventure_entry_id = #{adventureEntryId}::uuid
+    </select>
+
     <insert id="insert">
         INSERT INTO inventory_item (id, character_id, adventure_entry_id, adventure_gained_item_id, item_name, item_type, rarity, requires_attunement, quantity, source, notes, created_at, updated_at)
         VALUES (#{id}::uuid, #{characterId}::uuid, CAST(#{adventureEntryId, jdbcType=VARCHAR} AS uuid), CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid), #{itemName}, #{itemType}::item_type, CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity), COALESCE(#{requiresAttunement}, false), #{quantity}, #{source}, #{notes}, NOW(), NOW())

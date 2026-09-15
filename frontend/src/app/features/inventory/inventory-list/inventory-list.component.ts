@@ -4,8 +4,6 @@ import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -14,6 +12,7 @@ import { InventoryService } from '../../../core/services/inventory.service';
 import {
   InventoryItem,
   ItemType,
+  ItemRarity,
   ITEM_RARITY_LABELS,
   RARITY_COLORS,
 } from '../../../core/models/inventory.model';
@@ -35,6 +34,9 @@ import {
   LucideTrash2,
   LucideSlidersHorizontal,
   LucideChevronDown,
+  LucideSearch,
+  LucideX,
+  LucideInfinity,
 } from '@lucide/angular';
 
 export type InventorySortField = 'createdAt' | 'rarity';
@@ -58,8 +60,6 @@ const RARITY_WEIGHT: Record<string, number> = {
     MatTabsModule,
     MatCardModule,
     MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
     MatChipsModule,
     MatTooltipModule,
     LucideSparkles,
@@ -74,6 +74,9 @@ const RARITY_WEIGHT: Record<string, number> = {
     LucideTrash2,
     LucideSlidersHorizontal,
     LucideChevronDown,
+    LucideSearch,
+    LucideX,
+    LucideInfinity,
   ],
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.scss',
@@ -92,6 +95,31 @@ export class InventoryListComponent implements OnInit {
   protected isLoading = signal(true);
   protected activeTab = signal(0); // 0=PERMANENT, 1=CONSUMABLE
   protected characterId!: string;
+
+  // --- 搜尋 & 篩選狀態 ---
+  protected readonly searchQuery = signal('');
+  protected readonly selectedRarities = signal<Set<ItemRarity>>(new Set());
+  protected readonly filterAttunementOnly = signal(false);
+
+  /** 是否有任何篩選條件啟用 */
+  protected readonly hasActiveFilters = computed(() =>
+    this.searchQuery().trim().length > 0 ||
+    this.selectedRarities().size > 0 ||
+    this.filterAttunementOnly()
+  );
+
+  /** 所有可選稀有度選項（順序固定） */
+  protected readonly RARITY_OPTIONS: ItemRarity[] = [
+    'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'
+  ];
+  protected readonly RARITY_SHORT_LABELS: Record<ItemRarity, string> = {
+    COMMON: '普通',
+    UNCOMMON: '非普通',
+    RARE: '珍稀',
+    VERY_RARE: '極珍稀',
+    LEGENDARY: '傳說',
+    ARTIFACT: '神器',
+  };
 
   // 排序欄位與方向
   protected readonly sortField = signal<InventorySortField>(
@@ -123,18 +151,58 @@ export class InventoryListComponent implements OnInit {
     return order === 'desc' ? '目前：由新至舊（點擊切換為由舊至新）' : '目前：由舊至新（點擊切換為由新至舊）';
   });
 
+  /** 套用搜尋 + 篩選後的物品 */
+  private filterItems(items: InventoryItem[]): InventoryItem[] {
+    const q = this.searchQuery().trim().toLowerCase();
+    const rarities = this.selectedRarities();
+    const attuneOnly = this.filterAttunementOnly();
+    return items.filter(item => {
+      if (q && !(item.itemName.toLowerCase().includes(q) || (item.source ?? '').toLowerCase().includes(q))) return false;
+      if (rarities.size > 0 && item.rarity && !rarities.has(item.rarity)) return false;
+      if (attuneOnly && !item.requiresAttunement) return false;
+      return true;
+    });
+  }
+
   protected permanentItems = computed(() => {
     const list = this.allItems().filter((i) => i.itemType === 'PERMANENT');
-    return this.sortItems(list, this.sortField(), this.sortOrder());
+    return this.sortItems(this.filterItems(list), this.sortField(), this.sortOrder());
   });
 
   protected consumableItems = computed(() => {
     const list = this.allItems().filter((i) => i.itemType === 'CONSUMABLE');
-    return this.sortItems(list, this.sortField(), this.sortOrder());
+    return this.sortItems(this.filterItems(list), this.sortField(), this.sortOrder());
   });
+
+  /** 原始（未篩選）數量，用於顯示 total count */
+  protected readonly rawPermanentCount = computed(() => this.allItems().filter(i => i.itemType === 'PERMANENT').length);
+  protected readonly rawConsumableCount = computed(() => this.allItems().filter(i => i.itemType === 'CONSUMABLE').length);
+
 
   readonly rarityLabels = ITEM_RARITY_LABELS;
   readonly rarityColors = RARITY_COLORS;
+
+  protected isRaritySelected(rarity: ItemRarity): boolean {
+    return this.selectedRarities().has(rarity);
+  }
+
+  protected toggleRarityFilter(rarity: ItemRarity): void {
+    this.selectedRarities.update(set => {
+      const next = new Set(set);
+      next.has(rarity) ? next.delete(rarity) : next.add(rarity);
+      return next;
+    });
+  }
+
+  protected toggleAttunementFilter(): void {
+    this.filterAttunementOnly.update(v => !v);
+  }
+
+  protected clearAllFilters(): void {
+    this.searchQuery.set('');
+    this.selectedRarities.set(new Set());
+    this.filterAttunementOnly.set(false);
+  }
 
   ngOnInit(): void {
     this.characterId =
@@ -172,41 +240,51 @@ export class InventoryListComponent implements OnInit {
    *
    *   末排序 — 物品名稱 → ID（穩定排序）
    */
+  private getRarityWeight(item: InventoryItem): number {
+    return item.rarity ? (RARITY_WEIGHT[item.rarity] ?? 0) : 0;
+  }
+
+  private getValidTime(item: InventoryItem): number {
+    if (!item.createdAt) return 0;
+    const time = new Date(item.createdAt).getTime();
+    return isNaN(time) ? 0 : time;
+  }
+
+  /**
+   * 排序邏輯：
+   *
+   *   「稀有度」模式：
+   *     主排序 — 稀有度（方向由 order 控制）
+   *     次排序 — 取得時間（固定由新至舊）
+   *
+   *   「取得時間」模式：
+   *     主排序 — 取得時間（方向由 order 控制）
+   *     次排序 — 稀有度（固定由高至低）
+   *
+   *   末排序 — 物品名稱 → ID（穩定排序）
+   */
   private sortItems(
     items: InventoryItem[],
     field: InventorySortField,
     order: 'desc' | 'asc'
   ): InventoryItem[] {
-    return [...items].sort((a, b) => {
-      const rA = a.rarity ? (RARITY_WEIGHT[a.rarity] ?? 0) : 0;
-      const rB = b.rarity ? (RARITY_WEIGHT[b.rarity] ?? 0) : 0;
+    const isAsc = order === 'asc';
 
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      const validTimeA = isNaN(timeA) ? 0 : timeA;
-      const validTimeB = isNaN(timeB) ? 0 : timeB;
+    return [...items].sort((a, b) => {
+      const rarityDesc = this.getRarityWeight(b) - this.getRarityWeight(a);
+      const timeDesc = this.getValidTime(b) - this.getValidTime(a);
 
       if (field === 'createdAt') {
-        // 主排序：取得時間（方向由 order 控制）
-        const timeDiff = order === 'desc' ? validTimeB - validTimeA : validTimeA - validTimeB;
-        if (timeDiff !== 0) return timeDiff;
-
-        // 次排序：稀有度（固定高至低）
-        const rarityDiff = rB - rA;
-        if (rarityDiff !== 0) return rarityDiff;
+        if (timeDesc !== 0) return isAsc ? -timeDesc : timeDesc;
+        if (rarityDesc !== 0) return rarityDesc;
       } else {
-        // 主排序：稀有度（方向由 order 控制）
-        const rarityDiff = order === 'desc' ? rB - rA : rA - rB;
-        if (rarityDiff !== 0) return rarityDiff;
-
-        // 次排序：取得時間（固定由新至舊）
-        const timeDiff = validTimeB - validTimeA;
-        if (timeDiff !== 0) return timeDiff;
+        if (rarityDesc !== 0) return isAsc ? -rarityDesc : rarityDesc;
+        if (timeDesc !== 0) return timeDesc;
       }
 
-      // 末排序：物品名稱 → ID（穩定排序）
       const nameDiff = (a.itemName || '').localeCompare(b.itemName || '', 'zh-Hant');
       if (nameDiff !== 0) return nameDiff;
+
       return (a.id || '').localeCompare(b.id || '');
     });
   }

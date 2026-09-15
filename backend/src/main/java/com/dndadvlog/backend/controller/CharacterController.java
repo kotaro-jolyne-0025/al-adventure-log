@@ -39,8 +39,8 @@ public class CharacterController {
     public ResponseEntity<CharacterResponse> createCharacter(
             @Valid @RequestBody CharacterRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        log.info("➕ [POST /api/characters] 建立角色: 名稱={}, 玩家={}, userId={}",
-                request.getCharacterName(), request.getPlayerName(), principal.getId());
+        log.info("➕ [POST /api/characters] 建立角色: 名稱={}, userId={}",
+                request.getCharacterName(), principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(characterService.createCharacter(request, principal.getId()));
     }
@@ -50,8 +50,8 @@ public class CharacterController {
             @PathVariable UUID id,
             @Valid @RequestBody CharacterRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        log.info("✏️ [PUT /api/characters/{}] 更新角色: 名稱={}, 玩家={}, userId={}",
-                id, request.getCharacterName(), request.getPlayerName(), principal.getId());
+        log.info("✏️ [PUT /api/characters/{}] 更新角色: 名稱={}, userId={}",
+                id, request.getCharacterName(), principal.getId());
         return characterService.updateCharacter(id, request, principal.getId());
     }
 

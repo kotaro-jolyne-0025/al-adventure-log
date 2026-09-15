@@ -1,29 +1,41 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
+import {
+  LucideIdCard,
+  LucideMail,
+  LucideCircleAlert,
+  LucideLock,
+  LucideEye,
+  LucideEyeOff,
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-register',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     RouterLink,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
+    LucideIdCard,
+    LucideMail,
+    LucideCircleAlert,
+    LucideLock,
+    LucideEye,
+    LucideEyeOff,
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
@@ -53,7 +65,9 @@ export class RegisterComponent {
     this.authService.register(this.registerForm.value).subscribe({
       next: (res) => {
         this.isLoading.set(false);
-        this.snackBar.open(`註冊成功！歡迎加入，${res.user.displayName}！`, '關閉', { duration: 3000 });
+        this.snackBar.open(`註冊成功！歡迎加入，${res.user.displayName}！`, '關閉', {
+          duration: 3000,
+        });
         this.router.navigate(['/characters']);
       },
       error: (err) => {
@@ -65,4 +79,3 @@ export class RegisterComponent {
     });
   }
 }
-

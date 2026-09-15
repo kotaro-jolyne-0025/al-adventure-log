@@ -13,17 +13,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { CharacterService } from '../../../core/services/character.service';
-import { AdventureEntry, AdventureEntryRequest, AdventureGainedItemRequest } from '../../../core/models/adventure.model';
+import { AdventureEntry, AdventureEntryRequest, AdventureGainedItemRequest, StoryAwardRequest } from '../../../core/models/adventure.model';
 import { ItemRarity, ITEM_RARITY_LABELS, InventoryItemRequest } from '../../../core/models/inventory.model';
 import { from, of, concatMap, toArray, map, Observable, catchError, forkJoin } from 'rxjs';
 
@@ -35,6 +35,13 @@ import {
   LucideScrollText,
   LucideSwords,
   LucideCalculator,
+  LucideStar,
+  LucideArrowLeft,
+  LucidePlus,
+  LucideTrash2,
+  LucideCircleCheck,
+  LucideCircleAlert,
+  LucideSave,
 } from '@lucide/angular';
 
 export interface DowntimeActivityItem {
@@ -44,6 +51,12 @@ export interface DowntimeActivityItem {
   gold: number | null;
   downtime: number | null;
   magicItems: number | null;
+}
+
+export interface StoryAwardFormItem {
+  id?: string;
+  awardName: string;
+  description: string;
 }
 
 @Component({
@@ -59,10 +72,10 @@ export interface DowntimeActivityItem {
     MatInputModule,
     MatDatepickerModule,
     MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     MatSelectModule,
     MatSlideToggleModule,
+    MatCheckboxModule,
     MatTooltipModule,
     TextFieldModule,
     LucideCoins,
@@ -72,6 +85,13 @@ export interface DowntimeActivityItem {
     LucideScrollText,
     LucideSwords,
     LucideCalculator,
+    LucideStar,
+    LucideArrowLeft,
+    LucidePlus,
+    LucideTrash2,
+    LucideCircleCheck,
+    LucideCircleAlert,
+    LucideSave,
   ],
   templateUrl: './adventure-form.component.html',
   styleUrl: './adventure-form.component.scss',
@@ -207,6 +227,7 @@ export class AdventureFormComponent implements OnInit {
     id?: string;
     itemName: string;
     rarity: ItemRarity | '';
+    requiresAttunement?: boolean;
     notes: string;
   }[]>([]);
 
@@ -217,6 +238,10 @@ export class AdventureFormComponent implements OnInit {
     rarity: ItemRarity | '';
     notes: string;
   }[]>([]);
+
+  // ── 本次獲得的故事獎勵清單 ──────────────────────────────────────────
+  protected storyAwards = signal<StoryAwardFormItem[]>([]);
+  private deletedStoryAwardIds: string[] = [];
 
   private deletedItemIds: string[] = [];
 
@@ -394,6 +419,26 @@ export class AdventureFormComponent implements OnInit {
         });
 
         this.loadGainedItems(entry);
+
+        if (entry.storyAwards && entry.storyAwards.length > 0) {
+          this.storyAwards.set(entry.storyAwards.map(a => ({
+            id: a.id,
+            awardName: a.awardName,
+            description: a.description || '',
+          })));
+        } else if (entry.id) {
+          this.adventureService.getStoryAwards(entry.id).subscribe({
+            next: (awards) => {
+              if (awards && awards.length > 0) {
+                this.storyAwards.set(awards.map(a => ({
+                  id: a.id,
+                  awardName: a.awardName,
+                  description: a.description || '',
+                })));
+              }
+            },
+          });
+        }
       },
       error: () => {
         this.snackBar.open('載入記錄失敗', '關閉', { duration: 3000 });
@@ -437,6 +482,7 @@ export class AdventureFormComponent implements OnInit {
               id: item.id,
               itemName: item.itemName,
               rarity: (item.rarity ?? '') as ItemRarity | '',
+              requiresAttunement: Boolean(item.requiresAttunement),
               notes: item.notes ?? '',
             }));
           const consumables = items
@@ -469,6 +515,7 @@ export class AdventureFormComponent implements OnInit {
             id: item.id,
             itemName: item.itemName,
             rarity: item.rarity ?? ('' as ItemRarity | ''),
+            requiresAttunement: Boolean(item.requiresAttunement),
             notes: item.notes ?? '',
           }));
         const consumables = items
@@ -693,7 +740,7 @@ export class AdventureFormComponent implements OnInit {
   protected addGainedItem(): void {
     this.gainedMagicItems.update(list => [
       ...list,
-      { itemName: '', rarity: '', notes: '' },
+      { itemName: '', rarity: '', requiresAttunement: false, notes: '' },
     ]);
     const current = Number(this.form.get('magicItemsChange')?.value) || 0;
     this.form.patchValue({ magicItemsChange: current + 1 });
@@ -718,6 +765,12 @@ export class AdventureFormComponent implements OnInit {
   protected updateGainedItemRarity(index: number, rarity: ItemRarity | ''): void {
     this.gainedMagicItems.update(list =>
       list.map((item, i) => i === index ? { ...item, rarity } : item)
+    );
+  }
+
+  protected updateGainedItemAttunement(index: number, attune: boolean): void {
+    this.gainedMagicItems.update(list =>
+      list.map((item, i) => i === index ? { ...item, requiresAttunement: attune } : item)
     );
   }
 
@@ -768,6 +821,70 @@ export class AdventureFormComponent implements OnInit {
     );
   }
 
+  // ── 故事獎勵操作 ──────────────────────────────────────────
+  protected addStoryAward(): void {
+    this.storyAwards.update(list => [
+      ...list,
+      { awardName: '', description: '' },
+    ]);
+  }
+
+  protected removeStoryAward(index: number): void {
+    const item = this.storyAwards()[index];
+    if (item?.id) {
+      this.deletedStoryAwardIds.push(item.id);
+    }
+    this.storyAwards.update(list => list.filter((_, i) => i !== index));
+  }
+
+  protected updateStoryAwardName(index: number, name: string): void {
+    this.storyAwards.update(list =>
+      list.map((item, i) => i === index ? { ...item, awardName: name } : item)
+    );
+  }
+
+  protected updateStoryAwardDescription(index: number, desc: string): void {
+    this.storyAwards.update(list =>
+      list.map((item, i) => i === index ? { ...item, description: desc } : item)
+    );
+  }
+
+  private syncStoryAwards(entryId: string): Observable<unknown> {
+    const deleteOps$ = this.deletedStoryAwardIds.map(id =>
+      this.adventureService.deleteStoryAward(id).pipe(
+        catchError(() => of(null))
+      )
+    );
+
+    const updateOps$ = this.storyAwards()
+      .filter(item => !!item.id)
+      .map(item => {
+        const req: StoryAwardRequest = {
+          awardName: item.awardName.trim(),
+          description: item.description.trim() || null,
+        };
+        return this.adventureService.updateStoryAward(entryId, item.id!, req);
+      });
+
+    const createOps$ = this.storyAwards()
+      .filter(item => !item.id && item.awardName.trim().length > 0)
+      .map(item => {
+        const req: StoryAwardRequest = {
+          awardName: item.awardName.trim(),
+          description: item.description.trim() || null,
+        };
+        return this.adventureService.addStoryAward(entryId, req);
+      });
+
+    const allOps = [...deleteOps$, ...updateOps$, ...createOps$];
+    if (allOps.length === 0) return of(null);
+
+    return from(allOps).pipe(
+      concatMap(op$ => op$),
+      toArray(),
+    );
+  }
+
   // ── 同步獲得物品至快照表與倉庫（方案 A：增量同步 Delta Sync）─────────────
   private syncGainedItemsToInventory(sourceAdventureName: string, entryId: string): Observable<unknown> {
     // 1. 刪除操作 (刪除快照並連帶清理倉庫背包)
@@ -785,6 +902,7 @@ export class AdventureFormComponent implements OnInit {
           itemName: item.itemName.trim() || '未命名魔法物品',
           itemType: 'PERMANENT',
           rarity: item.rarity || null,
+          requiresAttunement: Boolean(item.requiresAttunement),
           notes: item.notes.trim() || null,
         };
         return this.adventureService.updateGainedItem(entryId, item.id!, snapshotReq);
@@ -798,6 +916,7 @@ export class AdventureFormComponent implements OnInit {
           itemName: item.itemName.trim() || '未命名魔法物品',
           itemType: 'PERMANENT',
           rarity: item.rarity || null,
+          requiresAttunement: Boolean(item.requiresAttunement),
           notes: item.notes.trim() || null,
         };
         return this.adventureService.addGainedItem(entryId, snapshotReq).pipe(
@@ -808,6 +927,7 @@ export class AdventureFormComponent implements OnInit {
               itemType: 'PERMANENT',
               itemName: item.itemName.trim() || '未命名魔法物品',
               rarity: item.rarity || null,
+              requiresAttunement: Boolean(item.requiresAttunement),
               source: sourceAdventureName,
               notes: item.notes.trim() || null,
             };
@@ -945,6 +1065,11 @@ export class AdventureFormComponent implements OnInit {
       this.snackBar.open('休整期活動描述不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
       return;
     }
+    const hasEmptyStoryAward = this.storyAwards().some(award => !award.awardName.trim());
+    if (hasEmptyStoryAward) {
+      this.snackBar.open('故事獎勵名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
+      return;
+    }
 
     this.isSaving.set(true);
     const req = this.buildRequest();
@@ -954,6 +1079,7 @@ export class AdventureFormComponent implements OnInit {
       this.adventureService.update(this.characterId, this.entryId, req).pipe(
         concatMap(updated => this.syncDowntimeActivities(updated.id).pipe(
           concatMap(() => this.syncGainedItemsToInventory(sourceName, updated.id)),
+          concatMap(() => this.syncStoryAwards(updated.id)),
           map(() => updated),
         )),
       ).subscribe({
@@ -972,6 +1098,7 @@ export class AdventureFormComponent implements OnInit {
       this.adventureService.create(this.characterId, req).pipe(
         concatMap(created => this.syncDowntimeActivities(created.id).pipe(
           concatMap(() => this.syncGainedItemsToInventory(sourceName, created.id)),
+          concatMap(() => this.syncStoryAwards(created.id)),
           map(() => created),
         )),
       ).subscribe({

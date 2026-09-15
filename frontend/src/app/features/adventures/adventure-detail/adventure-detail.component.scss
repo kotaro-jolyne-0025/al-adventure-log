@@ -397,6 +397,7 @@
       background: var(--bg-surface);
       color: var(--text-primary);
       border: 1px solid var(--border-subtle);
+      line-height: 1;
     }
   }
 
@@ -405,6 +406,30 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
     line-height: 1.4;
+  }
+
+  &.story-award-card {
+    border-left: 3px solid var(--color-gold);
+
+    .story-award-icon {
+      color: #d97706;
+      fill: currentColor;
+    }
+
+    .story-award-pill {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-full);
+      background: var(--color-gold-bg);
+      color: var(--color-gold);
+      border: 1px solid rgba(217, 119, 6, 0.25);
+      line-height: 1;
+    }
+
+    .story-award-desc {
+      white-space: pre-wrap;
+    }
   }
 }
 
