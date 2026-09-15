@@ -41,7 +41,7 @@ export const routes: Routes = [
     component: CharacterShellComponent,
     canActivate: [authGuard],
     children: [
-      // Epic 2: 冒險日誌
+      // Epic 2: 冒險紀錄表
       { path: 'adventures', component: AdventureListComponent },
       { path: 'adventures/new', component: AdventureFormComponent },
       { path: 'adventures/:entryId', component: AdventureDetailComponent },
