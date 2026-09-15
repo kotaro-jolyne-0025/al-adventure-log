@@ -35,6 +35,7 @@ public class AdventureEntryResponse {
     private String adventureNotes;
     private String soulCoinChargesUsed;
     private List<DowntimeActivityResponse> downtimeActivities;
+    private List<StoryAwardResponse> storyAwards;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

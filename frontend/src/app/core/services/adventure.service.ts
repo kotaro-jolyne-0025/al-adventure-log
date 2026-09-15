@@ -10,6 +10,8 @@ import {
   DowntimeActivity,
   DowntimeActivityRequest,
   EntryDefaults,
+  StoryAward,
+  StoryAwardRequest,
 } from '../models/adventure.model';
 import { CharacterService } from './character.service';
 
@@ -178,6 +180,35 @@ export class AdventureService {
   deleteGainedItem(itemId: string): Observable<void> {
     return this.http.delete<void>(
       `${environment.apiUrl}/gained-items/${itemId}`
+    );
+  }
+
+  // ── StoryAward (故事獎勵) ───────────────────────────────────────────────────
+  // 後端路徑：/api/entries/{entryId}/story-awards
+
+  getStoryAwards(entryId: string): Observable<StoryAward[]> {
+    return this.http.get<StoryAward[]>(
+      `${environment.apiUrl}/entries/${entryId}/story-awards`
+    );
+  }
+
+  addStoryAward(entryId: string, req: StoryAwardRequest): Observable<StoryAward> {
+    return this.http.post<StoryAward>(
+      `${environment.apiUrl}/entries/${entryId}/story-awards`,
+      req
+    );
+  }
+
+  updateStoryAward(entryId: string, awardId: string, req: StoryAwardRequest): Observable<StoryAward> {
+    return this.http.put<StoryAward>(
+      `${environment.apiUrl}/entries/${entryId}/story-awards/${awardId}`,
+      req
+    );
+  }
+
+  deleteStoryAward(awardId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${environment.apiUrl}/story-awards/${awardId}`
     );
   }
 }

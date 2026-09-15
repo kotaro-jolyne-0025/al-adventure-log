@@ -1,17 +1,37 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
+import {
+  LucideCircleAlert,
+  LucideLock,
+  LucideEye,
+  LucideEyeOff,
+  LucideCircleCheckBig,
+  LucideUnlink,
+  LucideKeyRound,
+  LucideCheck,
+} from '@lucide/angular';
 
-export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+export const passwordMatchValidator: ValidatorFn = (
+  control: AbstractControl,
+): ValidationErrors | null => {
   const newPassword = control.get('newPassword')?.value;
   const confirmPassword = control.get('confirmPassword')?.value;
   if (newPassword && confirmPassword && newPassword !== confirmPassword) {
@@ -24,15 +44,20 @@ export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): V
   selector: 'app-reset-password',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     RouterLink,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
+    LucideCircleAlert,
+    LucideLock,
+    LucideEye,
+    LucideEyeOff,
+    LucideCircleCheckBig,
+    LucideUnlink,
+    LucideKeyRound,
   ],
   templateUrl: './reset-password.component.html',
   styleUrl: './reset-password.component.scss',
@@ -58,7 +83,7 @@ export class ResetPasswordComponent implements OnInit {
       newPassword: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
     },
-    { validators: passwordMatchValidator }
+    { validators: passwordMatchValidator },
   );
 
   ngOnInit(): void {

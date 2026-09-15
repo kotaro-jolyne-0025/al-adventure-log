@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LucideArrowLeft, LucideSave } from '@lucide/angular';
 import { InventoryService } from '../../../core/services/inventory.service';
@@ -30,7 +30,7 @@ import {
     MatSelectModule,
     MatCheckboxModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     LucideArrowLeft,
     LucideSave,
   ],

@@ -46,4 +46,5 @@ public class AdventureEntry {
 
     /** 由 Mapper 查詢填入 */
     private List<DowntimeActivity> downtimeActivities = new ArrayList<>();
+    private List<StoryAward> storyAwards = new ArrayList<>();
 }

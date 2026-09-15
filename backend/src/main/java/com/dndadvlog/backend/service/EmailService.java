@@ -44,14 +44,14 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             String fromAddress = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : "noreply@dndadvlog.internal";
-            helper.setFrom(fromAddress, "D&D 冒險日誌系統");
+            helper.setFrom(fromAddress, "冒險紀錄表 Web版");
             helper.setTo(toEmail);
-            helper.setSubject("【D&D 冒險日誌】重設您的帳號密碼");
+            helper.setSubject("【冒險紀錄表 Web版】重設您的帳號密碼");
 
             String htmlContent = """
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 8px;">
                     <h2 style="color: #7b1fa2;">冒險者，您好！</h2>
-                    <p>我們收到了您重設 <strong>D&D 冒險日誌</strong> 帳號密碼的請求。</p>
+                    <p>我們收到了您重設 <strong>冒險紀錄表 Web版</strong> 帳號密碼的請求。</p>
                     <p>請點擊下方按鈕以設定新密碼（此連結於 %d 分鐘內有效）：</p>
                     <div style="text-align: center; margin: 32px 0;">
                         <a href="%s" style="background-color: #7b1fa2; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">

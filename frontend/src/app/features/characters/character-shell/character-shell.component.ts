@@ -1,10 +1,10 @@
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatIconModule } from '@angular/material/icon';
+
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CharacterService } from '../../../core/services/character.service';
 import { AdventureService } from '../../../core/services/adventure.service';
@@ -15,7 +15,7 @@ import { catchError, forkJoin, of, Subject, takeUntil } from 'rxjs';
 
 import { CommonModule } from '@angular/common';
 
-import { LucideCoins, LucideTent, LucideSparkles } from '@lucide/angular';
+import { LucideCoins, LucideTent, LucideSparkles, LucidePenLine, LucideBookOpen, LucideBox } from '@lucide/angular';
 
 @Component({
   selector: 'app-character-shell',
@@ -24,13 +24,13 @@ import { LucideCoins, LucideTent, LucideSparkles } from '@lucide/angular';
     CommonModule,
     RouterOutlet,
     MatTabsModule,
-    MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatProgressSpinnerModule,
+    MatProgressSpinner,
     LucideCoins,
     LucideTent,
     LucideSparkles,
+    LucidePenLine, LucideBookOpen, LucideBox
   ],
   templateUrl: './character-shell.component.html',
   styleUrl: './character-shell.component.scss',

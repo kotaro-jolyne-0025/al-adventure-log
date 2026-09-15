@@ -2,8 +2,6 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdventureService } from '../../../core/services/adventure.service';
@@ -23,6 +21,9 @@ import {
   LucideCalendar,
   LucideUser,
   LucideChevronRight,
+  LucideSearch,
+  LucideX,
+  LucideStar,
 } from '@lucide/angular';
 
 export type AdventureSortField = 'playDate' | 'createdAt';
@@ -34,8 +35,6 @@ export type AdventureSortField = 'playDate' | 'createdAt';
     CommonModule,
     DatePipe,
     MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
     MatTooltipModule,
     LucideCoins,
     LucideTent,
@@ -50,6 +49,9 @@ export type AdventureSortField = 'playDate' | 'createdAt';
     LucideCalendar,
     LucideUser,
     LucideChevronRight,
+    LucideSearch,
+    LucideX,
+    LucideStar,
   ],
   templateUrl: './adventure-list.component.html',
   styleUrl: './adventure-list.component.scss',
@@ -64,6 +66,7 @@ export class AdventureListComponent implements OnInit {
   private readonly SORT_ORDER_KEY = 'dnd_adv_list_sort_order';
 
   protected readonly rawEntries = signal<AdventureEntry[]>([]);
+  protected readonly searchQuery = signal('');
   protected readonly sortField = signal<AdventureSortField>(
     (() => {
       if (typeof localStorage !== 'undefined') {
@@ -76,7 +79,7 @@ export class AdventureListComponent implements OnInit {
   protected readonly sortOrder = signal<'desc' | 'asc'>(
     (typeof localStorage !== 'undefined' &&
       (localStorage.getItem(this.SORT_ORDER_KEY) as 'desc' | 'asc')) ||
-      'desc'
+    'desc'
   );
   protected readonly isLoading = signal(true);
   protected characterId!: string;
@@ -95,16 +98,35 @@ export class AdventureListComponent implements OnInit {
       : '目前：由舊至新（點擊切換為由新至舊）';
   });
 
-  protected readonly entries = computed(() => {
+  /** 排序後的完整清單 */
+  private readonly sortedEntries = computed(() => {
     const field = this.sortField();
     const order = this.sortOrder();
     const list = [...this.rawEntries()];
-
     return list.sort((a, b) => {
       const diff = this.compareEntries(a, b, field);
       return order === 'desc' ? diff : -diff;
     });
   });
+
+  /** 排序 + 搜尋過濾後的最終清單 */
+  protected readonly entries = computed(() => {
+    const q = this.searchQuery().trim().toLowerCase();
+    if (!q) return this.sortedEntries();
+    return this.sortedEntries().filter(e =>
+      (e.adventureName ?? '').toLowerCase().includes(q) ||
+      (e.adventureCode ?? '').toLowerCase().includes(q) ||
+      (e.dmName ?? '').toLowerCase().includes(q) ||
+      (e.storyAwards?.some(a => (a.awardName ?? '').toLowerCase().includes(q)))
+    );
+  });
+
+  /** 是否正在搜尋中（有輸入關鍵字）*/
+  protected readonly isSearching = computed(() => this.searchQuery().trim().length > 0);
+
+  protected clearSearch(): void {
+    this.searchQuery.set('');
+  }
 
   private compareEntries(a: AdventureEntry, b: AdventureEntry, field: AdventureSortField): number {
     const primaryA = field === 'playDate' ? this.getTime(a.playDate) : this.getTime(a.createdAt);
@@ -149,7 +171,7 @@ export class AdventureListComponent implements OnInit {
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(this.SORT_FIELD_KEY, field);
-      } catch {}
+      } catch { }
     }
   }
 
@@ -159,7 +181,7 @@ export class AdventureListComponent implements OnInit {
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(this.SORT_ORDER_KEY, nextOrder);
-      } catch {}
+      } catch { }
     }
   }
 

@@ -7,11 +7,14 @@ import com.dndadvlog.backend.dto.AdventureGainedItemResponse;
 import com.dndadvlog.backend.dto.DowntimeActivityRequest;
 import com.dndadvlog.backend.dto.DowntimeActivityResponse;
 import com.dndadvlog.backend.dto.EntryDefaultsResponse;
+import com.dndadvlog.backend.dto.StoryAwardRequest;
+import com.dndadvlog.backend.dto.StoryAwardResponse;
 import com.dndadvlog.backend.entity.AdventureEntry;
 import com.dndadvlog.backend.entity.AdventureGainedItem;
 import com.dndadvlog.backend.entity.Character;
 import com.dndadvlog.backend.entity.DowntimeActivity;
 import com.dndadvlog.backend.entity.InventoryItem;
+import com.dndadvlog.backend.entity.StoryAward;
 import com.dndadvlog.backend.exception.BusinessException;
 import com.dndadvlog.backend.exception.ResourceNotFoundException;
 import com.dndadvlog.backend.mapper.AdventureEntryMapper;
@@ -19,6 +22,7 @@ import com.dndadvlog.backend.mapper.AdventureGainedItemMapper;
 import com.dndadvlog.backend.mapper.CharacterMapper;
 import com.dndadvlog.backend.mapper.DowntimeActivityMapper;
 import com.dndadvlog.backend.mapper.InventoryItemMapper;
+import com.dndadvlog.backend.mapper.StoryAwardMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,12 +45,17 @@ public class AdventureEntryService {
     private final CharacterMapper characterMapper;
     private final DowntimeActivityMapper downtimeActivityMapper;
     private final AdventureGainedItemMapper gainedItemMapper;
+    private final StoryAwardMapper storyAwardMapper;
     private final CharacterService characterService;
     private final InventoryItemMapper inventoryItemMapper;
 
     public List<AdventureEntryResponse> getEntriesByCharacter(UUID characterId, UUID userId) {
         characterService.findCharacter(characterId, userId);
         List<AdventureEntry> entries = entryMapper.findByCharacterIdOrderByPlayDateAsc(characterId);
+        entries.forEach(entry -> {
+            entry.setDowntimeActivities(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entry.getId()));
+            entry.setStoryAwards(storyAwardMapper.findByAdventureEntryId(entry.getId()));
+        });
         return entries.stream().map(this::toResponse).toList();
     }
 
@@ -229,6 +238,7 @@ public class AdventureEntryService {
         item.setItemName(request.getItemName());
         item.setItemType(request.getItemType());
         item.setRarity(request.getRarity());
+        item.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
         item.setQuantity(request.getQuantity() != null ? request.getQuantity() : Integer.valueOf(1));
         item.setNotes(request.getNotes());
         gainedItemMapper.insert(item);
@@ -239,27 +249,74 @@ public class AdventureEntryService {
     public AdventureGainedItemResponse updateGainedItem(UUID entryId, UUID itemId, AdventureGainedItemRequest request, UUID userId) {
         AdventureEntry entry = findEntryAndVerifyOwner(entryId, userId);
         AdventureGainedItem snapshot = gainedItemMapper.findById(itemId);
+        
+        // 容錯處理：若傳入的 itemId 找不到快照（例如前端載入自舊版歷史倉庫資料）
         if (snapshot == null) {
-            throw new ResourceNotFoundException("找不到獲得物品快照 ID: " + itemId);
+            InventoryItem existingWarehouse = inventoryItemMapper.findById(itemId);
+            if (existingWarehouse != null) {
+                snapshot = new AdventureGainedItem();
+                snapshot.setId(itemId);
+                snapshot.setAdventureEntryId(entryId);
+                snapshot.setItemName(request.getItemName());
+                snapshot.setItemType(request.getItemType());
+                snapshot.setRarity(request.getRarity());
+                snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
+                snapshot.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
+                snapshot.setNotes(request.getNotes());
+                gainedItemMapper.insert(snapshot);
+
+                existingWarehouse.setAdventureGainedItemId(itemId);
+                existingWarehouse.setItemName(request.getItemName());
+                existingWarehouse.setRarity(parseRarity(request.getRarity()));
+                existingWarehouse.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
+                existingWarehouse.setNotes(request.getNotes());
+                if (request.getQuantity() != null) {
+                    existingWarehouse.setQuantity(request.getQuantity());
+                }
+                inventoryItemMapper.update(existingWarehouse);
+                log.info("為歷史道具補建快照並同步倉庫: 道具={}, EntryID={}", request.getItemName(), entryId);
+                return toGainedItemResponse(snapshot);
+            } else {
+                throw new ResourceNotFoundException("找不到獲得物品快照 ID: " + itemId);
+            }
         }
 
         int oldQty = snapshot.getQuantity() != null ? snapshot.getQuantity().intValue() : 1;
         int newQty = request.getQuantity() != null ? request.getQuantity().intValue() : 1;
         int delta = newQty - oldQty;
+        String oldSnapshotName = snapshot.getItemName();
 
         // 1. 更新快照表記錄
         snapshot.setItemName(request.getItemName());
         snapshot.setItemType(request.getItemType());
         snapshot.setRarity(request.getRarity());
+        snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
         snapshot.setQuantity(newQty);
         snapshot.setNotes(request.getNotes());
         gainedItemMapper.update(snapshot);
 
-        // 2. 精準同步倉庫背包 (方案 A: 增量差額 Delta Sync)
+        // 2. 精準同步倉庫背包 (Direct + Fallback Sync)
         InventoryItem warehouseItem = inventoryItemMapper.findByAdventureGainedItemId(itemId);
+        
+        // 若以 gainedItemId 找不到，嘗試以 (adventureEntryId + 歷史相同 item_name) 關聯
+        if (warehouseItem == null) {
+            List<InventoryItem> entryItems = inventoryItemMapper.findByAdventureEntryId(entryId);
+            warehouseItem = entryItems.stream()
+                .filter(i -> i.getAdventureGainedItemId() == null && (
+                    (oldSnapshotName != null && oldSnapshotName.equalsIgnoreCase(i.getItemName())) ||
+                    request.getItemName().equalsIgnoreCase(i.getItemName())
+                ))
+                .findFirst().orElse(null);
+            if (warehouseItem != null) {
+                warehouseItem.setAdventureGainedItemId(itemId);
+            }
+        }
+
         if (warehouseItem != null) {
+            // 即時同步名稱、稀有度、同調、備註
             warehouseItem.setItemName(request.getItemName());
             warehouseItem.setRarity(parseRarity(request.getRarity()));
+            warehouseItem.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
             warehouseItem.setNotes(request.getNotes());
 
             if ("CONSUMABLE".equalsIgnoreCase(request.getItemType())) {
@@ -273,20 +330,23 @@ public class AdventureEntryService {
             } else {
                 inventoryItemMapper.update(warehouseItem);
             }
-        } else if ("CONSUMABLE".equalsIgnoreCase(request.getItemType()) && delta > 0) {
-            // 若原先已在倉庫喝完 (0 瓶已移除)，但編輯後數量調高 (+delta)，則在倉庫為其補發 delta 瓶！
+            log.info("已同步更新倉庫物品: ID={}, 名稱={}, 需同調={}", warehouseItem.getId(), warehouseItem.getItemName(), warehouseItem.getRequiresAttunement());
+        } else {
+            // 若倉庫中尚無該道具（例如之前未同步或被誤刪），自動在倉庫建立對應道具並綁定快照
             InventoryItem newItem = new InventoryItem();
             newItem.setId(UUID.randomUUID());
             newItem.setCharacterId(entry.getCharacterId());
             newItem.setAdventureEntryId(entryId);
             newItem.setAdventureGainedItemId(itemId);
             newItem.setItemName(request.getItemName());
-            newItem.setItemType(InventoryItem.ItemType.CONSUMABLE);
+            newItem.setItemType(parseItemType(request.getItemType()));
             newItem.setRarity(parseRarity(request.getRarity()));
-            newItem.setQuantity(delta);
+            newItem.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
+            newItem.setQuantity("CONSUMABLE".equalsIgnoreCase(request.getItemType()) ? Math.max(1, delta > 0 ? delta : newQty) : 1);
             newItem.setSource(entry.getAdventureName() != null ? entry.getAdventureName() : "冒險獲得");
             newItem.setNotes(request.getNotes());
             inventoryItemMapper.insert(newItem);
+            log.info("倉庫物品自動補建並綁定快照: ID={}, 名稱={}", newItem.getId(), newItem.getItemName());
         }
 
         return toGainedItemResponse(gainedItemMapper.findById(itemId));
@@ -300,6 +360,13 @@ public class AdventureEntryService {
             inventoryItemMapper.deleteById(warehouseItem.getId());
         }
         gainedItemMapper.deleteById(itemId);
+    }
+
+    private InventoryItem.ItemType parseItemType(String itemTypeStr) {
+        if ("CONSUMABLE".equalsIgnoreCase(itemTypeStr)) {
+            return InventoryItem.ItemType.CONSUMABLE;
+        }
+        return InventoryItem.ItemType.PERMANENT;
     }
 
     private InventoryItem.Rarity parseRarity(String rarityStr) {
@@ -383,6 +450,7 @@ public class AdventureEntryService {
         AdventureEntry entry = entryMapper.findById(entryId);
         if (entry == null) throw new ResourceNotFoundException("找不到冒險記錄 ID：" + entryId);
         entry.setDowntimeActivities(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entryId));
+        entry.setStoryAwards(storyAwardMapper.findByAdventureEntryId(entryId));
         return entry;
     }
 
@@ -411,6 +479,70 @@ public class AdventureEntryService {
         }
         findEntryAndVerifyOwner(item.getAdventureEntryId(), userId);
         return item;
+    }
+
+    // ── 故事獎勵 (Story Awards) ───────────────────────────────────────────────
+
+    public List<StoryAwardResponse> getStoryAwards(UUID entryId, UUID userId) {
+        findEntryAndVerifyOwner(entryId, userId);
+        return storyAwardMapper.findByAdventureEntryId(entryId)
+                .stream().map(this::toStoryAwardResponse).toList();
+    }
+
+    @Transactional
+    public StoryAwardResponse createStoryAward(UUID entryId, StoryAwardRequest request, UUID userId) {
+        findEntryAndVerifyOwner(entryId, userId);
+        if (request.getAwardName() == null || request.getAwardName().trim().isEmpty()) {
+            throw new BusinessException("故事獎勵名稱不可為空");
+        }
+        StoryAward award = new StoryAward();
+        award.setId(UUID.randomUUID());
+        award.setAdventureEntryId(entryId);
+        award.setAwardName(request.getAwardName().trim());
+        award.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        storyAwardMapper.insert(award);
+        return toStoryAwardResponse(findStoryAward(award.getId()));
+    }
+
+    @Transactional
+    public StoryAwardResponse updateStoryAward(UUID entryId, UUID awardId, StoryAwardRequest request, UUID userId) {
+        StoryAward award = findStoryAwardAndVerifyOwner(awardId, userId);
+        if (request.getAwardName() == null || request.getAwardName().trim().isEmpty()) {
+            throw new BusinessException("故事獎勵名稱不可為空");
+        }
+        award.setAwardName(request.getAwardName().trim());
+        award.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        storyAwardMapper.update(award);
+        return toStoryAwardResponse(findStoryAward(awardId));
+    }
+
+    @Transactional
+    public void deleteStoryAward(UUID awardId, UUID userId) {
+        findStoryAwardAndVerifyOwner(awardId, userId);
+        storyAwardMapper.deleteById(awardId);
+    }
+
+    private StoryAward findStoryAward(UUID awardId) {
+        StoryAward award = storyAwardMapper.findById(awardId);
+        if (award == null) throw new ResourceNotFoundException("找不到故事獎勵 ID：" + awardId);
+        return award;
+    }
+
+    private StoryAward findStoryAwardAndVerifyOwner(UUID awardId, UUID userId) {
+        StoryAward award = findStoryAward(awardId);
+        findEntryAndVerifyOwner(award.getAdventureEntryId(), userId);
+        return award;
+    }
+
+    private StoryAwardResponse toStoryAwardResponse(StoryAward award) {
+        StoryAwardResponse response = new StoryAwardResponse();
+        response.setId(award.getId());
+        response.setAdventureEntryId(award.getAdventureEntryId());
+        response.setAwardName(award.getAwardName());
+        response.setDescription(award.getDescription());
+        response.setCreatedAt(award.getCreatedAt());
+        response.setUpdatedAt(award.getUpdatedAt());
+        return response;
     }
 
     private AdventureEntryResponse toResponse(AdventureEntry entry) {
@@ -443,8 +575,12 @@ public class AdventureEntryService {
         response.setSoulCoinChargesUsed(entry.getSoulCoinChargesUsed());
         response.setCreatedAt(entry.getCreatedAt());
         response.setUpdatedAt(entry.getUpdatedAt());
-        response.setDowntimeActivities(entry.getDowntimeActivities()
-                .stream().map(this::toActivityResponse).toList());
+        response.setDowntimeActivities(entry.getDowntimeActivities() != null
+                ? entry.getDowntimeActivities().stream().map(this::toActivityResponse).toList()
+                : List.of());
+        response.setStoryAwards(entry.getStoryAwards() != null
+                ? entry.getStoryAwards().stream().map(this::toStoryAwardResponse).toList()
+                : List.of());
         return response;
     }
 
@@ -465,6 +601,7 @@ public class AdventureEntryService {
         response.setItemName(item.getItemName());
         response.setItemType(item.getItemType());
         response.setRarity(item.getRarity());
+        response.setRequiresAttunement(item.getRequiresAttunement());
         response.setQuantity(item.getQuantity());
         response.setNotes(item.getNotes());
         response.setCreatedAt(item.getCreatedAt());

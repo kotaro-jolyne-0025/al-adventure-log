@@ -1,4 +1,5 @@
-# D&D 冒險日誌系統 — 資料庫 Schema
+# 冒險紀錄表Web版 — 資料庫 Schema
+
 # 請到 Supabase Dashboard → SQL Editor 依序執行以下 SQL
 
 ---
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
 > 若 `adventure_entry` 資料表已存在，請在 Supabase SQL Editor 依序執行以下 ALTER：
 >
 > **Migration 1（T08）：**
+>
 > ```sql
 > ALTER TABLE adventure_entry
 >     ADD COLUMN IF NOT EXISTS starting_level INTEGER,
@@ -69,6 +71,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
 > ```
 >
 > **Migration 2（T10）：**
+>
 > ```sql
 > ALTER TABLE adventure_entry
 >     ADD COLUMN IF NOT EXISTS gold_downtime_change DECIMAL(10,2),
@@ -77,6 +80,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
 > ```
 >
 > **Migration 3：String-Based Class Levels**
+>
 > ```sql
 > -- 新增字串欄位
 > ALTER TABLE "character" ADD COLUMN IF NOT EXISTS current_classes_string VARCHAR(255);
@@ -89,6 +93,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
 > ```
 >
 > **Migration 4（T14）：**
+>
 > ```sql
 > ALTER TABLE adventure_entry
 >     ADD COLUMN IF NOT EXISTS catchup_class_name VARCHAR(100),
@@ -104,6 +109,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
 >     level INTEGER NOT NULL,
 >     sort_order INTEGER DEFAULT 0
 > );
+>
 > ```
 
 ---
@@ -217,7 +223,8 @@ CREATE TRIGGER update_inventory_item_updated_at
 
 ---
 
-## Migration 5（Auth & Multi-tenancy）：
+## Migration 5（Auth & Multi-tenancy）
+
 ```sql
 -- 1. 建立 users 表
 CREATE TABLE IF NOT EXISTS users (
@@ -252,7 +259,8 @@ CREATE INDEX IF NOT EXISTS idx_character_user_id ON "character"(user_id);
 
 ---
 
-## Migration 6（效能與外鍵索引優化）：
+## Migration 6（效能與外鍵索引優化）
+
 ```sql
 -- 1. 冒險記錄表索引 (優化按角色查詢與日期排序)
 CREATE INDEX IF NOT EXISTS idx_adventure_entry_char_playdate 
@@ -279,7 +287,8 @@ CREATE INDEX IF NOT EXISTS idx_character_user_created
 
 ---
 
-## Migration 7（Supabase Security Advisor 安全警告修復）：
+## Migration 7（Supabase Security Advisor 安全警告修復）
+
 ```sql
 -- 1. 修復 update_updated_at_column 函式，指定明確 search_path 防止 search_path 劫持
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
@@ -303,7 +312,8 @@ BEGIN
 END $$;
 ```
 
-## Migration 7（冒險戰利品快照表與倉庫級聯外鍵）：
+## Migration 7（冒險戰利品快照表與倉庫級聯外鍵）
+
 ```sql
 -- 1. 建立 adventure_gained_item 冒險戰利品快照表
 CREATE TABLE IF NOT EXISTS adventure_gained_item (
@@ -350,7 +360,8 @@ WHERE i.adventure_entry_id IS NOT NULL;
 
 ---
 
-## Migration 8（倉庫背包與冒險快照項精準綁定）：
+## Migration 8（倉庫背包與冒險快照項精準綁定）
+
 ```sql
 -- 1. inventory_item 增加 adventure_gained_item_id 外鍵關聯 (ON DELETE CASCADE)
 ALTER TABLE inventory_item 
@@ -377,7 +388,8 @@ ALTER TABLE "character"
 
 ---
 
-## Migration 10（角色資料表新增頭像欄位 avatar_url）：
+## Migration 10（角色資料表新增頭像欄位 avatar_url）
+
 ```sql
 ALTER TABLE "character" 
     ADD COLUMN IF NOT EXISTS avatar_url TEXT;
@@ -385,9 +397,17 @@ ALTER TABLE "character"
 
 ---
 
+## Migration 11（倉庫道具資料表新增是否需同調欄位 requires_attunement）
+
+```sql
+ALTER TABLE inventory_item 
+    ADD COLUMN IF NOT EXISTS requires_attunement BOOLEAN DEFAULT FALSE;
+```
+
 ---
 
-## Migration 12（密碼重設 Token 表 password_reset_tokens）：
+## Migration 12（密碼重設 Token 表 password_reset_tokens）
+
 ```sql
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -404,6 +424,43 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_user_id ON password_reset_tokens(u
 
 ---
 
+## Migration 13（角色玩家名稱解耦與冒險獲得物品同調支援）
+
+```sql
+-- 1. 角色資料表 player_name 欄位改為可為 NULL（完全依賴 user_id 關聯 users.display_name）
+ALTER TABLE "character" ALTER COLUMN player_name DROP NOT NULL;
+
+-- 2. 冒險獲得物品快照表 adventure_gained_item 新增 requires_attunement 欄位
+ALTER TABLE adventure_gained_item 
+    ADD COLUMN IF NOT EXISTS requires_attunement BOOLEAN DEFAULT FALSE;
+```
+
+---
+
+## Migration 14（故事獎勵表 adventure_story_award）
+
+```sql
+-- 1. 建立 adventure_story_award 資料表
+CREATE TABLE IF NOT EXISTS adventure_story_award (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    adventure_entry_id UUID NOT NULL REFERENCES adventure_entry(id) ON DELETE CASCADE,
+    award_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adventure_story_award_entry 
+    ON adventure_story_award(adventure_entry_id, created_at ASC);
+
+-- 2. 觸發器：自動維護 updated_at
+CREATE TRIGGER update_adventure_story_award_updated_at
+    BEFORE UPDATE ON adventure_story_award
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+```
+
+---
+
 ## 資料表關聯圖
 
 ```
@@ -415,7 +472,7 @@ users
     │   ├── downtime_activity  (1:N，CASCADE DELETE)
     │   ├── adventure_gained_item (1:N，CASCADE DELETE)
     │   │   └── inventory_item (1:1/1:N 精準綁定，CASCADE DELETE)
+    │   ├── adventure_story_award (1:N，CASCADE DELETE)
     │   └── inventory_item     (1:N，CASCADE DELETE，手動道具為 NULL)
     └── inventory_item         (1:N，CASCADE DELETE)
 ```
-
