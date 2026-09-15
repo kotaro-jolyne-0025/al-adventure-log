@@ -137,11 +137,7 @@
 }
 
 .capsule-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   color: var(--color-primary);
-  flex-shrink: 0;
 
   &.dir-icon {
     color: var(--text-secondary);
@@ -155,12 +151,10 @@
 
 .capsule-text {
   white-space: nowrap;
+  line-height: 1;
 }
 
 .capsule-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   color: var(--text-muted);
   transition: transform 0.2s ease;
 }

@@ -24,7 +24,6 @@ export interface AvatarCropperDialogData {
     MatDialogModule,
     MatButtonModule,
     MatSliderModule,
-    ,
     LucideCrop,
     LucideZoomOut,
     LucideZoomIn,

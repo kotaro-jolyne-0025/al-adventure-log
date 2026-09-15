@@ -209,6 +209,7 @@ body {
 /* ==========================================================================
    Global Utility Classes & Components
    ========================================================================== */
+
 // 卡片容器
 .clean-card {
   background: var(--bg-surface) !important;
@@ -288,7 +289,7 @@ body {
   border: 1px solid var(--color-attunement-border, rgba(217, 119, 6, 0.25));
 
   svg {
-    display: inline-flex;
+    display: block;
     flex-shrink: 0;
   }
 }
@@ -307,9 +308,8 @@ body {
   border: 1px solid var(--border-subtle);
 
   .badge-icon {
-    font-size: 1rem;
-    width: 1rem;
-    height: 1rem;
+    display: block;
+    flex-shrink: 0;
   }
 }
 
@@ -406,14 +406,93 @@ body {
    Lucide SVG & Material Component Global Overrides
    ========================================================================== */
 
-// 1. 修正純文字段落中 SVG 圖示的視覺偏移 (因應中文字 baseline)
-svg[lucide] {
+// ─── 1. 通用 Lucide SVG 全局基礎樣式 ────────────────────────────────────────
+//
+// 新版 @lucide/angular (v1.34+) 的每個 icon 是獨立的 standalone component，
+// selector 為 svg[lucideXxx]（如 svg[lucideArrowDown]），
+// 不再有舊版的共用 svg[lucide] attribute。
+//
+// 解決方案：以 svg[fill="none"][viewBox] 作為通用選擇器匹配所有 Lucide SVG。
+//
+// 使用情境分為兩種：
+//   • 行內文字（inline）：inline-block + vertical-align 讓 icon 對齊中文字 baseline
+//   • flex 容器（block） ：display:block 讓父層 align-items:center 正確垂直居中
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1a. 預設：行內文字場景
+//     vertical-align: -0.125em 修正中文字 baseline 偏移（icon 視覺上居中）
+svg[fill="none"][viewBox] {
   display: inline-block;
   vertical-align: -0.125em;
   flex-shrink: 0;
+  overflow: visible;
 }
 
-// 2. 修正所有 Material 按鈕內部對齊與中文字行高 (一高一低問題)
+// 1b. Flex 容器場景
+//     在以下 flex 容器的直接子 SVG 改為 display:block，
+//     讓父層 align-items:center 正確控制垂直居中，
+//     避免 inline-block baseline 造成的上下偏移。
+:is(
+  // 全局排版容器
+  .header-actions,
+  .header-titles,
+  // 排序膠囊
+  .sort-toolbar-capsule,
+  .capsule-section,
+  // 徽章與標籤
+  .badges-row,
+  .delta-badge,
+  .delta-tag,
+  .rarity-pill,
+  .attunement-pill,
+  .stat-badge,
+  .qty-badge,
+  // 冒險列表 meta 區
+  .meta-left,
+  .adv-date,
+  .adv-dm,
+  .adv-created-tag,
+  // 搜尋列
+  .search-bar,
+  .search-clear-btn,
+  // 篩選 chips
+  .filter-chip,
+  .filter-chip-clear,
+  // 物品列表行
+  .row-right-actions,
+  .row-left-main,
+  .row-center-tags,
+  .row-qty-col,
+  .crud-btns,
+  .action-btn,
+  // 其他
+  .empty-state,
+  .tab-icon
+) > svg[fill="none"][viewBox],
+// Material 按鈕內的 icon
+.mat-mdc-button-base svg[fill="none"][viewBox],
+.mdc-button__label svg[fill="none"][viewBox] {
+  display: block;
+}
+
+// ─── 2. Utility classes（手動覆蓋，優先級最高）──────────────────────────────
+// 當全局規則判斷不夠精準時，直接在模板加 class 指定行為
+
+// 強制行內顯示（跟隨文字流）
+svg.icon-inline {
+  display: inline-block !important;
+  vertical-align: -0.125em !important;
+}
+
+// 強制 block 顯示（在 flex 容器中精準居中）
+svg.icon-block {
+  display: block !important;
+  flex-shrink: 0;
+}
+
+// ─── 3. Material 按鈕內部對齊修正 ────────────────────────────────────────────
+// 修正中文字在 Material 按鈕中行高造成的一高一低問題
 .mat-mdc-button-base .mdc-button__label {
   display: inline-flex;
   align-items: center;

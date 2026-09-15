@@ -2,7 +2,6 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdventureService } from '../../../core/services/adventure.service';
@@ -36,7 +35,6 @@ export type AdventureSortField = 'playDate' | 'createdAt';
     CommonModule,
     DatePipe,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatTooltipModule,
     LucideCoins,
     LucideTent,
@@ -81,7 +79,7 @@ export class AdventureListComponent implements OnInit {
   protected readonly sortOrder = signal<'desc' | 'asc'>(
     (typeof localStorage !== 'undefined' &&
       (localStorage.getItem(this.SORT_ORDER_KEY) as 'desc' | 'asc')) ||
-      'desc'
+    'desc'
   );
   protected readonly isLoading = signal(true);
   protected characterId!: string;
@@ -173,7 +171,7 @@ export class AdventureListComponent implements OnInit {
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(this.SORT_FIELD_KEY, field);
-      } catch {}
+      } catch { }
     }
   }
 
@@ -183,7 +181,7 @@ export class AdventureListComponent implements OnInit {
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(this.SORT_ORDER_KEY, nextOrder);
-      } catch {}
+      } catch { }
     }
   }
 

@@ -12,7 +12,6 @@ import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
 import { EditProfileDialogComponent } from './features/auth/edit-profile-dialog/edit-profile-dialog.component';
 import {
-  LucideAngularModule,
   LucideArrowLeft,
   LucideSun,
   LucideMoon,
@@ -36,7 +35,6 @@ import {
     MatDividerModule,
     MatDialogModule,
     MatTooltipModule,
-    LucideAngularModule,
     LucideArrowLeft,
     LucideSun,
     LucideMoon,

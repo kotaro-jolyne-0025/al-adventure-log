@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
@@ -14,7 +13,7 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
-import { LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus } from '@lucide/angular';
+import { LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus } from '@lucide/angular';
 
 @Component({
   selector: 'app-character-list',
@@ -22,10 +21,9 @@ import { LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, Lucid
   imports: [
     MatCardModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatChipsModule,
     MatTooltipModule,
-    LucideUser, LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus
+    LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus
   ],
   templateUrl: './character-list.component.html',
   styleUrl: './character-list.component.scss',
@@ -108,7 +106,7 @@ export class CharacterListComponent implements OnInit {
       if (match) {
         try {
           total += parseInt(match[1], 10);
-        } catch {}
+        } catch { }
       } else {
         total += 1;
       }
