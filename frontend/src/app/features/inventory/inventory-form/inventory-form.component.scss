@@ -1,10 +1,12 @@
 .page-container {
+  width: 100%;
+  min-width: 0;
   max-width: 680px;
   margin: 0 auto;
   padding: 16px 16px 80px;
 
   @media (max-width: 600px) {
-    padding: 12px 12px 70px;
+    padding: 12px max(12px, var(--safe-area-right)) 70px max(12px, var(--safe-area-left));
   }
 }
 
@@ -13,6 +15,7 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
+  min-width: 0;
 
   @media (max-width: 600px) {
     margin-bottom: 16px;
@@ -32,6 +35,8 @@
   font-size: 1.45rem;
   font-weight: 700;
   color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 
   @media (max-width: 600px) {
     font-size: 1.25rem;
@@ -40,6 +45,8 @@
 
 .form-card {
   padding: 24px;
+  min-width: 0;
+  overflow: hidden;
 
   @media (max-width: 600px) {
     padding: 16px;

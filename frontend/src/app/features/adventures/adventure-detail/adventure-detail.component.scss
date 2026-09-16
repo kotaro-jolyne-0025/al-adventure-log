@@ -1,4 +1,6 @@
 .page-container {
+  width: 100%;
+  min-width: 0;
   padding: 8px 0 40px;
 }
 
@@ -32,6 +34,10 @@
   flex: 1;
   min-width: 280px;
 
+  > div {
+    min-width: 0;
+  }
+
   @media (max-width: 600px) {
     min-width: 0;
   }
@@ -52,6 +58,8 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .adv-code-tag {
@@ -63,6 +71,8 @@
   padding: 1px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .adv-date-tag {
@@ -86,6 +96,7 @@
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
+  overflow-wrap: anywhere;
 
   @media (max-width: 600px) {
     font-size: 1.25rem;
@@ -117,6 +128,8 @@
 .detail-section-card {
   padding: 20px;
   margin-bottom: 18px;
+  min-width: 0;
+  overflow: hidden;
 
   @media (max-width: 600px) {
     padding: 14px;
@@ -150,7 +163,7 @@
 /* Info Grid */
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 16px;
 
   @media (max-width: 600px) {
@@ -163,6 +176,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 
   &.full-row {
     grid-column: 1 / -1;
@@ -179,6 +193,7 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 /* Level Progression Box */
@@ -188,6 +203,7 @@
   gap: 14px;
   margin-top: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 
   @media (max-width: 600px) {
     flex-direction: column;
@@ -224,6 +240,7 @@
       font-size: 0.95rem;
       font-weight: 700;
       color: var(--text-primary);
+      overflow-wrap: anywhere;
     }
 
     &.highlight {
@@ -251,7 +268,7 @@
 /* Resource Cards Grid */
 .resource-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 14px;
 
   @media (max-width: 600px) {
@@ -268,6 +285,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  min-width: 0;
 
   .res-card-top {
     display: flex;
@@ -355,7 +373,7 @@
 /* Items List Grid */
 .items-list-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -364,6 +382,8 @@
   padding: 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
+  min-width: 0;
+  overflow: hidden;
 
   .item-top-line {
     display: flex;
@@ -378,6 +398,8 @@
       font-weight: 700;
       font-size: 0.95rem;
       color: var(--text-primary);
+      min-width: 0;
+      overflow-wrap: anywhere;
 
       .inline-item-icon {
         color: var(--color-primary);
@@ -406,6 +428,7 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
     line-height: 1.4;
+    overflow-wrap: anywhere;
   }
 
   &.story-award-card {
@@ -460,6 +483,7 @@
     color: var(--text-primary);
     line-height: 1.5;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   .empty-downtime-text {
@@ -480,12 +504,19 @@
     gap: 6px;
     font-size: 0.88rem;
     color: var(--text-primary);
+    min-width: 0;
 
     .downtime-dot-icon {
       font-size: 8px;
       width: 8px;
       height: 8px;
       color: var(--color-info);
+      flex-shrink: 0;
+    }
+
+    .downtime-desc {
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
   }
 }

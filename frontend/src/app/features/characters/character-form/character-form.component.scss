@@ -1,10 +1,12 @@
 .page-container {
+  width: 100%;
+  min-width: 0;
   max-width: 680px;
   margin: 0 auto;
   padding: 24px 16px 80px;
 
   @media (max-width: 600px) {
-    padding: 14px 12px 60px;
+    padding: 14px max(12px, var(--safe-area-right)) 60px max(12px, var(--safe-area-left));
   }
 }
 
@@ -134,15 +136,25 @@
 
 .avatar-actions-col {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
 
-  .avatar-btn-row {
+    .avatar-btn-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+      flex-wrap: wrap;
+
+      @media (max-width: 380px) {
+        width: 100%;
+
+        button {
+          width: 100%;
+          justify-content: center;
+        }
+      }
 
     .btn-upload-avatar {
       font-size: 0.85rem;
@@ -180,9 +192,11 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  min-width: 0;
 
   .class-name-field {
     flex: 1;
+    min-width: 0;
   }
 
   .class-level-field {

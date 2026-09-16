@@ -2,6 +2,10 @@
   position: sticky;
   top: 0;
   z-index: 1000;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   background-color: var(--header-bg);
@@ -13,16 +17,24 @@
 .app-toolbar {
   background: transparent !important;
   color: var(--text-primary);
+  width: 100%;
   max-width: 1200px;
+  min-width: 0;
   margin: 0 auto;
-  padding: 0 16px;
+  padding-left: max(16px, var(--safe-area-left));
+  padding-right: max(16px, var(--safe-area-right));
   height: 60px;
   display: flex;
   align-items: center;
 
   @media (max-width: 600px) {
-    padding: 0 12px;
+    padding-left: max(12px, var(--safe-area-left));
+    padding-right: max(12px, var(--safe-area-right));
     height: 56px;
+  }
+
+  > * {
+    min-width: 0;
   }
 }
 
@@ -37,10 +49,11 @@
   }
 
   @media (max-width: 600px) {
-    margin-left: -6px;
+    margin-left: 0;
     margin-right: 2px;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
 
     mat-icon {
       font-size: 1.25rem;
@@ -54,6 +67,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(52vw, 360px);
   cursor: pointer;
   user-select: none;
   text-decoration: none;
@@ -83,20 +99,32 @@
     font-weight: 700;
     letter-spacing: 0.3px;
     color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     @media (max-width: 480px) {
       font-size: 1.05rem;
     }
   }
+
+  @media (max-width: 420px) {
+    // 讓品牌區使用扣除右側按鈕後的剩餘空間，文字只在真正不足時省略。
+    flex: 1 1 auto;
+    max-width: none;
+  }
 }
 
 .spacer {
-  flex: 1;
+  flex: 1 1 12px;
+  min-width: 4px;
 }
 
 .theme-toggle-btn {
   color: var(--text-secondary) !important;
   margin-right: 4px;
+  flex: 0 0 auto;
   transition: color 0.15s ease, transform 0.2s ease;
 
   &:hover {
@@ -120,6 +148,9 @@
   background: var(--bg-surface-elevated) !important;
   border: 1px solid var(--border-subtle);
   color: var(--text-primary) !important;
+  min-width: 0 !important;
+  max-width: min(220px, 42vw);
+  flex: 0 1 auto;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 
   &:hover {
@@ -157,12 +188,27 @@
   @media (max-width: 540px) {
     padding: 4px 8px;
   }
+
+  @media (max-width: 420px) {
+    width: 40px;
+    min-width: 40px !important;
+    max-width: 40px;
+    height: 40px;
+    padding: 0 !important;
+    justify-content: center;
+
+    .user-name,
+    .dropdown-icon {
+      display: none;
+    }
+  }
 }
 
 .auth-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
 
   .btn-login-nav {
     color: var(--text-primary) !important;
@@ -211,10 +257,36 @@
 :host {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .app-content {
   flex: 1 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+@media (max-width: 420px) {
+  .spacer {
+    flex: 0 0 4px;
+  }
+
+  .auth-actions {
+    gap: 2px;
+
+    .btn-login-nav,
+    .btn-register-nav {
+      min-width: 0;
+      padding-inline: 8px;
+    }
+  }
 }
 
