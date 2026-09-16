@@ -16,6 +16,7 @@ public class CharacterResponse {
     private String faction;
     private String avatarUrl;
     private String currentClassesString;
+    private Integer soulCoins;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

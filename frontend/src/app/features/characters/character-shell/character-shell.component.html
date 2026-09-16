@@ -25,7 +25,7 @@
             <div class="name-line">
               <h1 class="char-name" [matTooltip]="character()!.characterName">{{ character()!.characterName }}</h1>
               <button mat-icon-button (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色">
-                <svg lucidePenLine [size]="20"></svg>
+                <svg lucidePencil [size]="20"></svg>
               </button>
             </div>
             <p class="char-meta">
@@ -46,7 +46,7 @@
 
         <div class="hero-actions">
           <button mat-stroked-button (click)="onEdit()" class="btn-edit-hero">
-            <svg lucidePenLine [size]="20"></svg>
+            <svg lucidePencil [size]="20"></svg>
             <span>編輯角色</span>
           </button>
         </div>
@@ -89,6 +89,16 @@
           </div>
           <span class="hud-value stat-magic">
             {{ magicItemsCount() }} <small class="unit">件</small>
+          </span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideGhost class="hud-icon stat-soul-icon" [size]="16"></svg>
+            <span class="hud-label">靈魂幣</span>
+          </div>
+          <span class="hud-value stat-soul">
+            {{ character()!.soulCoins ?? 0 }} <small class="unit">枚</small>
           </span>
         </div>
 

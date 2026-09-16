@@ -500,3 +500,14 @@ svg.icon-block {
   gap: 6px;
   line-height: 1 !important;
 }
+
+// ─── 4. Material 選單項目 (mat-menu-item) 圖示間距與垂直對齊修正 ─────────────────────────
+.mat-mdc-menu-item .mat-mdc-menu-item-text {
+  display: flex;
+  align-items: center;
+}
+
+.mat-mdc-menu-item svg[fill="none"][viewBox] {
+  display: block;
+  margin-right: 6px;
+}

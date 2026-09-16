@@ -19,7 +19,7 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>顯示名稱 (玩家暱稱)</mat-label>
           <input matInput formControlName="displayName" autocomplete="name" />
-          <svg lucideIdCard [size]="20" matPrefix></svg>
+
           @if (registerForm.get('displayName')?.hasError('required')) {
             <mat-error>請輸入顯示名稱</mat-error>
           }
@@ -37,7 +37,7 @@
             placeholder="example@domain.com"
             autocomplete="email"
           />
-          <svg lucideMail [size]="20" matPrefix></svg>
+
           @if (registerForm.get('email')?.hasError('required')) {
             <mat-error>請輸入電子郵件</mat-error>
           }
@@ -54,7 +54,7 @@
             formControlName="password"
             autocomplete="new-password"
           />
-          <svg lucideLock [size]="20" matPrefix></svg>
+
           <button
             mat-icon-button
             matSuffix

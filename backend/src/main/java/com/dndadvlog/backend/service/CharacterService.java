@@ -41,6 +41,7 @@ public class CharacterService {
         character.setFaction(request.getFaction());
         character.setAvatarUrl(request.getAvatarUrl());
         character.setCurrentClassesString(request.getCurrentClassesString());
+        character.setSoulCoins(request.getSoulCoins() != null ? request.getSoulCoins() : 0);
         characterMapper.insert(character);
         log.info("角色建立成功: ID={}, UserID={}, 名稱={}", character.getId(), userId, character.getCharacterName());
         return toResponse(findCharacter(character.getId(), userId));
@@ -57,6 +58,9 @@ public class CharacterService {
         character.setAvatarUrl(request.getAvatarUrl());
         if (request.getCurrentClassesString() != null) {
             character.setCurrentClassesString(request.getCurrentClassesString());
+        }
+        if (request.getSoulCoins() != null) {
+            character.setSoulCoins(request.getSoulCoins());
         }
         characterMapper.update(character);
         Character updated = findCharacter(id, userId);
@@ -100,6 +104,7 @@ public class CharacterService {
         response.setCreatedAt(character.getCreatedAt());
         response.setUpdatedAt(character.getUpdatedAt());
         response.setCurrentClassesString(character.getCurrentClassesString());
+        response.setSoulCoins(character.getSoulCoins());
         return response;
     }
 }
