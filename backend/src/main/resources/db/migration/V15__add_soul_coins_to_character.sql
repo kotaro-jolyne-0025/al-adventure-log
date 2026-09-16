@@ -1,0 +1,2 @@
+ALTER TABLE "character" 
+    ADD COLUMN IF NOT EXISTS soul_coins INTEGER DEFAULT 0;

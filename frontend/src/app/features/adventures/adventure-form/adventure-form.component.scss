@@ -748,14 +748,7 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 0;
-  position: sticky;
-  bottom: 0;
-  background: var(--header-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-top: 1px solid var(--border-subtle);
   margin-top: 20px;
-  z-index: 100;
 
   @media (max-width: 600px) {
     padding: 12px 0 max(16px, env(safe-area-inset-bottom, 16px));

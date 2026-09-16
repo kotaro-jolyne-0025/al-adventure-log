@@ -96,6 +96,7 @@ export class CharacterFormComponent implements OnInit {
     race: ['', Validators.required],
     subclass: [''],
     faction: [''],
+    soulCoins: [0, [Validators.min(0), Validators.pattern('^[0-9]*$')]],
   });
 
   // 職業等級選擇器
@@ -153,6 +154,7 @@ export class CharacterFormComponent implements OnInit {
           race: character.race,
           subclass: character.subclass ?? '',
           faction: character.faction ?? '',
+          soulCoins: character.soulCoins ?? 0,
         });
         this.avatarUrl.set(character.avatarUrl ?? null);
         // 解析職業字串 → 選擇器
@@ -241,6 +243,7 @@ export class CharacterFormComponent implements OnInit {
       faction: raw.faction?.trim() || null,
       avatarUrl: this.avatarUrl(),
       currentClassesString: this.buildClassesString(),
+      soulCoins: raw.soulCoins ?? 0,
     };
 
     if (this.isEditMode() && this.characterId) {

@@ -15,7 +15,7 @@ import { catchError, forkJoin, of, Subject, takeUntil } from 'rxjs';
 
 import { CommonModule } from '@angular/common';
 
-import { LucideCoins, LucideTent, LucideSparkles, LucidePenLine, LucideBookOpen, LucideBox } from '@lucide/angular';
+import { LucideCoins, LucideTent, LucideSparkles, LucidePencil, LucideBookOpen, LucideBox, LucideGhost } from '@lucide/angular';
 
 @Component({
   selector: 'app-character-shell',
@@ -30,7 +30,7 @@ import { LucideCoins, LucideTent, LucideSparkles, LucidePenLine, LucideBookOpen,
     LucideCoins,
     LucideTent,
     LucideSparkles,
-    LucidePenLine, LucideBookOpen, LucideBox
+    LucidePencil, LucideBookOpen, LucideBox, LucideGhost
   ],
   templateUrl: './character-shell.component.html',
   styleUrl: './character-shell.component.scss',
