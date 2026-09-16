@@ -8,6 +8,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { SwUpdate } from '@angular/service-worker';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
 import { EditProfileDialogComponent } from './features/auth/edit-profile-dialog/edit-profile-dialog.component';
@@ -35,6 +37,7 @@ import {
     MatDividerModule,
     MatDialogModule,
     MatTooltipModule,
+    MatSnackBarModule,
     LucideArrowLeft,
     LucideSun,
     LucideMoon,
@@ -53,6 +56,8 @@ export class App {
   readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly swUpdate = inject(SwUpdate);
+  private readonly snackBar = inject(MatSnackBar);
 
   // 判斷是否處於角色內頁（非角色列表、非登入註冊頁面）
   readonly showBack = signal(false);
@@ -69,6 +74,23 @@ export class App {
           url.includes('/inventory');
         this.showBack.set(isDetailPage);
       });
+
+    // 監聽 PWA Service Worker 新版本通知
+    if (this.swUpdate.isEnabled) {
+      this.swUpdate.versionUpdates.pipe(
+        filter(evt => evt.type === 'VERSION_READY')
+      ).subscribe(() => {
+        const snackRef = this.snackBar.open('發現新版本！是否立即重新整理以載入最新內容？', '重新整理', {
+          duration: 0, // 不自動關閉
+          horizontalPosition: 'right',
+          verticalPosition: 'bottom'
+        });
+        
+        snackRef.onAction().subscribe(() => {
+          document.location.reload();
+        });
+      });
+    }
   }
 
   goBack(): void {
