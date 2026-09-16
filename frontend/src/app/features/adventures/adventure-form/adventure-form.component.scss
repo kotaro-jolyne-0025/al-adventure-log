@@ -1,10 +1,12 @@
 .page-container {
+  width: 100%;
+  min-width: 0;
   max-width: 860px;
   margin: 0 auto;
   padding: 16px 16px 80px;
 
   @media (max-width: 600px) {
-    padding: 12px 12px 70px;
+    padding: 12px max(12px, var(--safe-area-right)) 70px max(12px, var(--safe-area-left));
   }
 }
 
@@ -13,6 +15,7 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
+  min-width: 0;
 
   @media (max-width: 600px) {
     margin-bottom: 16px;
@@ -32,6 +35,8 @@
   font-size: 1.45rem;
   font-weight: 700;
   color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 
   @media (max-width: 600px) {
     font-size: 1.25rem;
@@ -43,6 +48,8 @@
   padding: 20px;
   margin-bottom: 24px;
   border-radius: var(--radius-md);
+  min-width: 0;
+  overflow: hidden;
 
   @media (max-width: 600px) {
     padding: 14px;
@@ -73,6 +80,8 @@
   gap: 8px;
   font-size: 1.2rem;
   font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
 
   .title-icon {
     display: inline-flex;
@@ -99,6 +108,7 @@
   flex-wrap: wrap;
   gap: 8px;
   width: 100%;
+  min-width: 0;
 
   @media (max-width: 600px) {
     button {
@@ -114,6 +124,7 @@
   margin-bottom: 16px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-subtle);
+  min-width: 0;
 
   .section-icon {
     font-size: 1.25rem;
@@ -127,6 +138,8 @@
     font-weight: 700;
     margin: 0;
     color: var(--text-primary);
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -513,6 +526,8 @@
   border: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 
   @media (max-width: 600px) {
     padding: 12px;
@@ -529,6 +544,7 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+      min-width: 0;
     }
 
     .gained-item-index {
@@ -639,6 +655,7 @@
   flex-direction: column;
   gap: 10px;
   transition: transform 0.15s ease, border-color 0.15s ease;
+  min-width: 0;
 
   &:hover {
     border-color: var(--border-medium);
@@ -648,6 +665,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    min-width: 0;
+    gap: 8px;
   }
 
   .badge-title-group {
@@ -672,12 +691,15 @@
     display: flex;
     align-items: baseline;
     gap: 4px;
+    min-width: 0;
 
     .value-num {
       font-size: 1.35rem;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       line-height: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .value-unit {
@@ -734,6 +756,8 @@
   border: 1px solid rgba(225, 29, 72, 0.3);
   font-size: 0.88rem;
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
 
   mat-icon {
     font-size: 1.25rem;
