@@ -130,6 +130,10 @@ body.theme-dark {
    ========================================================================== */
 html {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 // Light theme by default
@@ -174,6 +178,11 @@ body.theme-dark {
 body {
   margin: 0;
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
   background-color: var(--bg-canvas);
   color: var(--text-primary);
   font-family: var(--font-family-base);
@@ -182,6 +191,22 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+img,
+svg {
+  max-inline-size: 100%;
 }
 
 /* ==========================================================================
@@ -426,7 +451,9 @@ svg[fill="none"][viewBox] {
   display: inline-block;
   vertical-align: -0.125em;
   flex-shrink: 0;
-  overflow: visible;
+  // Lucide 本身保留足夠的 viewBox 留白，不需要讓筆畫越出 SVG 盒模型。
+  // 設為 hidden 可避免 icon 位於畫面邊緣時製造水平溢出。
+  overflow: hidden;
 }
 
 // 1b. Flex 容器場景

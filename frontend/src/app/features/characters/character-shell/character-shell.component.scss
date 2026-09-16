@@ -5,18 +5,22 @@
 }
 
 .shell-container {
+  width: 100%;
   max-width: 1080px;
+  min-width: 0;
   margin: 0 auto;
   padding: 20px 16px 80px;
 
   @media (max-width: 600px) {
-    padding: 12px 12px 60px;
+    padding: 12px max(12px, var(--safe-area-right)) 60px max(12px, var(--safe-area-left));
   }
 }
 
 /* Character Hero Card */
 .char-hero-card {
   position: relative;
+  min-width: 0;
+  overflow: hidden;
   padding: 20px;
   margin-bottom: 20px;
 
@@ -260,6 +264,7 @@
   flex-direction: column;
   border: 1px solid var(--border-subtle);
   transition: transform 0.15s ease, border-color 0.15s ease;
+  min-width: 0;
 
   @media (max-width: 600px) {
     padding: 8px 12px;
@@ -279,6 +284,7 @@
   gap: 6px;
   margin-bottom: 6px;
   min-height: 16px;
+  min-width: 0;
 
   @media (max-width: 600px) {
     margin-bottom: 0;
@@ -314,6 +320,8 @@
     font-size: 0.76rem;
     color: var(--text-secondary);
     font-weight: 500;
+    min-width: 0;
+    overflow-wrap: anywhere;
 
     @media (max-width: 600px) {
       font-size: 0.72rem;
