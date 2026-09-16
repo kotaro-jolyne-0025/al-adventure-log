@@ -22,4 +22,6 @@ public class CharacterRequest {
 
     private String currentClassesString;
 
+    private Integer soulCoins;
+
 }

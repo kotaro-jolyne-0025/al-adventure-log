@@ -7,6 +7,7 @@ export interface Character {
   faction?: string | null;
   avatarUrl?: string | null;
   currentClassesString?: string;
+  soulCoins?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -19,4 +20,5 @@ export interface CharacterRequest {
   faction?: string | null;
   avatarUrl?: string | null;
   currentClassesString?: string | null;
+  soulCoins?: number | null;
 }

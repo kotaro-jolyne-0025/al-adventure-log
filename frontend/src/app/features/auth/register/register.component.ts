@@ -11,10 +11,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
 import {
-  LucideIdCard,
-  LucideMail,
-  LucideCircleAlert,
-  LucideLock,
+  LucideAlertCircle,
   LucideEye,
   LucideEyeOff,
 } from '@lucide/angular';
@@ -30,10 +27,7 @@ import {
     MatInputModule,
     MatButtonModule,
     MatProgressSpinner,
-    LucideIdCard,
-    LucideMail,
-    LucideCircleAlert,
-    LucideLock,
+    LucideAlertCircle,
     LucideEye,
     LucideEyeOff,
   ],
