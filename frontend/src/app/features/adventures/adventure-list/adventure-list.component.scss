@@ -1,4 +1,6 @@
 .page-container {
+  width: 100%;
+  min-width: 0;
   padding: 8px 0 40px;
 }
 
@@ -20,6 +22,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .section-title {
@@ -58,6 +62,7 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  min-width: 0;
 
   @media (max-width: 600px) {
     width: 100%;
@@ -77,6 +82,8 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   padding: 3px 4px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  max-width: 100%;
+  min-width: 0;
 
   &:hover {
     border-color: var(--color-primary);
@@ -107,6 +114,7 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.18s ease, color 0.18s ease;
+  min-width: 0;
 
   &:hover {
     background: var(--bg-surface-elevated);
@@ -121,6 +129,12 @@
     flex: 1;
     padding: 0 8px;
     font-size: 0.86rem;
+
+    .capsule-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   }
 }
 
@@ -200,6 +214,7 @@
   border: 1.5px solid var(--border-medium);
   border-radius: var(--radius-full);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-width: 0;
 
   &:focus-within,
   &.search-bar--active {
@@ -289,6 +304,8 @@
 .chronicle-card {
   padding: 18px 20px;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 
   @media (max-width: 600px) {
     padding: 14px 16px;
@@ -310,6 +327,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  min-width: 0;
 }
 
 .meta-left {
@@ -317,6 +335,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .adv-code {
@@ -387,6 +406,7 @@
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  min-width: 0;
 }
 
 .delta-badge {
@@ -402,6 +422,9 @@
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
   line-height: 1;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 
   .badge-icon {
     display: inline-flex;
