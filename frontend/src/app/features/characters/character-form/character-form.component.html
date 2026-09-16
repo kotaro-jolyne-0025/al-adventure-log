@@ -77,6 +77,14 @@
             <input matInput formControlName="faction" />
           </mat-form-field>
 
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>靈魂幣 (Soul Coins)</mat-label>
+            <input matInput type="number" formControlName="soulCoins" min="0" step="1" />
+            @if (form.get('soulCoins')?.hasError('min') || form.get('soulCoins')?.hasError('pattern')) {
+            <mat-error>請輸入大於等於 0 的整數</mat-error>
+            }
+          </mat-form-field>
+
           <!-- 職業與等級 -->
           @if (isEditMode()) {
           <div class="readonly-class-box" style="margin-top: 16px;">

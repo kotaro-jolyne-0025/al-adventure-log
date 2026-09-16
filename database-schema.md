@@ -461,6 +461,15 @@ CREATE TRIGGER update_adventure_story_award_updated_at
 
 ---
 
+## Migration 15 (角色資料表新增靈魂幣欄位)
+
+```sql
+ALTER TABLE "character" 
+    ADD COLUMN IF NOT EXISTS soul_coins INTEGER DEFAULT 0;
+```
+
+---
+
 ## 資料表關聯圖
 
 ```
