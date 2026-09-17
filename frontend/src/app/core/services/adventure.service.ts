@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { finalize, Observable, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AdventureEntry,
@@ -25,6 +25,8 @@ export class AdventureService {
   // 記憶體快取
   private readonly entriesCache = new Map<string, AdventureEntry[]>();
   private readonly defaultsCache = new Map<string, EntryDefaults>();
+  private readonly entriesRequests = new Map<string, Observable<AdventureEntry[]>>();
+  private readonly defaultsRequests = new Map<string, Observable<EntryDefaults>>();
 
   clearCache(characterId?: string): void {
     if (characterId) {
@@ -41,50 +43,36 @@ export class AdventureService {
 
   getAllByCharacter(characterId: string, forceRefresh = false): Observable<AdventureEntry[]> {
     const cached = this.entriesCache.get(characterId);
-    const fetch$ = this.http.get<AdventureEntry[]>(
+    if (cached && !forceRefresh) return of(cached);
+    const inFlight = this.entriesRequests.get(characterId);
+    if (inFlight) return inFlight;
+
+    const request$ = this.http.get<AdventureEntry[]>(
       `${this.base}/${characterId}/entries`
     ).pipe(
-      tap((list) => this.entriesCache.set(characterId, list))
+      tap((list) => this.entriesCache.set(characterId, list)),
+      finalize(() => this.entriesRequests.delete(characterId)),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
-
-    if (cached && !forceRefresh) {
-      return new Observable<AdventureEntry[]>((subscriber) => {
-        subscriber.next(cached);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
-    }
-
-    return fetch$;
+    this.entriesRequests.set(characterId, request$);
+    return request$;
   }
 
   getDefaults(characterId: string, forceRefresh = false): Observable<EntryDefaults> {
     const cached = this.defaultsCache.get(characterId);
-    const fetch$ = this.http.get<EntryDefaults>(
+    if (cached && !forceRefresh) return of(cached);
+    const inFlight = this.defaultsRequests.get(characterId);
+    if (inFlight) return inFlight;
+
+    const request$ = this.http.get<EntryDefaults>(
       `${this.base}/${characterId}/entries/defaults`
     ).pipe(
-      tap((defaults) => this.defaultsCache.set(characterId, defaults))
+      tap((defaults) => this.defaultsCache.set(characterId, defaults)),
+      finalize(() => this.defaultsRequests.delete(characterId)),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
-
-    if (cached && !forceRefresh) {
-      return new Observable<EntryDefaults>((subscriber) => {
-        subscriber.next(cached);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
-    }
-
-    return fetch$;
+    this.defaultsRequests.set(characterId, request$);
+    return request$;
   }
 
   getById(characterId: string, entryId: string): Observable<AdventureEntry> {

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { finalize, Observable, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { InventoryItem, InventoryItemRequest } from '../models/inventory.model';
 import { CharacterService } from './character.service';
@@ -13,6 +13,7 @@ export class InventoryService {
 
   // 記憶體快取
   private readonly inventoryCache = new Map<string, InventoryItem[]>();
+  private readonly inventoryRequests = new Map<string, Observable<InventoryItem[]>>();
 
   clearCache(characterId?: string): void {
     if (characterId) {
@@ -26,26 +27,19 @@ export class InventoryService {
 
   getAllByCharacter(characterId: string, forceRefresh = false): Observable<InventoryItem[]> {
     const cached = this.inventoryCache.get(characterId);
-    const fetch$ = this.http.get<InventoryItem[]>(
+    if (cached && !forceRefresh) return of(cached);
+    const inFlight = this.inventoryRequests.get(characterId);
+    if (inFlight) return inFlight;
+
+    const request$ = this.http.get<InventoryItem[]>(
       `${this.base}/${characterId}/inventory`
     ).pipe(
-      tap((items) => this.inventoryCache.set(characterId, items))
+      tap((items) => this.inventoryCache.set(characterId, items)),
+      finalize(() => this.inventoryRequests.delete(characterId)),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
-
-    if (cached && !forceRefresh) {
-      return new Observable<InventoryItem[]>((subscriber) => {
-        subscriber.next(cached);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
-    }
-
-    return fetch$;
+    this.inventoryRequests.set(characterId, request$);
+    return request$;
   }
 
   create(characterId: string, req: InventoryItemRequest): Observable<InventoryItem> {
@@ -87,4 +81,3 @@ export class InventoryService {
     );
   }
 }
-

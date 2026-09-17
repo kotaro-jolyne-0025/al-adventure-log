@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, Subject, tap } from 'rxjs';
+import { finalize, Observable, of, shareReplay, Subject, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Character, CharacterRequest } from '../models/character.model';
 
@@ -15,6 +15,8 @@ export class CharacterService {
   // 記憶體快取
   private listCache: Character[] | null = null;
   private readonly itemCache = new Map<string, Character>();
+  private listRequest$: Observable<Character[]> | null = null;
+  private readonly itemRequests = new Map<string, Observable<Character>>();
 
   notifyCharacterChanged(characterId?: string): void {
     if (characterId) {
@@ -30,51 +32,42 @@ export class CharacterService {
   }
 
   getAll(forceRefresh = false): Observable<Character[]> {
-    const fetch$ = this.http.get<Character[]>(this.base).pipe(
+    if (this.listCache && !forceRefresh) {
+      return of(this.listCache);
+    }
+    if (this.listRequest$) {
+      return this.listRequest$;
+    }
+
+    const request$ = this.http.get<Character[]>(this.base).pipe(
       tap((list) => {
         this.listCache = list;
         for (const item of list) {
           this.itemCache.set(item.id, item);
         }
-      })
+      }),
+      finalize(() => this.listRequest$ = null),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
-
-    if (this.listCache && !forceRefresh) {
-      return new Observable<Character[]>((subscriber) => {
-        subscriber.next(this.listCache!);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
-    }
-
-    return fetch$;
+    this.listRequest$ = request$;
+    return request$;
   }
 
   getById(id: string, forceRefresh = false): Observable<Character> {
     const cached = this.itemCache.get(id);
-    const fetch$ = this.http.get<Character>(`${this.base}/${id}`).pipe(
-      tap((item) => this.itemCache.set(id, item))
-    );
-
     if (cached && !forceRefresh) {
-      return new Observable<Character>((subscriber) => {
-        subscriber.next(cached);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
+      return of(cached);
     }
+    const inFlight = this.itemRequests.get(id);
+    if (inFlight) return inFlight;
 
-    return fetch$;
+    const request$ = this.http.get<Character>(`${this.base}/${id}`).pipe(
+      tap((item) => this.itemCache.set(id, item)),
+      finalize(() => this.itemRequests.delete(id)),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+    this.itemRequests.set(id, request$);
+    return request$;
   }
 
   create(req: CharacterRequest): Observable<Character> {
@@ -95,4 +88,3 @@ export class CharacterService {
     );
   }
 }
-

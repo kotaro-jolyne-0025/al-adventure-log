@@ -11,7 +11,7 @@ import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
 import { InventoryItem, ITEM_RARITY_LABELS, RARITY_COLORS } from '../../../core/models/inventory.model';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -96,26 +96,29 @@ export class AdventureDetailComponent implements OnInit {
     forkJoin({
       entry: this.adventureService.getById(this.characterId, this.entryId),
       gainedItems: this.adventureService.getGainedItems(this.entryId).pipe(catchError(() => of([]))),
-      storyAwards: this.adventureService.getStoryAwards(this.entryId).pipe(catchError(() => of([]))),
-      items: this.inventoryService.getAllByCharacter(this.characterId).pipe(catchError(() => of([]))),
-    }).subscribe({
-      next: ({ entry, gainedItems, storyAwards, items }) => {
+    }).pipe(
+      switchMap(({ entry, gainedItems }) => {
+        if (gainedItems.length > 0) {
+          return of({ entry, gainedItems, legacyItems: [] as InventoryItem[] });
+        }
+        // 舊資料沒有快照時，才額外讀取整個倉庫做相容性比對。
+        return this.inventoryService.getAllByCharacter(this.characterId).pipe(
+          catchError(() => of([])),
+          map(legacyItems => ({ entry, gainedItems, legacyItems }))
+        );
+      })
+    ).subscribe({
+      next: ({ entry, gainedItems, legacyItems }) => {
         this.entry.set(entry);
         if (gainedItems && gainedItems.length > 0) {
           this.magicItems.set(gainedItems.filter(i => i.itemType === 'PERMANENT'));
           this.consumableItems.set(gainedItems.filter(i => i.itemType === 'CONSUMABLE'));
         } else {
           // 向後相容：若舊記錄尚未有快照，降級回倉庫比對
-          this.processGainedItems(entry, items);
+          this.processGainedItems(entry, legacyItems);
         }
 
-        if (storyAwards && storyAwards.length > 0) {
-          this.storyAwards.set(storyAwards);
-        } else if (entry.storyAwards && entry.storyAwards.length > 0) {
-          this.storyAwards.set(entry.storyAwards);
-        } else {
-          this.storyAwards.set([]);
-        }
+        this.storyAwards.set(entry.storyAwards ?? []);
 
         this.isLoading.set(false);
       },
