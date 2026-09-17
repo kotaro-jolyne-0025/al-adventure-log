@@ -22,9 +22,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
-import { AdventureEntry, AdventureEntryRequest, AdventureEntrySaveRequest } from '../../../core/models/adventure.model';
+import { AdventureEntryRequest, AdventureEntrySaveRequest, AdventureGainedItem } from '../../../core/models/adventure.model';
 import { ItemRarity, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
-import { of, catchError, forkJoin } from 'rxjs';
+import { of, catchError, forkJoin, map, switchMap } from 'rxjs';
 
 import {
   LucideCoins,
@@ -105,6 +105,9 @@ export class AdventureFormComponent implements OnInit {
 
   protected isEditMode = signal(false);
   protected isSaving = signal(false);
+  protected isLoading = signal(false);
+  protected loadFailed = signal(false);
+  private detailsLoaded = false;
   protected characterId!: string;
   protected entryId: string | null = null;
 
@@ -338,8 +341,31 @@ export class AdventureFormComponent implements OnInit {
   }
 
   private loadEntry(id: string): void {
-    this.adventureService.getById(this.characterId, id).subscribe({
-      next: (entry) => {
+    this.isLoading.set(true);
+    this.loadFailed.set(false);
+    this.detailsLoaded = false;
+    forkJoin({
+      entry: this.adventureService.getById(this.characterId, id),
+      gainedItems: this.adventureService.getGainedItems(id),
+      storyAwards: this.adventureService.getStoryAwards(id),
+    }).pipe(
+      switchMap(result => {
+        if (result.gainedItems.length > 0) return of(result);
+        // Only a successful empty snapshot response permits the legacy fallback.
+        return this.inventoryService.getAllByCharacter(this.characterId).pipe(
+          map(items => ({
+            ...result,
+            gainedItems: items.filter(item =>
+              !item.adventureGainedItemId &&
+              (item.adventureEntryId === id ||
+                (!item.adventureEntryId && this.isSourceMatch(item.source,
+                  result.entry.adventureName, result.entry.adventureCode)))
+            ).map(item => ({ ...item, adventureEntryId: id })),
+          }))
+        );
+      })
+    ).subscribe({
+      next: ({ entry, gainedItems, storyAwards }) => {
         this._startingLevel.set(entry.startingLevel ?? 1);
         this._startingClassesString.set(entry.startingClassesString ?? null);
 
@@ -412,32 +438,23 @@ export class AdventureFormComponent implements OnInit {
           soulCoinChargesUsed: entry.soulCoinChargesUsed ?? '',
         });
 
-        this.loadGainedItems(entry);
-
-        if (entry.storyAwards && entry.storyAwards.length > 0) {
-          this.storyAwards.set(entry.storyAwards.map(a => ({
-            id: a.id,
-            awardName: a.awardName,
-            description: a.description || '',
-          })));
-        } else if (entry.id) {
-          this.adventureService.getStoryAwards(entry.id).subscribe({
-            next: (awards) => {
-              if (awards && awards.length > 0) {
-                this.storyAwards.set(awards.map(a => ({
-                  id: a.id,
-                  awardName: a.awardName,
-                  description: a.description || '',
-                })));
-              }
-            },
-          });
-        }
+        this.applyGainedItems(gainedItems);
+        this.storyAwards.set(storyAwards.map(a => ({
+          id: a.id, awardName: a.awardName, description: a.description || '',
+        })));
+        this.detailsLoaded = true;
+        this.isLoading.set(false);
       },
       error: () => {
-        this.snackBar.open('載入記錄失敗', '關閉', { duration: 3000 });
+        this.isLoading.set(false);
+        this.loadFailed.set(true);
+        this.snackBar.open('資料尚未完整載入，請重試後再儲存', '關閉', { duration: 4000 });
       },
     });
+  }
+
+  protected retryLoad(): void {
+    if (this.entryId && !this.isLoading()) this.loadEntry(this.entryId);
   }
 
   private isSourceMatch(
@@ -450,82 +467,28 @@ export class AdventureFormComponent implements OnInit {
     const name = advName?.trim().toLowerCase();
     const code = advCode?.trim().toLowerCase();
 
-    if (!name && !code) {
-      return s === '冒險獲得';
-    }
-
-    const matchText = (sourceText: string, target: string): boolean => {
-      if (target.length < 2) return sourceText === target;
-      return sourceText.includes(target) || target.includes(sourceText);
-    };
-
-    return !!(
-      (name && matchText(s, name)) ||
-      (code && matchText(s, code))
-    );
+    return !!((name && s === name) || (code && s === code));
   }
 
-  private loadGainedItems(entry: AdventureEntry): void {
-    if (!entry.id) return;
-    this.adventureService.getGainedItems(entry.id).subscribe({
-      next: (items) => {
-        if (items && items.length > 0) {
-          const magic = items
-            .filter(item => item.itemType === 'PERMANENT')
-            .map(item => ({
-              id: item.id,
-              itemName: item.itemName,
-              rarity: (item.rarity ?? '') as ItemRarity | '',
-              requiresAttunement: Boolean(item.requiresAttunement),
-              notes: item.notes ?? '',
-            }));
-          const consumables = items
-            .filter(item => item.itemType === 'CONSUMABLE')
-            .map(item => ({
-              id: item.id,
-              itemName: item.itemName,
-              quantity: item.quantity ?? 1,
-              rarity: (item.rarity ?? '') as ItemRarity | '',
-              notes: item.notes ?? '',
-            }));
-          this.gainedMagicItems.set(magic);
-          this.gainedConsumableItems.set(consumables);
-        } else {
-          this.fallbackLoadFromWarehouse(entry);
-        }
-      },
-      error: () => {
-        this.fallbackLoadFromWarehouse(entry);
-      },
-    });
-  }
-
-  private fallbackLoadFromWarehouse(entry: AdventureEntry): void {
-    this.inventoryService.getAllByCharacter(this.characterId).subscribe({
-      next: (items) => {
-        const magic = items
-          .filter(item => item.itemType === 'PERMANENT' && (item.adventureEntryId === entry.id || this.isSourceMatch(item.source, entry.adventureName, entry.adventureCode)))
-          .map(item => ({
-            id: item.id,
-            itemName: item.itemName,
-            rarity: item.rarity ?? ('' as ItemRarity | ''),
-            requiresAttunement: Boolean(item.requiresAttunement),
-            notes: item.notes ?? '',
-          }));
-        const consumables = items
-          .filter(item => item.itemType === 'CONSUMABLE' && (item.adventureEntryId === entry.id || this.isSourceMatch(item.source, entry.adventureName, entry.adventureCode)))
-          .map(item => ({
-            id: item.id,
-            itemName: item.itemName,
-            quantity: item.quantity ?? 1,
-            rarity: item.rarity ?? ('' as ItemRarity | ''),
-            notes: item.notes ?? '',
-          }));
-        this.gainedMagicItems.set(magic);
-        this.gainedConsumableItems.set(consumables);
-      },
-      error: () => { /* 靜默略過 */ },
-    });
+  private applyGainedItems(items: AdventureGainedItem[]): void {
+    this.gainedMagicItems.set(items
+      .filter(item => item.itemType === 'PERMANENT')
+      .map(item => ({
+        id: item.id,
+        itemName: item.itemName,
+        rarity: (item.rarity ?? '') as ItemRarity | '',
+        requiresAttunement: Boolean(item.requiresAttunement),
+        notes: item.notes ?? '',
+      })));
+    this.gainedConsumableItems.set(items
+      .filter(item => item.itemType === 'CONSUMABLE')
+      .map(item => ({
+        id: item.id,
+        itemName: item.itemName,
+        quantity: item.quantity ?? 1,
+        rarity: (item.rarity ?? '') as ItemRarity | '',
+        notes: item.notes ?? '',
+      })));
   }
 
   // ── 升級與兼職操作 ──────────────────────────────────────────────────────────
@@ -874,6 +837,8 @@ export class AdventureFormComponent implements OnInit {
   }
 
   protected onSubmit(): void {
+    if (this.isSaving() || this.isLoading() || this.loadFailed() ||
+        (this.isEditMode() && !this.detailsLoaded)) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.snackBar.open('請填寫必填欄位且確認起始數值不可為負數', '關閉', { duration: 3000 });
@@ -917,7 +882,6 @@ export class AdventureFormComponent implements OnInit {
     if (this.isEditMode() && this.entryId) {
       this.adventureService.updateWithDetails(this.characterId, this.entryId, saveRequest).subscribe({
         next: (updated) => {
-          this.inventoryService.clearCache(this.characterId);
           this.snackBar.open('記錄已更新', '關閉', { duration: 2500 });
           this.router.navigate(['/characters', this.characterId, 'adventures', updated.id]);
         },
@@ -929,7 +893,6 @@ export class AdventureFormComponent implements OnInit {
     } else {
       this.adventureService.createWithDetails(this.characterId, saveRequest).subscribe({
         next: (created) => {
-          this.inventoryService.clearCache(this.characterId);
           this.snackBar.open('冒險記錄已新增', '關閉', { duration: 2500 });
           this.router.navigate(['/characters', this.characterId, 'adventures', created.id]);
         },

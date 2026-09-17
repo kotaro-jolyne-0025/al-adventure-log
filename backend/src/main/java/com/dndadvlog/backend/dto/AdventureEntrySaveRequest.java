@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -16,13 +15,13 @@ public class AdventureEntrySaveRequest {
 
     @Valid
     @NotNull
-    private List<DowntimeActivityRequest> downtimeActivities = new ArrayList<>();
+    private List<@NotNull DowntimeActivityRequest> downtimeActivities;
 
     @Valid
     @NotNull
-    private List<AdventureGainedItemRequest> gainedItems = new ArrayList<>();
+    private List<@NotNull AdventureGainedItemRequest> gainedItems;
 
     @Valid
     @NotNull
-    private List<StoryAwardRequest> storyAwards = new ArrayList<>();
+    private List<@NotNull StoryAwardRequest> storyAwards;
 }

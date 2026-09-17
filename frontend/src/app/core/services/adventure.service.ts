@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { finalize, Observable, of, shareReplay, tap } from 'rxjs';
+import { Observable, tap } from 'rxjs';
+import { RequestCache } from './request-cache';
 import { environment } from '../../../environments/environment';
 import {
   AdventureEntry,
@@ -23,56 +24,29 @@ export class AdventureService {
   private readonly base = `${environment.apiUrl}/characters`;
 
   // 記憶體快取
-  private readonly entriesCache = new Map<string, AdventureEntry[]>();
-  private readonly defaultsCache = new Map<string, EntryDefaults>();
-  private readonly entriesRequests = new Map<string, Observable<AdventureEntry[]>>();
-  private readonly defaultsRequests = new Map<string, Observable<EntryDefaults>>();
+  private readonly entriesCache = new RequestCache<AdventureEntry[]>();
+  private readonly defaultsCache = new RequestCache<EntryDefaults>();
+
+  constructor() {
+    this.characterService.cacheInvalidated$.subscribe(id => this.clearCache(id));
+  }
 
   clearCache(characterId?: string): void {
-    if (characterId) {
-      this.entriesCache.delete(characterId);
-      this.defaultsCache.delete(characterId);
-    } else {
-      this.entriesCache.clear();
-      this.defaultsCache.clear();
-    }
+    this.entriesCache.clear(characterId);
+    this.defaultsCache.clear(characterId);
   }
 
   // ── AdventureEntry ───────────────────────────────────────────────────────
   // 後端路徑：/api/characters/{id}/entries
 
   getAllByCharacter(characterId: string, forceRefresh = false): Observable<AdventureEntry[]> {
-    const cached = this.entriesCache.get(characterId);
-    if (cached && !forceRefresh) return of(cached);
-    const inFlight = this.entriesRequests.get(characterId);
-    if (inFlight) return inFlight;
-
-    const request$ = this.http.get<AdventureEntry[]>(
-      `${this.base}/${characterId}/entries`
-    ).pipe(
-      tap((list) => this.entriesCache.set(characterId, list)),
-      finalize(() => this.entriesRequests.delete(characterId)),
-      shareReplay({ bufferSize: 1, refCount: true })
-    );
-    this.entriesRequests.set(characterId, request$);
-    return request$;
+    return this.entriesCache.get(characterId,
+      () => this.http.get<AdventureEntry[]>(`${this.base}/${characterId}/entries`), forceRefresh);
   }
 
   getDefaults(characterId: string, forceRefresh = false): Observable<EntryDefaults> {
-    const cached = this.defaultsCache.get(characterId);
-    if (cached && !forceRefresh) return of(cached);
-    const inFlight = this.defaultsRequests.get(characterId);
-    if (inFlight) return inFlight;
-
-    const request$ = this.http.get<EntryDefaults>(
-      `${this.base}/${characterId}/entries/defaults`
-    ).pipe(
-      tap((defaults) => this.defaultsCache.set(characterId, defaults)),
-      finalize(() => this.defaultsRequests.delete(characterId)),
-      shareReplay({ bufferSize: 1, refCount: true })
-    );
-    this.defaultsRequests.set(characterId, request$);
-    return request$;
+    return this.defaultsCache.get(characterId,
+      () => this.http.get<EntryDefaults>(`${this.base}/${characterId}/entries/defaults`), forceRefresh);
   }
 
   getById(characterId: string, entryId: string): Observable<AdventureEntry> {
