@@ -1,5 +1,9 @@
 # 冒險紀錄表Web版 — 資料庫 Schema
 
+> 2026-09-17 審查修正：本輪未新增或改動 migration。倉庫的 `character_id`、
+> `adventure_entry_id`、`adventure_gained_item_id` 不只有各別外鍵存在性要求，
+> 服務層寫入時還必須驗證三者屬於同一角色／冒險，防止不合法關聯影響同步與級聯刪除。
+
 # 請到 Supabase Dashboard → SQL Editor 依序執行以下 SQL
 
 ---

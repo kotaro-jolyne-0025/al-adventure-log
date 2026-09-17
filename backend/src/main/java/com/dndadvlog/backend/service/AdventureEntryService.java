@@ -192,6 +192,17 @@ public class AdventureEntryService {
     @Transactional
     public AdventureEntryResponse updateEntryWithDetails(
             UUID entryId, AdventureEntrySaveRequest request, UUID userId) {
+        // Resolve unlinked legacy provenance against the original title/code before
+        // the main record is renamed. These writes share the outer transaction.
+        findOwnedEntry(entryId, userId);
+        Set<UUID> existingIds = gainedItemMapper.findByAdventureEntryId(entryId).stream()
+                .map(AdventureGainedItem::getId).collect(Collectors.toSet());
+        for (AdventureGainedItemRequest item : request.getGainedItems()) {
+            if (item.getId() != null && !existingIds.contains(item.getId())) {
+                updateGainedItem(entryId, item.getId(), item, userId);
+                existingIds.add(item.getId());
+            }
+        }
         updateEntry(entryId, request.getEntry(), userId);
         syncEntryDetails(entryId, request, userId);
         return toResponse(findEntry(entryId));
@@ -288,8 +299,7 @@ public class AdventureEntryService {
         // 容錯處理：若傳入的 itemId 找不到快照（例如前端載入自舊版歷史倉庫資料）
         if (snapshot == null) {
             InventoryItem existingWarehouse = inventoryItemMapper.findById(itemId);
-            if (existingWarehouse != null
-                    && entry.getCharacterId().equals(existingWarehouse.getCharacterId())) {
+            if (isLegacyWarehouseForEntry(existingWarehouse, entry)) {
                 snapshot = new AdventureGainedItem();
                 snapshot.setId(itemId);
                 snapshot.setAdventureEntryId(entryId);
@@ -302,6 +312,7 @@ public class AdventureEntryService {
                 gainedItemMapper.insert(snapshot);
 
                 existingWarehouse.setAdventureGainedItemId(itemId);
+                existingWarehouse.setAdventureEntryId(entryId);
                 existingWarehouse.setItemName(request.getItemName());
                 existingWarehouse.setRarity(parseRarity(request.getRarity()));
                 existingWarehouse.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
@@ -501,8 +512,14 @@ public class AdventureEntryService {
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        if (!existingById.keySet().containsAll(submittedIds)) {
-            throw new ResourceNotFoundException("獲得物品不屬於此冒險記錄");
+        // Legacy forms submit a warehouse ID when no snapshot exists. Validate the
+        // relation before any deletion, then let updateGainedItem safely backfill it.
+        for (UUID id : submittedIds) {
+            if (!existingById.containsKey(id) &&
+                    (gainedItemMapper.findById(id) != null ||
+                     !isLegacyWarehouseForEntry(inventoryItemMapper.findById(id), entry))) {
+                throw new ResourceNotFoundException("獲得物品不屬於此冒險記錄");
+            }
         }
 
         existingById.keySet().stream()
@@ -546,6 +563,27 @@ public class AdventureEntryService {
                 : entry.getAdventureCode());
         warehouseItem.setNotes(snapshot.getNotes());
         inventoryItemMapper.insert(warehouseItem);
+    }
+
+    private boolean isLegacyWarehouseForEntry(InventoryItem item, AdventureEntry entry) {
+        if (item == null || !entry.getCharacterId().equals(item.getCharacterId()) ||
+                item.getAdventureGainedItemId() != null) {
+            return false;
+        }
+        if (item.getAdventureEntryId() != null) {
+            return entry.getId().equals(item.getAdventureEntryId());
+        }
+        String source = trimToNull(item.getSource());
+        if (source == null || !sourceMatchesEntry(source, entry)) return false;
+        // An unlinked legacy source must identify exactly one adventure of this character.
+        List<AdventureEntry> matches = entryMapper.findByCharacterIdOrderByPlayDateAsc(entry.getCharacterId())
+                .stream().filter(candidate -> sourceMatchesEntry(source, candidate)).toList();
+        return matches.size() == 1 && entry.getId().equals(matches.get(0).getId());
+    }
+
+    private boolean sourceMatchesEntry(String source, AdventureEntry entry) {
+        return source.equalsIgnoreCase(trimToNull(entry.getAdventureName())) ||
+                source.equalsIgnoreCase(trimToNull(entry.getAdventureCode()));
     }
 
     private String trimToNull(String value) {

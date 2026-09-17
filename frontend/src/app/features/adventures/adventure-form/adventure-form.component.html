@@ -597,10 +597,18 @@
     </mat-card>
 
     <!-- Actions -->
+    @if (isLoading()) {
+    <p role="status">正在載入完整記錄，完成後即可儲存。</p>
+    }
+    @if (loadFailed()) {
+    <p role="alert">資料未完整載入，暫時無法儲存。
+      <button type="button" mat-button (click)="retryLoad()">重新載入</button>
+    </p>
+    }
     <div class="form-actions">
       <button type="button" mat-stroked-button (click)="onBack()">取消</button>
       <button type="submit" mat-flat-button color="primary"
-        [disabled]="isSaving() || !isLevelBalanced() || !isResourceValid() || form.invalid">
+        [disabled]="isSaving() || isLoading() || loadFailed() || !isLevelBalanced() || !isResourceValid() || form.invalid">
         @if (isSaving()) {
         <mat-spinner diameter="20"></mat-spinner>
         } @else {
