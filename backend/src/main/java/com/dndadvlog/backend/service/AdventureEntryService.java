@@ -2,6 +2,7 @@ package com.dndadvlog.backend.service;
 
 import com.dndadvlog.backend.dto.AdventureEntryRequest;
 import com.dndadvlog.backend.dto.AdventureEntryResponse;
+import com.dndadvlog.backend.dto.AdventureEntrySaveRequest;
 import com.dndadvlog.backend.dto.AdventureGainedItemRequest;
 import com.dndadvlog.backend.dto.AdventureGainedItemResponse;
 import com.dndadvlog.backend.dto.DowntimeActivityRequest;
@@ -32,7 +33,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -179,6 +182,22 @@ public class AdventureEntryService {
     }
 
     @Transactional
+    public AdventureEntryResponse createEntryWithDetails(
+            UUID characterId, AdventureEntrySaveRequest request, UUID userId) {
+        AdventureEntryResponse created = createEntry(characterId, request.getEntry(), userId);
+        syncEntryDetails(created.getId(), request, userId);
+        return toResponse(findEntry(created.getId()));
+    }
+
+    @Transactional
+    public AdventureEntryResponse updateEntryWithDetails(
+            UUID entryId, AdventureEntrySaveRequest request, UUID userId) {
+        updateEntry(entryId, request.getEntry(), userId);
+        syncEntryDetails(entryId, request, userId);
+        return toResponse(findEntry(entryId));
+    }
+
+    @Transactional
     public void deleteEntry(UUID entryId, UUID userId) {
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         UUID characterId = entry.getCharacterId();
@@ -261,11 +280,16 @@ public class AdventureEntryService {
     public AdventureGainedItemResponse updateGainedItem(UUID entryId, UUID itemId, AdventureGainedItemRequest request, UUID userId) {
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         AdventureGainedItem snapshot = gainedItemMapper.findById(itemId);
+
+        if (snapshot != null && !entryId.equals(snapshot.getAdventureEntryId())) {
+            throw new ResourceNotFoundException("找不到此冒險記錄的獲得物品 ID: " + itemId);
+        }
         
         // 容錯處理：若傳入的 itemId 找不到快照（例如前端載入自舊版歷史倉庫資料）
         if (snapshot == null) {
             InventoryItem existingWarehouse = inventoryItemMapper.findById(itemId);
-            if (existingWarehouse != null) {
+            if (existingWarehouse != null
+                    && entry.getCharacterId().equals(existingWarehouse.getCharacterId())) {
                 snapshot = new AdventureGainedItem();
                 snapshot.setId(itemId);
                 snapshot.setAdventureEntryId(entryId);
@@ -390,6 +414,145 @@ public class AdventureEntryService {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    private void syncEntryDetails(UUID entryId, AdventureEntrySaveRequest request, UUID userId) {
+        AdventureEntry entry = findOwnedEntry(entryId, userId);
+        syncDowntimeActivities(entryId, request.getDowntimeActivities());
+        syncGainedItems(entry, request.getGainedItems(), userId);
+        syncStoryAwards(entryId, request.getStoryAwards());
+    }
+
+    private void syncDowntimeActivities(UUID entryId, List<DowntimeActivityRequest> requests) {
+        Map<UUID, DowntimeActivity> existingById = downtimeActivityMapper
+                .findByEntryIdOrderByCreatedAtAsc(entryId)
+                .stream()
+                .collect(Collectors.toMap(DowntimeActivity::getId, Function.identity()));
+        Set<UUID> submittedIds = requests.stream()
+                .map(DowntimeActivityRequest::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!existingById.keySet().containsAll(submittedIds)) {
+            throw new ResourceNotFoundException("休整期活動不屬於此冒險記錄");
+        }
+
+        existingById.keySet().stream()
+                .filter(id -> !submittedIds.contains(id))
+                .forEach(downtimeActivityMapper::deleteById);
+
+        for (DowntimeActivityRequest childRequest : requests) {
+            if (childRequest.getId() == null) {
+                DowntimeActivity activity = new DowntimeActivity();
+                activity.setId(UUID.randomUUID());
+                activity.setAdventureEntryId(entryId);
+                activity.setDescription(childRequest.getDescription().trim());
+                downtimeActivityMapper.insert(activity);
+            } else {
+                DowntimeActivity activity = existingById.get(childRequest.getId());
+                activity.setDescription(childRequest.getDescription().trim());
+                downtimeActivityMapper.update(activity);
+            }
+        }
+    }
+
+    private void syncStoryAwards(UUID entryId, List<StoryAwardRequest> requests) {
+        Map<UUID, StoryAward> existingById = storyAwardMapper.findByAdventureEntryId(entryId)
+                .stream()
+                .collect(Collectors.toMap(StoryAward::getId, Function.identity()));
+        Set<UUID> submittedIds = requests.stream()
+                .map(StoryAwardRequest::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!existingById.keySet().containsAll(submittedIds)) {
+            throw new ResourceNotFoundException("故事獎勵不屬於此冒險記錄");
+        }
+
+        existingById.keySet().stream()
+                .filter(id -> !submittedIds.contains(id))
+                .forEach(storyAwardMapper::deleteById);
+
+        for (StoryAwardRequest childRequest : requests) {
+            if (childRequest.getId() == null) {
+                StoryAward award = new StoryAward();
+                award.setId(UUID.randomUUID());
+                award.setAdventureEntryId(entryId);
+                award.setAwardName(childRequest.getAwardName().trim());
+                award.setDescription(trimToNull(childRequest.getDescription()));
+                storyAwardMapper.insert(award);
+            } else {
+                StoryAward award = existingById.get(childRequest.getId());
+                award.setAwardName(childRequest.getAwardName().trim());
+                award.setDescription(trimToNull(childRequest.getDescription()));
+                storyAwardMapper.update(award);
+            }
+        }
+    }
+
+    private void syncGainedItems(
+            AdventureEntry entry, List<AdventureGainedItemRequest> requests, UUID userId) {
+        UUID entryId = entry.getId();
+        Map<UUID, AdventureGainedItem> existingById = gainedItemMapper.findByAdventureEntryId(entryId)
+                .stream()
+                .collect(Collectors.toMap(AdventureGainedItem::getId, Function.identity()));
+        Set<UUID> submittedIds = requests.stream()
+                .map(AdventureGainedItemRequest::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!existingById.keySet().containsAll(submittedIds)) {
+            throw new ResourceNotFoundException("獲得物品不屬於此冒險記錄");
+        }
+
+        existingById.keySet().stream()
+                .filter(id -> !submittedIds.contains(id))
+                .forEach(id -> deleteGainedItem(id, userId));
+
+        for (AdventureGainedItemRequest childRequest : requests) {
+            if (childRequest.getId() == null) {
+                createGainedItemWithWarehouse(entry, childRequest);
+            } else {
+                updateGainedItem(entryId, childRequest.getId(), childRequest, userId);
+            }
+        }
+    }
+
+    private void createGainedItemWithWarehouse(
+            AdventureEntry entry, AdventureGainedItemRequest request) {
+        AdventureGainedItem snapshot = new AdventureGainedItem();
+        snapshot.setId(UUID.randomUUID());
+        snapshot.setAdventureEntryId(entry.getId());
+        snapshot.setItemName(request.getItemName().trim());
+        snapshot.setItemType(request.getItemType());
+        snapshot.setRarity(request.getRarity());
+        snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
+        snapshot.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
+        snapshot.setNotes(trimToNull(request.getNotes()));
+        gainedItemMapper.insert(snapshot);
+
+        InventoryItem warehouseItem = new InventoryItem();
+        warehouseItem.setId(UUID.randomUUID());
+        warehouseItem.setCharacterId(entry.getCharacterId());
+        warehouseItem.setAdventureEntryId(entry.getId());
+        warehouseItem.setAdventureGainedItemId(snapshot.getId());
+        warehouseItem.setItemName(snapshot.getItemName());
+        warehouseItem.setItemType(parseItemType(snapshot.getItemType()));
+        warehouseItem.setRarity(parseRarity(snapshot.getRarity()));
+        warehouseItem.setRequiresAttunement(snapshot.getRequiresAttunement());
+        warehouseItem.setQuantity(snapshot.getQuantity());
+        warehouseItem.setSource(entry.getAdventureName() != null
+                ? entry.getAdventureName()
+                : entry.getAdventureCode());
+        warehouseItem.setNotes(snapshot.getNotes());
+        inventoryItemMapper.insert(warehouseItem);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private void validateResources(AdventureEntryRequest request) {
@@ -528,6 +691,9 @@ public class AdventureEntryService {
     @Transactional
     public StoryAwardResponse updateStoryAward(UUID entryId, UUID awardId, StoryAwardRequest request, UUID userId) {
         StoryAward award = findStoryAwardAndVerifyOwner(awardId, userId);
+        if (!entryId.equals(award.getAdventureEntryId())) {
+            throw new ResourceNotFoundException("找不到此冒險記錄的故事獎勵 ID：" + awardId);
+        }
         if (request.getAwardName() == null || request.getAwardName().trim().isEmpty()) {
             throw new BusinessException("故事獎勵名稱不可為空");
         }

@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   AdventureEntry,
   AdventureEntryRequest,
+  AdventureEntrySaveRequest,
   AdventureGainedItem,
   AdventureGainedItemRequest,
   DowntimeActivity,
@@ -104,6 +105,18 @@ export class AdventureService {
     );
   }
 
+  createWithDetails(characterId: string, req: AdventureEntrySaveRequest): Observable<AdventureEntry> {
+    return this.http.post<AdventureEntry>(
+      `${this.base}/${characterId}/entries/with-details`,
+      req
+    ).pipe(
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
+    );
+  }
+
   update(
     characterId: string,
     entryId: string,
@@ -111,6 +124,22 @@ export class AdventureService {
   ): Observable<AdventureEntry> {
     return this.http.put<AdventureEntry>(
       `${environment.apiUrl}/entries/${entryId}`,
+      req
+    ).pipe(
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
+    );
+  }
+
+  updateWithDetails(
+    characterId: string,
+    entryId: string,
+    req: AdventureEntrySaveRequest
+  ): Observable<AdventureEntry> {
+    return this.http.put<AdventureEntry>(
+      `${environment.apiUrl}/entries/${entryId}/with-details`,
       req
     ).pipe(
       tap(() => {
@@ -212,4 +241,3 @@ export class AdventureService {
     );
   }
 }
-
