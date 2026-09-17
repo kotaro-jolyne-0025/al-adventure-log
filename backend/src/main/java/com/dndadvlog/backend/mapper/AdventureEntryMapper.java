@@ -15,6 +15,8 @@ public interface AdventureEntryMapper {
 
     AdventureEntry findById(@Param("id") UUID id);
 
+    AdventureEntry findByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
+
     Optional<AdventureEntry> findFirstByCharacterIdOrderByPlayDateDescCreatedAtDesc(@Param("characterId") UUID characterId);
 
     void insert(AdventureEntry entry);

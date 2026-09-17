@@ -46,6 +46,14 @@
         SELECT * FROM adventure_entry WHERE id = #{id}::uuid
     </select>
 
+    <select id="findByIdAndUserId" resultMap="entryMap">
+        SELECT ae.*
+        FROM adventure_entry ae
+        INNER JOIN "character" c ON c.id = ae.character_id
+        WHERE ae.id = #{id}::uuid
+          AND c.user_id = #{userId}::uuid
+    </select>
+
     <select id="findFirstByCharacterIdOrderByPlayDateDescCreatedAtDesc" resultMap="entryMap">
         SELECT * FROM adventure_entry
         WHERE character_id = #{characterId}::uuid

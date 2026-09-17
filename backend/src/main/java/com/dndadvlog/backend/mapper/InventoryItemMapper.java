@@ -14,6 +14,8 @@ public interface InventoryItemMapper {
 
     List<InventoryItem> findByCharacterIdAndItemType(@Param("characterId") UUID characterId, @Param("itemType") String itemType);
 
+    int countByCharacterIdAndItemType(@Param("characterId") UUID characterId, @Param("itemType") String itemType);
+
     InventoryItem findById(@Param("id") UUID id);
 
     InventoryItem findByAdventureGainedItemId(@Param("gainedItemId") UUID gainedItemId);

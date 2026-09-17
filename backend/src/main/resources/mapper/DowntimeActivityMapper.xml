@@ -18,6 +18,15 @@
         ORDER BY created_at ASC
     </select>
 
+    <select id="findByEntryIds" resultMap="activityMap">
+        SELECT * FROM downtime_activity
+        WHERE adventure_entry_id IN
+        <foreach collection="entryIds" item="entryId" open="(" separator="," close=")">
+            #{entryId}::uuid
+        </foreach>
+        ORDER BY adventure_entry_id, created_at ASC
+    </select>
+
     <select id="findById" resultMap="activityMap">
         SELECT * FROM downtime_activity WHERE id = #{id}::uuid
     </select>

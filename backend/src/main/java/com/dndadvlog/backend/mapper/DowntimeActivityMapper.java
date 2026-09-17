@@ -12,6 +12,8 @@ public interface DowntimeActivityMapper {
 
     List<DowntimeActivity> findByEntryIdOrderByCreatedAtAsc(@Param("entryId") UUID entryId);
 
+    List<DowntimeActivity> findByEntryIds(@Param("entryIds") List<UUID> entryIds);
+
     DowntimeActivity findById(@Param("id") UUID id);
 
     void insert(DowntimeActivity activity);
