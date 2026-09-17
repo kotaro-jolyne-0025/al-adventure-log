@@ -54,7 +54,7 @@
     <div class="search-bar" [class.search-bar--active]="isSearching()">
       <svg lucideSearch [size]="17" class="search-icon"></svg>
       <input class="search-input" type="text" placeholder="搜尋冒險名稱、代碼、DM、故事獎勵" [value]="searchQuery()"
-        (input)="searchQuery.set($any($event.target).value)" aria-label="搜尋冒險紀錄" />
+        (input)="onSearchChange($any($event.target).value)" aria-label="搜尋冒險紀錄" />
       @if (isSearching()) {
       <button type="button" class="search-clear-btn" (click)="clearSearch()" aria-label="清除搜尋">
         <svg lucideX [size]="15"></svg>
@@ -105,7 +105,7 @@
   <!-- Adventure Chronicle Cards Timeline -->
   @if (!isLoading() && entries().length > 0) {
   <div class="timeline-container">
-    @for (row of entries(); track row.id) {
+    @for (row of visibleEntries(); track row.id) {
     <div class="chronicle-card clean-card clickable" (click)="onViewEntry(row.id)">
 
       <!-- Card Top Bar -->
@@ -192,5 +192,12 @@
     </div>
     }
   </div>
+  @if (hasMoreEntries()) {
+  <div class="load-more-wrap">
+    <button mat-stroked-button type="button" (click)="showMoreEntries()">
+      顯示更多（尚有 {{ entries().length - visibleEntries().length }} 筆）
+    </button>
+  </div>
+  }
   }
 </div>
