@@ -102,7 +102,11 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
       inventory: this.inventoryService.getAllByCharacter(this.characterId).pipe(catchError(() => of([]))),
     }).subscribe({
       next: ({ character, defaults, inventory }) => {
-        if (character) this.character.set(character);
+        if (character) {
+          this.character.set(character);
+          // A mutation can cancel the initial load; this fresh response completes it.
+          this.isLoading.set(false);
+        }
         if (defaults) this.defaults.set(defaults);
         if (inventory) {
           const count = inventory

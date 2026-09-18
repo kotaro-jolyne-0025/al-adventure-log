@@ -32,6 +32,11 @@
         ORDER BY created_at ASC
     </select>
 
+    <select id="countByCharacterIdAndItemType" resultType="int">
+        SELECT COUNT(*) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}::item_type
+    </select>
+
     <select id="findById" resultMap="itemMap">
         SELECT * FROM inventory_item WHERE id = #{id}::uuid
     </select>

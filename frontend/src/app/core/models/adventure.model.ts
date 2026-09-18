@@ -13,6 +13,7 @@ export interface DowntimeActivity {
 }
 
 export interface DowntimeActivityRequest {
+  id?: string;
   description: string;
 }
 
@@ -32,6 +33,7 @@ export interface AdventureGainedItem {
 }
 
 export interface AdventureGainedItemRequest {
+  id?: string;
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
@@ -52,6 +54,7 @@ export interface StoryAward {
 }
 
 export interface StoryAwardRequest {
+  id?: string;
   awardName: string;
   description?: string | null;
 }
@@ -108,6 +111,19 @@ export interface AdventureEntryRequest {
   adventureNotes?: string | null;
   soulCoinChargesUsed?: string | null;
   endingClassesString?: string | null;
+}
+
+/**
+ * 冒險記錄完整儲存格式。
+ *
+ * 後端會在同一個資料庫交易中同步主記錄與三種子項目；任何一步失敗時，
+ * 整包資料都不會寫入，避免手機網路中斷後留下只存一半的資料。
+ */
+export interface AdventureEntrySaveRequest {
+  entry: AdventureEntryRequest;
+  downtimeActivities: DowntimeActivityRequest[];
+  gainedItems: AdventureGainedItemRequest[];
+  storyAwards: StoryAwardRequest[];
 }
 
 export interface EntryDefaults {

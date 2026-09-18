@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { RequestCache } from './request-cache';
 import { environment } from '../../../environments/environment';
 import {
   AdventureEntry,
   AdventureEntryRequest,
+  AdventureEntrySaveRequest,
   AdventureGainedItem,
   AdventureGainedItemRequest,
   DowntimeActivity,
@@ -22,68 +24,29 @@ export class AdventureService {
   private readonly base = `${environment.apiUrl}/characters`;
 
   // 記憶體快取
-  private readonly entriesCache = new Map<string, AdventureEntry[]>();
-  private readonly defaultsCache = new Map<string, EntryDefaults>();
+  private readonly entriesCache = new RequestCache<AdventureEntry[]>();
+  private readonly defaultsCache = new RequestCache<EntryDefaults>();
+
+  constructor() {
+    this.characterService.cacheInvalidated$.subscribe(id => this.clearCache(id));
+  }
 
   clearCache(characterId?: string): void {
-    if (characterId) {
-      this.entriesCache.delete(characterId);
-      this.defaultsCache.delete(characterId);
-    } else {
-      this.entriesCache.clear();
-      this.defaultsCache.clear();
-    }
+    this.entriesCache.clear(characterId);
+    this.defaultsCache.clear(characterId);
   }
 
   // ── AdventureEntry ───────────────────────────────────────────────────────
   // 後端路徑：/api/characters/{id}/entries
 
   getAllByCharacter(characterId: string, forceRefresh = false): Observable<AdventureEntry[]> {
-    const cached = this.entriesCache.get(characterId);
-    const fetch$ = this.http.get<AdventureEntry[]>(
-      `${this.base}/${characterId}/entries`
-    ).pipe(
-      tap((list) => this.entriesCache.set(characterId, list))
-    );
-
-    if (cached && !forceRefresh) {
-      return new Observable<AdventureEntry[]>((subscriber) => {
-        subscriber.next(cached);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
-    }
-
-    return fetch$;
+    return this.entriesCache.get(characterId,
+      () => this.http.get<AdventureEntry[]>(`${this.base}/${characterId}/entries`), forceRefresh);
   }
 
   getDefaults(characterId: string, forceRefresh = false): Observable<EntryDefaults> {
-    const cached = this.defaultsCache.get(characterId);
-    const fetch$ = this.http.get<EntryDefaults>(
-      `${this.base}/${characterId}/entries/defaults`
-    ).pipe(
-      tap((defaults) => this.defaultsCache.set(characterId, defaults))
-    );
-
-    if (cached && !forceRefresh) {
-      return new Observable<EntryDefaults>((subscriber) => {
-        subscriber.next(cached);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
-    }
-
-    return fetch$;
+    return this.defaultsCache.get(characterId,
+      () => this.http.get<EntryDefaults>(`${this.base}/${characterId}/entries/defaults`), forceRefresh);
   }
 
   getById(characterId: string, entryId: string): Observable<AdventureEntry> {
@@ -104,6 +67,18 @@ export class AdventureService {
     );
   }
 
+  createWithDetails(characterId: string, req: AdventureEntrySaveRequest): Observable<AdventureEntry> {
+    return this.http.post<AdventureEntry>(
+      `${this.base}/${characterId}/entries/with-details`,
+      req
+    ).pipe(
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
+    );
+  }
+
   update(
     characterId: string,
     entryId: string,
@@ -111,6 +86,22 @@ export class AdventureService {
   ): Observable<AdventureEntry> {
     return this.http.put<AdventureEntry>(
       `${environment.apiUrl}/entries/${entryId}`,
+      req
+    ).pipe(
+      tap(() => {
+        this.clearCache(characterId);
+        this.characterService.notifyCharacterChanged(characterId);
+      })
+    );
+  }
+
+  updateWithDetails(
+    characterId: string,
+    entryId: string,
+    req: AdventureEntrySaveRequest
+  ): Observable<AdventureEntry> {
+    return this.http.put<AdventureEntry>(
+      `${environment.apiUrl}/entries/${entryId}/with-details`,
       req
     ).pipe(
       tap(() => {
@@ -212,4 +203,3 @@ export class AdventureService {
     );
   }
 }
-

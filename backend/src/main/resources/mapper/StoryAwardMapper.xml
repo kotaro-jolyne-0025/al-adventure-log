@@ -19,6 +19,15 @@
         ORDER BY created_at ASC
     </select>
 
+    <select id="findByAdventureEntryIds" resultMap="awardMap">
+        SELECT * FROM adventure_story_award
+        WHERE adventure_entry_id IN
+        <foreach collection="entryIds" item="entryId" open="(" separator="," close=")">
+            #{entryId}::uuid
+        </foreach>
+        ORDER BY adventure_entry_id, created_at ASC
+    </select>
+
     <select id="findById" resultMap="awardMap">
         SELECT * FROM adventure_story_award WHERE id = #{id}::uuid
     </select>

@@ -57,7 +57,8 @@
             <!-- 左側大肖像 -->
             <div class="char-portrait-token">
               @if (char.avatarUrl) {
-                <img [src]="char.avatarUrl" [alt]="char.characterName" class="char-avatar-img" />
+                <img [src]="char.avatarUrl" [alt]="char.characterName" class="char-avatar-img"
+                  loading="lazy" decoding="async" />
               } @else {
                 <div class="char-avatar-fallback">{{ getInitial(char.characterName) }}</div>
               }
