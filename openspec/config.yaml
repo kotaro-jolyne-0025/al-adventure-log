@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  Project: 冒險紀錄表 Web版
+
+  Frontend:
+    - Angular 22
+    - Standalone Components
+    - Signals / RxJS
+    - Angular Material
+    - PWA
+
+  Backend:
+    - Spring Boot 4.1
+    - Java 17
+    - REST API
+    - MyBatis / Flyway
+    - JWT authentication
+
+  Database:
+    - PostgreSQL on Supabase
+
+  Existing source-of-truth documents:
+    - system-requirements-spec.md
+    - database-schema.md
+    - user-stories.md
+    - AGENTS.md
+
+  Project rules:
+    - Specifications precede cross-layer feature changes
+    - Controllers must not expose persistence entities
+    - Database migrations should be idempotent where practical
+    - Never commit or push without explicit user authorization
