@@ -219,11 +219,6 @@
                   } @else if (isEditMode() && !item.id) {
                   <span class="new-tag">新增</span>
                   }
-                  @if (item.acquisitionSource === 'ADVENTURE') {
-                  <span class="snapshot-tag">冒險獲得</span>
-                  } @else if (item.acquisitionSource === 'DOWNTIME') {
-                  <span class="snapshot-tag">休整期獲得</span>
-                  }
                 </div>
                 <button type="button" mat-icon-button color="warn" (click)="removeGainedItem(i)" matTooltip="移除此物品">
                   <svg lucideTrash2 [size]="16"></svg>
