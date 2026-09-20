@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, Subject, tap } from 'rxjs';
 import { RequestCache } from './request-cache';
 import { environment } from '../../../environments/environment';
-import { Character, CharacterRequest } from '../models/character.model';
+import { Character, CharacterRequest, CharacterBaselineRequest, CharacterBaselinePreview } from '../models/character.model';
 
 @Injectable({ providedIn: 'root' })
 export class CharacterService {
@@ -50,6 +50,10 @@ export class CharacterService {
     return this.http.put<Character>(`${this.base}/${id}`, req).pipe(
       tap(() => this.notifyCharacterChanged(id))
     );
+  }
+
+  previewOpeningBaseline(id: string, req: CharacterBaselineRequest): Observable<CharacterBaselinePreview> {
+    return this.http.post<CharacterBaselinePreview>(`${this.base}/${id}/opening-baseline-preview`, req);
   }
 
   delete(id: string): Observable<void> {

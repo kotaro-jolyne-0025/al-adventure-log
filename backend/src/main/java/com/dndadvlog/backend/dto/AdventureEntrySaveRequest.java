@@ -13,15 +13,12 @@ public class AdventureEntrySaveRequest {
     @NotNull
     private AdventureEntryRequest entry;
 
-    @Valid
     @NotNull
-    private List<@NotNull DowntimeActivityRequest> downtimeActivities;
+    private List<@Valid @NotNull DowntimeActivityRequest> downtimeActivities;
 
-    @Valid
     @NotNull
-    private List<@NotNull AdventureGainedItemRequest> gainedItems;
+    private List<@Valid @NotNull AdventureGainedItemRequest> gainedItems;
 
-    @Valid
     @NotNull
-    private List<@NotNull StoryAwardRequest> storyAwards;
+    private List<@Valid @NotNull StoryAwardRequest> storyAwards;
 }

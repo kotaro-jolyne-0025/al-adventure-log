@@ -96,6 +96,11 @@
             <span>等級加總 ({{ classesTotalLevel() }}) 與結束等級 ({{ endingLevel() }}) 不符，請調整職業等級</span>
             }
           </div>
+          @if (!isClassProgressionValid()) {
+          <div class="level-match-status status-mismatch">
+            <span>既有職業等級不可降低；只能分配本次增加的等級</span>
+          </div>
+          }
 
           <div class="classes-list">
             @for (entry of classEntries(); track $index; let i = $index) {
@@ -103,8 +108,8 @@
               <mat-form-field appearance="outline" class="class-name-field" subscriptSizing="dynamic">
                 <mat-label>職業</mat-label>
                 <mat-select [value]="entry.className" (selectionChange)="updateClassName(i, $event.value)">
-                  @for (cls of CLASS_OPTIONS; track cls) {
-                  <mat-option [value]="cls">{{ cls }}</mat-option>
+                  @for (cls of CLASS_OPTIONS; track cls.id) {
+                  <mat-option [value]="cls.id">{{ cls.label }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -148,14 +153,7 @@
                 <span class="res-title">金幣 (GP)</span>
               </div>
             </div>
-            <div class="res-inputs-grid two-cols">
-              <mat-form-field appearance="outline" class="res-field">
-                <mat-label>起始金幣</mat-label>
-                <input matInput type="number" min="0" step="any" formControlName="startingGold" />
-                @if (form.get('startingGold')?.hasError('min')) {
-                <mat-error>不可為負數</mat-error>
-                }
-              </mat-form-field>
+            <div class="res-inputs-grid single-col">
               <mat-form-field appearance="outline" class="res-field">
                 <mat-label>冒險中變化</mat-label>
                 <input matInput type="number" step="any" formControlName="goldChange" />
@@ -171,14 +169,7 @@
                 <span class="res-title">休整期 (Downtime)</span>
               </div>
             </div>
-            <div class="res-inputs-grid two-cols">
-              <mat-form-field appearance="outline" class="res-field">
-                <mat-label>起始天數</mat-label>
-                <input matInput type="number" min="0" formControlName="startingDowntime" />
-                @if (form.get('startingDowntime')?.hasError('min')) {
-                <mat-error>不可為負數</mat-error>
-                }
-              </mat-form-field>
+            <div class="res-inputs-grid single-col">
               <mat-form-field appearance="outline" class="res-field">
                 <mat-label>冒險中變化</mat-label>
                 <input matInput type="number" formControlName="downtimeChange" />
@@ -194,14 +185,7 @@
                 <span class="res-title">魔法物品</span>
               </div>
             </div>
-            <div class="res-inputs-grid two-cols">
-              <mat-form-field appearance="outline" class="res-field">
-                <mat-label>起始件數</mat-label>
-                <input matInput type="number" min="0" formControlName="startingMagicItems" />
-                @if (form.get('startingMagicItems')?.hasError('min')) {
-                <mat-error>不可為負數</mat-error>
-                }
-              </mat-form-field>
+            <div class="res-inputs-grid single-col">
               <mat-form-field appearance="outline" class="res-field">
                 <mat-label>冒險中變化</mat-label>
                 <input matInput type="number" formControlName="magicItemsChange" />
@@ -234,6 +218,14 @@
                   <span class="snapshot-tag">已入庫</span>
                   } @else if (isEditMode() && !item.id) {
                   <span class="new-tag">新增</span>
+                  }
+                  @if (item.acquisitionSource === 'ADVENTURE') {
+                  <span class="snapshot-tag">冒險獲得</span>
+                  } @else if (item.acquisitionSource === 'DOWNTIME') {
+                  <span class="snapshot-tag">休整期獲得</span>
+                  }
+                  @if (item.needsDetails) {
+                  <span class="new-tag">待補內容</span>
                   }
                 </div>
                 <button type="button" mat-icon-button color="warn" (click)="removeGainedItem(i)" matTooltip="移除此物品">
@@ -515,7 +507,7 @@
             <div class="badge-card-top">
               <div class="badge-title-group">
                 <svg lucideCoins [size]="18" class="badge-icon gold"></svg>
-                <span class="badge-title">最終金幣</span>
+                <span class="badge-title">本筆結算金幣</span>
               </div>
               <div class="badge-total-value">
                 <span class="value-num">{{ (goldTotal() ?? 0) | number:'1.2-2' }}</span>
@@ -523,8 +515,6 @@
               </div>
             </div>
             <div class="badge-formula-line">
-              <span class="f-part">起始 {{ form.get('startingGold')?.value ?? 0 }}</span>
-              <span class="f-op">+</span>
               <span class="f-part">冒險 {{ form.get('goldChange')?.value ?? 0 }}</span>
               <span class="f-op">+</span>
               <span class="f-part">休整 {{ form.get('goldDowntimeChange')?.value ?? 0 }}</span>
@@ -537,7 +527,7 @@
             <div class="badge-card-top">
               <div class="badge-title-group">
                 <svg lucideTent [size]="18" class="badge-icon downtime"></svg>
-                <span class="badge-title">最終休整期</span>
+                <span class="badge-title">本筆結算休整期</span>
               </div>
               <div class="badge-total-value">
                 <span class="value-num">{{ downtimeTotal() ?? 0 }}</span>
@@ -545,8 +535,6 @@
               </div>
             </div>
             <div class="badge-formula-line">
-              <span class="f-part">起始 {{ form.get('startingDowntime')?.value ?? 0 }}</span>
-              <span class="f-op">+</span>
               <span class="f-part">冒險 {{ form.get('downtimeChange')?.value ?? 0 }}</span>
               <span class="f-op">+</span>
               <span class="f-part">休整 {{ form.get('downtimeDowntimeChange')?.value ?? 0 }}</span>
@@ -559,7 +547,7 @@
             <div class="badge-card-top">
               <div class="badge-title-group">
                 <svg lucideSparkles [size]="18" class="badge-icon magic"></svg>
-                <span class="badge-title">最終魔法物品</span>
+                <span class="badge-title">本筆結算魔法物品</span>
               </div>
               <div class="badge-total-value">
                 <span class="value-num">{{ magicItemsTotal() ?? 0 }}</span>
@@ -567,8 +555,6 @@
               </div>
             </div>
             <div class="badge-formula-line">
-              <span class="f-part">起始 {{ form.get('startingMagicItems')?.value ?? 0 }}</span>
-              <span class="f-op">+</span>
               <span class="f-part">冒險 {{ form.get('magicItemsChange')?.value ?? 0 }}</span>
               <span class="f-op">+</span>
               <span class="f-part">休整 {{ form.get('magicItemsDowntimeChange')?.value ?? 0 }}</span>
@@ -608,7 +594,7 @@
     <div class="form-actions">
       <button type="button" mat-stroked-button (click)="onBack()">取消</button>
       <button type="submit" mat-flat-button color="primary"
-        [disabled]="isSaving() || isLoading() || loadFailed() || !isLevelBalanced() || !isResourceValid() || form.invalid">
+        [disabled]="isSaving() || isLoading() || loadFailed() || !isLevelBalanced() || !isClassProgressionValid() || !isResourceValid() || form.invalid">
         @if (isSaving()) {
         <mat-spinner diameter="20"></mat-spinner>
         } @else {

@@ -2,6 +2,8 @@
 
 import { ItemRarity } from './inventory.model';
 
+export type AcquisitionSource = 'ADVENTURE' | 'DOWNTIME';
+
 // ── DowntimeActivity ─────────────────────────────────────────────────────────
 
 export interface DowntimeActivity {
@@ -27,6 +29,8 @@ export interface AdventureGainedItem {
   rarity?: ItemRarity | null;
   requiresAttunement?: boolean;
   quantity?: number;
+  acquisitionSource?: AcquisitionSource | null;
+  needsDetails?: boolean;
   notes?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -88,6 +92,8 @@ export interface AdventureEntry {
   soulCoinChargesUsed?: string;
   downtimeActivities: DowntimeActivity[];
   storyAwards?: StoryAward[];
+  recordingModelVersion?: number;
+  warnings?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -97,20 +103,16 @@ export interface AdventureEntryRequest {
   adventureName?: string | null;
   playDate?: string | null;
   dmName?: string | null;
-  startingLevel?: number | null;
-  endingLevel?: number | null;
-  startingGold?: number | null;
+  levelChange?: number | null;
+  classChanges?: { className: string; levelChange: number }[] | null;
   goldChange?: number | null;
   goldDowntimeChange?: number | null;
-  startingDowntime?: number | null;
   downtimeChange?: number | null;
   downtimeDowntimeChange?: number | null;
-  startingMagicItems?: number | null;
   magicItemsChange?: number | null;
   magicItemsDowntimeChange?: number | null;
   adventureNotes?: string | null;
   soulCoinChargesUsed?: string | null;
-  endingClassesString?: string | null;
 }
 
 /**

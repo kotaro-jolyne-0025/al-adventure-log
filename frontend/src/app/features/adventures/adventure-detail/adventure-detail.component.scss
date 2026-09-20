@@ -520,3 +520,25 @@
     }
   }
 }
+.inventory-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 12%, transparent);
+}
+
+.source-pill,
+.pending-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--color-surface-variant, #eef2f7);
+}
+
+.pending-pill {
+  color: var(--color-warning, #b45309);
+}

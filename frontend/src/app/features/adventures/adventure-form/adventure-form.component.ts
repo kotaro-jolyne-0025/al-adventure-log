@@ -24,6 +24,7 @@ import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntryRequest, AdventureEntrySaveRequest, AdventureGainedItem } from '../../../core/models/adventure.model';
 import { ItemRarity, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
+import { DND_CLASSES, parseClassLevels } from '../../../core/models/dnd-classes';
 import { of, catchError, forkJoin, map, switchMap } from 'rxjs';
 
 import {
@@ -112,21 +113,7 @@ export class AdventureFormComponent implements OnInit {
   protected entryId: string | null = null;
 
   // ── 5e 職業選項 ─────────────────────────────────────────────────────────────
-  readonly CLASS_OPTIONS: string[] = [
-    '野蠻人 (Barbarian)',
-    '吟遊詩人 (Bard)',
-    '牧師 (Cleric)',
-    '德魯伊 (Druid)',
-    '戰士 (Fighter)',
-    '武僧 (Monk)',
-    '聖騎士 (Paladin)',
-    '遊俠 (Ranger)',
-    '遊蕩者 (Rogue)',
-    '術士 (Sorcerer)',
-    '契術師 (Warlock)',
-    '法師 (Wizard)',
-    '奇術師 (Artificer)',
-  ];
+  readonly CLASS_OPTIONS = DND_CLASSES;
 
   // ── 等級與升級機制 Signals ──────────────────────────────────────────────────
   protected readonly _startingLevel = signal<number>(1);
@@ -146,7 +133,7 @@ export class AdventureFormComponent implements OnInit {
 
   // 結束職業與等級配置列表
   protected classEntries = signal<{ className: string; level: number }[]>([
-    { className: '戰士 (Fighter)', level: 1 },
+    { className: 'Fighter', level: 1 },
   ]);
 
   protected readonly classesTotalLevel = computed(() =>
@@ -156,6 +143,13 @@ export class AdventureFormComponent implements OnInit {
   protected readonly isLevelBalanced = computed(() =>
     this.classesTotalLevel() === this.endingLevel()
   );
+
+  protected readonly isClassProgressionValid = computed(() => {
+    const current = new Map(this.classEntries().map(item => [item.className.trim(), item.level]));
+    return this.parseClassesString(this._startingClassesString()).every(
+      item => (current.get(item.className) ?? 0) >= item.level
+    );
+  });
 
   // ── 資源計算 Signals ────────────────────────────────────────────────────────
   private readonly _startingGold = signal<number | null>(null);
@@ -229,6 +223,8 @@ export class AdventureFormComponent implements OnInit {
     itemName: string;
     rarity: ItemRarity | '';
     requiresAttunement?: boolean;
+    acquisitionSource?: 'ADVENTURE' | 'DOWNTIME' | null;
+    needsDetails?: boolean;
     notes: string;
   }[]>([]);
 
@@ -290,12 +286,7 @@ export class AdventureFormComponent implements OnInit {
   }
 
   private parseClassesString(classesString?: string | null): { className: string; level: number }[] {
-    if (!classesString) return [];
-    return classesString.split('/').map(seg => {
-      const match = seg.trim().match(/^(.+?)(\d+)$/);
-      if (match) return { className: match[1].trim(), level: parseInt(match[2], 10) };
-      return { className: seg.trim(), level: 1 };
-    }).filter(e => e.className);
+    return parseClassLevels(classesString);
   }
 
   private parseLocalDate(dateStr?: string | null): Date | null {
@@ -478,6 +469,8 @@ export class AdventureFormComponent implements OnInit {
         itemName: item.itemName,
         rarity: (item.rarity ?? '') as ItemRarity | '',
         requiresAttunement: Boolean(item.requiresAttunement),
+        acquisitionSource: item.acquisitionSource,
+        needsDetails: item.needsDetails,
         notes: item.notes ?? '',
       })));
     this.gainedConsumableItems.set(items
@@ -519,7 +512,7 @@ export class AdventureFormComponent implements OnInit {
   protected addClass(): void {
     this.classEntries.update(entries => [
       ...entries,
-      { className: '法師 (Wizard)', level: 1 },
+      { className: 'Wizard', level: 1 },
     ]);
   }
 
@@ -672,9 +665,12 @@ export class AdventureFormComponent implements OnInit {
   }
 
   protected removeGainedItem(index: number): void {
+    const removed = this.gainedMagicItems()[index];
     this.gainedMagicItems.update(list => list.filter((_, i) => i !== index));
-    const current = Number(this.form.get('magicItemsChange')?.value) || 0;
-    this.form.patchValue({ magicItemsChange: Math.max(0, current - 1) });
+    const controlName = removed?.acquisitionSource === 'DOWNTIME'
+      ? 'magicItemsDowntimeChange' : 'magicItemsChange';
+    const current = Number(this.form.get(controlName)?.value) || 0;
+    this.form.patchValue({ [controlName]: Math.max(0, current - 1) });
   }
 
   protected updateGainedItemName(index: number, name: string): void {
@@ -781,25 +777,37 @@ export class AdventureFormComponent implements OnInit {
       const day = String(d.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
+    const startingClasses = new Map(
+      this.parseClassesString(this._startingClassesString()).map(item => [item.className, item.level])
+    );
+    const levelChange = this.endingLevel() - this._startingLevel();
+    let classChanges = this.classEntries()
+      .map(item => ({
+        className: item.className.trim(),
+        levelChange: item.level - (startingClasses.get(item.className.trim()) ?? 0),
+      }))
+      .filter(item => item.className && item.levelChange > 0);
+    if (levelChange === 0) {
+      classChanges = [];
+    } else if (classChanges.reduce((sum, item) => sum + item.levelChange, 0) !== levelChange) {
+      const fallbackClass = this.classEntries().find(item => item.className.trim())?.className.trim();
+      classChanges = fallbackClass ? [{ className: fallbackClass, levelChange }] : [];
+    }
     return {
       adventureCode: raw.adventureCode?.trim() || null,
       adventureName: raw.adventureName?.trim() || null,
       playDate: toDateStr(raw.playDate),
       dmName: raw.dmName?.trim() || null,
-      startingLevel: this._startingLevel(),
-      endingLevel: this.endingLevel(),
-      startingGold: toDecimal(raw.startingGold),
+      levelChange,
+      classChanges,
       goldChange: toDecimal(raw.goldChange),
       goldDowntimeChange: toDecimal(raw.goldDowntimeChange),
-      startingDowntime: toInt(raw.startingDowntime),
       downtimeChange: toInt(raw.downtimeChange),
       downtimeDowntimeChange: toInt(raw.downtimeDowntimeChange),
-      startingMagicItems: toInt(raw.startingMagicItems),
       magicItemsChange: toInt(raw.magicItemsChange),
       magicItemsDowntimeChange: toInt(raw.magicItemsDowntimeChange),
       adventureNotes: raw.adventureNotes?.trim() || null,
       soulCoinChargesUsed: raw.soulCoinChargesUsed?.trim() || null,
-      endingClassesString: this.buildEndingClassesString(),
     };
   }
 
@@ -846,6 +854,10 @@ export class AdventureFormComponent implements OnInit {
     }
     if (!this.isLevelBalanced()) {
       this.snackBar.open('職業等級加總與結束等級不符，請調整後再儲存', '關閉', { duration: 3000 });
+      return;
+    }
+    if (!this.isClassProgressionValid()) {
+      this.snackBar.open('既有職業等級不可降低，請只分配本次增加的等級', '關閉', { duration: 3000 });
       return;
     }
     if (!this.isResourceValid()) {

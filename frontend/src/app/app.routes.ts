@@ -30,12 +30,6 @@ export const routes: Routes = [
     loadComponent: () => import('./features/characters/character-form/character-form.component').then(m => m.CharacterFormComponent),
     canActivate: [authGuard],
   },
-  {
-    path: 'characters/:id/edit',
-    loadComponent: () => import('./features/characters/character-form/character-form.component').then(m => m.CharacterFormComponent),
-    canActivate: [authGuard],
-  },
-
   // ── 角色 Shell（含 Tab 導覽，需登入） ────────────────────────────────────────
   {
     path: 'characters/:id',
@@ -47,6 +41,7 @@ export const routes: Routes = [
       { path: 'adventures/new', loadComponent: () => import('./features/adventures/adventure-form/adventure-form.component').then(m => m.AdventureFormComponent) },
       { path: 'adventures/:entryId', loadComponent: () => import('./features/adventures/adventure-detail/adventure-detail.component').then(m => m.AdventureDetailComponent) },
       { path: 'adventures/:entryId/edit', loadComponent: () => import('./features/adventures/adventure-form/adventure-form.component').then(m => m.AdventureFormComponent) },
+      { path: 'edit', loadComponent: () => import('./features/characters/character-form/character-form.component').then(m => m.CharacterFormComponent) },
 
       // Epic 3: 倉庫
       { path: 'inventory', loadComponent: () => import('./features/inventory/inventory-list/inventory-list.component').then(m => m.InventoryListComponent) },

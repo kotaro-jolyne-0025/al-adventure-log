@@ -11,6 +11,7 @@ import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
 import { InventoryItem, ITEM_RARITY_LABELS, RARITY_COLORS } from '../../../core/models/inventory.model';
+import { formatClassLevels } from '../../../core/models/dnd-classes';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import {
   ConfirmDialogComponent,
@@ -167,17 +168,23 @@ export class AdventureDetailComponent implements OnInit {
   }
 
   protected formatClassesDisplay(classesString?: string | null, level?: number | null): string {
-    if (classesString && classesString.trim()) {
-      const parts = classesString.split('/').map(seg => {
-        const match = seg.trim().match(/^(.+?)(\d+)$/);
-        if (match) {
-          return `${match[1]} Lv.${match[2]}`;
-        }
-        return seg.trim();
-      });
-      return parts.join(' / ');
-    }
+    if (classesString && classesString.trim()) return formatClassLevels(classesString);
     return level != null ? `Lv.${level}` : '—';
+  }
+
+  protected magicItemsReduction(): number {
+    const entry = this.entry();
+    if (!entry) return 0;
+    return Math.abs(Math.min(0, entry.magicItemsChange ?? 0))
+      + Math.abs(Math.min(0, entry.magicItemsDowntimeChange ?? 0));
+  }
+
+  protected acquisitionSourceLabel(source?: 'ADVENTURE' | 'DOWNTIME' | null): string {
+    return source === 'ADVENTURE' ? '冒險獲得' : source === 'DOWNTIME' ? '休整期獲得' : '';
+  }
+
+  protected onOpenInventory(): void {
+    this.router.navigate(['/characters', this.characterId, 'inventory']);
   }
 
   protected formatChange(val?: number | null, prefix = ''): string {

@@ -7,11 +7,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CharacterService } from '../../../core/services/character.service';
-import { AdventureService } from '../../../core/services/adventure.service';
-import { InventoryService } from '../../../core/services/inventory.service';
+import { formatClassLevels } from '../../../core/models/dnd-classes';
 import { Character } from '../../../core/models/character.model';
-import { EntryDefaults } from '../../../core/models/adventure.model';
-import { catchError, forkJoin, of, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 
 import { CommonModule } from '@angular/common';
 
@@ -39,13 +37,9 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly characterService = inject(CharacterService);
-  private readonly adventureService = inject(AdventureService);
-  private readonly inventoryService = inject(InventoryService);
   private readonly snackBar = inject(MatSnackBar);
 
   protected character = signal<Character | null>(null);
-  protected defaults = signal<EntryDefaults | null>(null);
-  protected magicItemsCount = signal<number>(0);
   protected isLoading = signal(true);
   protected characterId!: string;
 
@@ -72,20 +66,9 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
 
   private loadCharacterData(): void {
     this.isLoading.set(true);
-    forkJoin({
-      character: this.characterService.getById(this.characterId),
-      defaults: this.adventureService.getDefaults(this.characterId).pipe(catchError(() => of(null))),
-      inventory: this.inventoryService.getAllByCharacter(this.characterId).pipe(catchError(() => of([]))),
-    }).subscribe({
-      next: ({ character, defaults, inventory }) => {
+    this.characterService.getById(this.characterId).subscribe({
+      next: (character) => {
         this.character.set(character);
-        if (defaults) {
-          this.defaults.set(defaults);
-        }
-        const count = (inventory ?? [])
-          .filter((i) => i.itemType === 'PERMANENT')
-          .reduce((sum, i) => sum + (i.quantity || 1), 0);
-        this.magicItemsCount.set(count);
         this.isLoading.set(false);
       },
       error: () => {
@@ -96,36 +79,19 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   }
 
   private refreshHud(): void {
-    forkJoin({
-      character: this.characterService.getById(this.characterId).pipe(catchError(() => of(null))),
-      defaults: this.adventureService.getDefaults(this.characterId).pipe(catchError(() => of(null))),
-      inventory: this.inventoryService.getAllByCharacter(this.characterId).pipe(catchError(() => of([]))),
-    }).subscribe({
-      next: ({ character, defaults, inventory }) => {
-        if (character) {
-          this.character.set(character);
-          // A mutation can cancel the initial load; this fresh response completes it.
-          this.isLoading.set(false);
-        }
-        if (defaults) this.defaults.set(defaults);
-        if (inventory) {
-          const count = inventory
-            .filter((i) => i.itemType === 'PERMANENT')
-            .reduce((sum, i) => sum + (i.quantity || 1), 0);
-          this.magicItemsCount.set(count);
-        }
+    this.characterService.getById(this.characterId).subscribe({
+      next: (character) => {
+        this.character.set(character);
+        this.isLoading.set(false);
       },
     });
   }
 
   protected formatClasses(character: Character): string {
-    return character.currentClassesString || '無職業紀錄';
+    return formatClassLevels(character.currentClassesString) || '無職業紀錄';
   }
 
   protected parseTotalLevel(): number {
-    if (this.defaults()?.startingLevel) {
-      return this.defaults()!.startingLevel!;
-    }
     const str = this.character()?.currentClassesString;
     if (!str) return 1;
     let total = 0;

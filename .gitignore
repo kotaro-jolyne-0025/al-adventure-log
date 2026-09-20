@@ -64,3 +64,5 @@ backlog.md
 
 # Agent 配置與本地技能/規則
 .agents/
+.codex/
+

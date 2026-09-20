@@ -1,5 +1,6 @@
 package com.dndadvlog.backend.dto;
 
+import com.dndadvlog.backend.entity.AcquisitionSource;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,8 @@ public class AdventureGainedItemResponse {
     private String rarity;
     private Boolean requiresAttunement;
     private Integer quantity;
+    private AcquisitionSource acquisitionSource;
+    private Boolean needsDetails;
     private String notes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -16,6 +16,8 @@ public class InventoryItem {
     private Rarity rarity;
     private Boolean requiresAttunement;
     private Integer quantity;
+    private AcquisitionSource acquisitionSource;
+    private Boolean needsDetails;
     private String source;
     private String notes;
     private LocalDateTime createdAt;

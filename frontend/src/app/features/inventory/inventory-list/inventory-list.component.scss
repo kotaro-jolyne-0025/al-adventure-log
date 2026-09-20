@@ -660,3 +660,17 @@
     line-height: 1.5;
   }
 }
+.source-pill,
+.pending-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  background: var(--color-surface-variant, #eef2f7);
+}
+
+.pending-pill {
+  color: var(--color-warning, #b45309);
+}

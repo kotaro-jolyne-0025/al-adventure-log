@@ -1,7 +1,10 @@
 package com.dndadvlog.backend.service;
 
 import com.dndadvlog.backend.dto.AdventureEntryResponse;
+import com.dndadvlog.backend.dto.AdventureGainedItemResponse;
+import com.dndadvlog.backend.entity.AcquisitionSource;
 import com.dndadvlog.backend.entity.AdventureEntry;
+import com.dndadvlog.backend.entity.AdventureGainedItem;
 import com.dndadvlog.backend.entity.DowntimeActivity;
 import com.dndadvlog.backend.entity.StoryAward;
 import com.dndadvlog.backend.mapper.AdventureEntryMapper;
@@ -92,9 +95,45 @@ class AdventureEntryServiceTest {
         verify(storyAwardMapper, never()).findByAdventureEntryIds(anyList());
     }
 
+    @Test
+    void responsesExposeRecordingVersionAndItemProvenance() {
+        UUID userId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        AdventureEntry entry = entry(entryId);
+        entry.setRecordingModelVersion(2);
+        when(entryMapper.findByIdAndUserId(entryId, userId)).thenReturn(entry);
+        when(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entryId)).thenReturn(List.of());
+        when(storyAwardMapper.findByAdventureEntryId(entryId)).thenReturn(List.of());
+
+        AdventureEntryResponse entryResponse = service.getEntry(entryId, userId);
+        assertEquals(2, entryResponse.getRecordingModelVersion());
+
+        AdventureGainedItem adventureItem = gainedItem(entryId, AcquisitionSource.ADVENTURE, false);
+        AdventureGainedItem downtimeItem = gainedItem(entryId, AcquisitionSource.DOWNTIME, true);
+        AdventureGainedItem unknownItem = gainedItem(entryId, null, false);
+        when(gainedItemMapper.findByAdventureEntryId(entryId))
+                .thenReturn(List.of(adventureItem, downtimeItem, unknownItem));
+
+        List<AdventureGainedItemResponse> items = service.getGainedItems(entryId, userId);
+        assertEquals(AcquisitionSource.ADVENTURE, items.get(0).getAcquisitionSource());
+        assertEquals(AcquisitionSource.DOWNTIME, items.get(1).getAcquisitionSource());
+        assertEquals(true, items.get(1).getNeedsDetails());
+        assertEquals(null, items.get(2).getAcquisitionSource());
+    }
+
     private AdventureEntry entry(UUID id) {
         AdventureEntry entry = new AdventureEntry();
         entry.setId(id);
         return entry;
+    }
+
+    private AdventureGainedItem gainedItem(
+            UUID entryId, AcquisitionSource source, boolean needsDetails) {
+        AdventureGainedItem item = new AdventureGainedItem();
+        item.setId(UUID.randomUUID());
+        item.setAdventureEntryId(entryId);
+        item.setAcquisitionSource(source);
+        item.setNeedsDetails(needsDetails);
+        return item;
     }
 }

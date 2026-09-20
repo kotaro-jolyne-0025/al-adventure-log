@@ -2,6 +2,7 @@ package com.dndadvlog.backend.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -15,8 +16,15 @@ public class CharacterResponse {
     private String subclass;
     private String faction;
     private String avatarUrl;
+    private String initialClassesString;
+    private BigDecimal initialGold;
+    private Integer initialDowntime;
     private String currentClassesString;
+    private BigDecimal currentGold;
+    private Integer currentDowntime;
+    private Integer currentMagicItems;
     private Integer soulCoins;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean hasAdventureEntries;
 }
