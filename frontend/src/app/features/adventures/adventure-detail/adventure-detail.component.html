@@ -226,9 +226,6 @@
                       {{ acquisitionSourceLabel(item.acquisitionSource) }}
                     </span>
                   }
-                  @if (item.needsDetails) {
-                    <span class="pending-pill">待補內容</span>
-                  }
                 </div>
                 @if (item.notes) {
                   <p class="item-desc">{{ item.notes }}</p>
@@ -268,9 +265,6 @@
                   <span class="source-pill">
                     {{ acquisitionSourceLabel(item.acquisitionSource) }}
                   </span>
-                }
-                @if (item.needsDetails) {
-                  <span class="pending-pill">待補內容</span>
                 }
               </div>
               @if (item.notes) {
