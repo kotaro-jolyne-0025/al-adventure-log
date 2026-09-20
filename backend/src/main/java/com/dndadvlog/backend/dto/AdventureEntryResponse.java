@@ -34,8 +34,10 @@ public class AdventureEntryResponse {
     private String endingClassesString;
     private String adventureNotes;
     private String soulCoinChargesUsed;
+    private Integer recordingModelVersion;
     private List<DowntimeActivityResponse> downtimeActivities;
     private List<StoryAwardResponse> storyAwards;
+    private List<String> warnings;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

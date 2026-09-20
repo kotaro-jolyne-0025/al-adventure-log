@@ -47,6 +47,14 @@ describe('Adventure form complete loading', () => {
     expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
       gainedItems: [expect.objectContaining({ id: 'snapshot' })],
     }));
+    const payload = api.updateWithDetails.mock.calls[0][2];
+    expect(payload.entry).toMatchObject({ levelChange: 0, classChanges: [] });
+    expect(payload.entry).not.toHaveProperty('startingLevel');
+    expect(payload.entry).not.toHaveProperty('endingLevel');
+    expect(payload.entry).not.toHaveProperty('startingGold');
+    expect(payload.entry).not.toHaveProperty('startingDowntime');
+    expect(payload.entry).not.toHaveProperty('startingMagicItems');
+    expect(payload.entry).not.toHaveProperty('endingClassesString');
     submit();
     expect(api.updateWithDetails).toHaveBeenCalledTimes(1);
   });
@@ -96,5 +104,30 @@ describe('Adventure form complete loading', () => {
       itemName: 'Sword', itemType: 'PERMANENT', quantity: 1 }]);
     warehouse.complete(); submit();
     expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({ gainedItems: [] }));
+  });
+
+  it('previews totals from initial snapshots and changes without sending the initial snapshots', () => {
+    emitEntry(); emitAwards();
+    items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
+    items.complete();
+    component['form'].patchValue({
+      startingGold: 100, goldChange: 50, goldDowntimeChange: -20,
+      startingDowntime: 5, downtimeChange: 2, downtimeDowntimeChange: -1,
+      startingMagicItems: 3, magicItemsChange: 1, magicItemsDowntimeChange: 2,
+    });
+
+    expect(component['goldTotal']()).toBe(130);
+    expect(component['downtimeTotal']()).toBe(6);
+    expect(component['magicItemsTotal']()).toBe(6);
+    expect(component['isResourceValid']()).toBe(true);
+
+    submit();
+    const payload = api.updateWithDetails.mock.calls[0][2];
+    expect(payload.entry).toMatchObject({
+      goldChange: 50, goldDowntimeChange: -20,
+      downtimeChange: 2, downtimeDowntimeChange: -1,
+      magicItemsChange: 1, magicItemsDowntimeChange: 2,
+    });
+    expect(payload.entry).not.toHaveProperty('startingGold');
   });
 });

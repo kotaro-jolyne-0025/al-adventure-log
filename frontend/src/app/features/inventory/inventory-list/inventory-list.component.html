@@ -183,6 +183,14 @@
           需同調
         </span>
         }
+        @if (item.acquisitionSource) {
+        <span class="source-pill">
+          {{ item.acquisitionSource === 'ADVENTURE' ? '冒險獲得' : '休整期獲得' }}
+        </span>
+        }
+        @if (item.needsDetails) {
+        <span class="pending-pill">待補內容</span>
+        }
       </div>
 
       <!-- 3. 右側：取得時間 + 編輯/刪除按鈕 -->
@@ -262,6 +270,14 @@
         <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
           {{ rarityLabels[item.rarity] }}
         </span>
+        }
+        @if (item.acquisitionSource) {
+        <span class="source-pill">
+          {{ item.acquisitionSource === 'ADVENTURE' ? '冒險獲得' : '休整期獲得' }}
+        </span>
+        }
+        @if (item.needsDetails) {
+        <span class="pending-pill">待補內容</span>
         }
       </div>
 

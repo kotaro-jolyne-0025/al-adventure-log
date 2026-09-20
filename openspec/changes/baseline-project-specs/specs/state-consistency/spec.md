@@ -24,6 +24,18 @@
 - **WHEN** 完整儲存提交另一冒險的子項目 ID
 - **THEN** 系統拒絕該請求，主記錄及所有子項目保持儲存前狀態
 
+#### Scenario: 更新角色當前狀態失敗
+- **WHEN** 儲存冒險時，更新角色當前等級、職業、金幣或休整期失敗
+- **THEN** 該次冒險、子項目與角色當前狀態的異動全部回滾，不留下快照已更新但當前狀態未更新的部分結果
+
+#### Scenario: 倉庫與目前魔法物品數同步失敗
+- **WHEN** 倉庫永久魔法物品異動時，更新 character 目前魔法物品數失敗
+- **THEN** 倉庫異動與 character 更新全部回滾，不留下倉庫數量與 character 不一致的結果
+
+#### Scenario: 正數變化的待補物品建立失敗
+- **WHEN** 儲存正數魔法物品變化時，必要的待補物品無法完整建立或 character 目前數量無法更新
+- **THEN** 冒險主記錄、子項目、待補物品、倉庫及 character 的該次異動全部回滾
+
 ### Requirement: Edit loading failure protection
 編輯冒險 SHALL 在主記錄、獲得物品及故事獎勵成功載入後才允許儲存。讀取失敗 MUST NOT 被視為空清單；系統 SHALL 提供重試。
 
@@ -45,6 +57,13 @@
 - **WHEN** 玩家成功儲存冒險變更
 - **THEN** HUD 以失效後重新取得的資料更新，而非重播變更前快取
 
+### Requirement: Adventure deletion atomicity
+冒險刪除、相關子項目與必要倉庫同步，以及 character 當前狀態撤回 SHALL 在同一交易完成；任一步驟失敗 MUST 全部回滾。
+
+#### Scenario: 刪除時角色更新失敗
+- **WHEN** 刪除冒險過程中 character 更新失敗
+- **THEN** 冒險、子項目、倉庫及 character 全部維持操作前狀態，不留下已刪紀錄或部分扣回
+
 ## Review status
 
-來源：SRS 2026-09-17 安全補充與 US-MOB-003；完整儲存交易邊界見現有 `AdventureEntryService`。此規格不承諾尚待 C02／C04 決定的數值算法，也不代表交易回滾或回歸測試已在本輪實際驗證。
+來源：SRS 2026-09-17 安全補充與 US-MOB-003；完整儲存交易邊界見現有 `AdventureEntryService`。已確認的當前角色累計規則亦須遵守交易一致性；冒險變化修改與 character 差額更新須在同一儲存交易內完成。C02 已確認的倉庫永久物品加總與 character 同步亦須維持原子性。此規格不代表交易回滾或回歸測試已在本輪實際驗證。

@@ -30,6 +30,7 @@
         <result property="catchupCount"            column="catchup_count"/>
         <result property="adventureNotes"          column="adventure_notes"/>
         <result property="soulCoinChargesUsed"     column="soul_coin_charges_used"/>
+        <result property="recordingModelVersion"   column="recording_model_version"/>
         <result property="startingClassesString"   column="starting_classes_string"/>
         <result property="endingClassesString"     column="ending_classes_string"/>
         <result property="createdAt"               column="created_at"/>
@@ -39,7 +40,7 @@
     <select id="findByCharacterIdOrderByPlayDateAsc" resultMap="entryMap">
         SELECT * FROM adventure_entry
         WHERE character_id = #{characterId}::uuid
-        ORDER BY play_date ASC, created_at ASC
+        ORDER BY play_date ASC NULLS LAST, created_at ASC, id ASC
     </select>
 
     <select id="findById" resultMap="entryMap">
@@ -57,7 +58,52 @@
     <select id="findFirstByCharacterIdOrderByPlayDateDescCreatedAtDesc" resultMap="entryMap">
         SELECT * FROM adventure_entry
         WHERE character_id = #{characterId}::uuid
-        ORDER BY play_date DESC, created_at DESC
+        ORDER BY play_date DESC NULLS LAST, created_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="existsByCharacterId" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM adventure_entry WHERE character_id = #{characterId}::uuid)
+    </select>
+
+    <select id="findPreviousForNew" resultMap="entryMap">
+        SELECT * FROM adventure_entry
+        WHERE character_id = #{characterId}::uuid
+          AND play_date IS NOT NULL
+          AND play_date &lt;= #{playDate}
+        ORDER BY play_date DESC, created_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findPreviousForExisting" resultMap="entryMap">
+        SELECT * FROM adventure_entry
+        WHERE character_id = #{characterId}::uuid
+          AND id != #{id}::uuid
+          AND play_date IS NOT NULL
+          AND (
+              play_date &lt; #{playDate}
+              OR (
+                  play_date = #{playDate}
+                  AND (created_at, id) &lt; (#{createdAt}, #{id}::uuid)
+              )
+          )
+        ORDER BY play_date DESC, created_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findNextForExisting" resultMap="entryMap">
+        SELECT * FROM adventure_entry
+        WHERE character_id = #{characterId}::uuid
+          AND id != #{id}::uuid
+          AND play_date IS NOT NULL
+          AND (
+              play_date &gt; #{playDate}
+              OR (
+                  play_date = #{playDate}
+                  AND (created_at, id) &gt; (#{createdAt}, #{id}::uuid)
+              )
+          )
+        ORDER BY play_date ASC, created_at ASC, id ASC
         LIMIT 1
     </select>
 
@@ -70,7 +116,7 @@
             starting_magic_items, magic_items_change, magic_items_downtime_change, magic_items_total,
             starting_classes_string, ending_classes_string,
             level_up_class_name, catchup_class_name, catchup_count,
-            adventure_notes, soul_coin_charges_used,
+            adventure_notes, soul_coin_charges_used, recording_model_version,
             created_at, updated_at
         ) VALUES (
             #{id}::uuid, #{characterId}::uuid, #{adventureCode}, #{adventureName}, #{playDate}, #{dmName},
@@ -80,7 +126,7 @@
             #{startingMagicItems}, #{magicItemsChange}, #{magicItemsDowntimeChange}, #{magicItemsTotal},
             #{startingClassesString}, #{endingClassesString},
             #{levelUpClassName}, #{catchupClassName}, #{catchupCount},
-            #{adventureNotes}, #{soulCoinChargesUsed},
+            #{adventureNotes}, #{soulCoinChargesUsed}, COALESCE(#{recordingModelVersion}, 1),
             NOW(), NOW()
         )
     </insert>
@@ -112,6 +158,7 @@
             catchup_count              = #{catchupCount},
             adventure_notes            = #{adventureNotes},
             soul_coin_charges_used     = #{soulCoinChargesUsed},
+            recording_model_version    = COALESCE(#{recordingModelVersion}, recording_model_version),
             updated_at                 = NOW()
         WHERE id = #{id}::uuid
     </update>

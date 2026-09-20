@@ -14,6 +14,8 @@
         <result property="rarity"               column="rarity"/>
         <result property="requiresAttunement"   column="requires_attunement"/>
         <result property="quantity"             column="quantity"/>
+        <result property="acquisitionSource"    column="acquisition_source"/>
+        <result property="needsDetails"         column="needs_details"/>
         <result property="source"               column="source"/>
         <result property="notes"                column="notes"/>
         <result property="createdAt"            column="created_at"/>
@@ -37,6 +39,19 @@
         WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}::item_type
     </select>
 
+    <select id="sumQuantityByCharacterIdAndItemType" resultType="int">
+        SELECT COALESCE(SUM(quantity), 0) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}::item_type
+    </select>
+
+    <select id="sumUnlinkedPermanentQuantityByCharacterId" resultType="int">
+        SELECT COALESCE(SUM(quantity), 0) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid
+          AND item_type = 'PERMANENT'::item_type
+          AND adventure_entry_id IS NULL
+          AND adventure_gained_item_id IS NULL
+    </select>
+
     <select id="findById" resultMap="itemMap">
         SELECT * FROM inventory_item WHERE id = #{id}::uuid
     </select>
@@ -50,8 +65,20 @@
     </select>
 
     <insert id="insert">
-        INSERT INTO inventory_item (id, character_id, adventure_entry_id, adventure_gained_item_id, item_name, item_type, rarity, requires_attunement, quantity, source, notes, created_at, updated_at)
-        VALUES (#{id}::uuid, #{characterId}::uuid, CAST(#{adventureEntryId, jdbcType=VARCHAR} AS uuid), CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid), #{itemName}, #{itemType}::item_type, CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity), COALESCE(#{requiresAttunement}, false), #{quantity}, #{source}, #{notes}, NOW(), NOW())
+        INSERT INTO inventory_item (
+            id, character_id, adventure_entry_id, adventure_gained_item_id,
+            item_name, item_type, rarity, requires_attunement, quantity,
+            acquisition_source, needs_details, source, notes, created_at, updated_at
+        )
+        VALUES (
+            #{id}::uuid, #{characterId}::uuid,
+            CAST(#{adventureEntryId, jdbcType=VARCHAR} AS uuid),
+            CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid),
+            #{itemName}, #{itemType}::item_type,
+            CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity),
+            COALESCE(#{requiresAttunement}, false), #{quantity}, #{acquisitionSource},
+            COALESCE(#{needsDetails}, false), #{source}, #{notes}, NOW(), NOW()
+        )
     </insert>
 
     <update id="update">
@@ -63,6 +90,8 @@
             rarity     = CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity),
             requires_attunement = COALESCE(#{requiresAttunement}, false),
             quantity   = #{quantity},
+            acquisition_source = #{acquisitionSource},
+            needs_details = COALESCE(#{needsDetails}, false),
             source     = #{source},
             notes      = #{notes},
             updated_at = NOW()

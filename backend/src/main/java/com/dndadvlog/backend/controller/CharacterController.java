@@ -3,6 +3,8 @@ package com.dndadvlog.backend.controller;
 import com.dndadvlog.backend.config.UserPrincipal;
 import com.dndadvlog.backend.dto.CharacterRequest;
 import com.dndadvlog.backend.dto.CharacterResponse;
+import com.dndadvlog.backend.dto.CharacterBaselineRequest;
+import com.dndadvlog.backend.dto.CharacterBaselinePreviewResponse;
 import com.dndadvlog.backend.service.CharacterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,14 @@ public class CharacterController {
     public CharacterResponse getCharacter(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal principal) {
         log.info("🔍 [GET /api/characters/{}] 查詢角色詳情, userId={}", id, principal.getId());
         return characterService.getCharacter(id, principal.getId());
+    }
+
+    @PostMapping("/{id}/opening-baseline-preview")
+    public CharacterBaselinePreviewResponse previewOpeningBaseline(
+            @PathVariable UUID id,
+            @Valid @RequestBody CharacterBaselineRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return characterService.previewOpeningBaseline(id, request, principal.getId());
     }
 
     @PostMapping

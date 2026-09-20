@@ -22,6 +22,8 @@ public interface CharacterMapper {
 
     void update(Character character);
 
+    void updateCurrentMagicItems(@Param("id") UUID id, @Param("currentMagicItems") int currentMagicItems);
+
     void deleteById(@Param("id") UUID id);
 
 }

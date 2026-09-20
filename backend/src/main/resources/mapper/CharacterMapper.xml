@@ -16,7 +16,13 @@
         <result property="avatarUrl"     column="avatar_url"/>
         <result property="createdAt"     column="c_created_at"/>
         <result property="updatedAt"     column="c_updated_at"/>
+        <result property="initialClassesString" column="initial_classes_string"/>
+        <result property="initialGold" column="initial_gold"/>
+        <result property="initialDowntime" column="initial_downtime"/>
         <result property="currentClassesString" column="current_classes_string"/>
+        <result property="currentGold"   column="current_gold"/>
+        <result property="currentDowntime" column="current_downtime"/>
+        <result property="currentMagicItems" column="current_magic_items"/>
         <result property="soulCoins"     column="soul_coins"/>
     </resultMap>
 
@@ -30,7 +36,13 @@
             c.subclass,
             c.faction,
             c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
             c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
             c.soul_coins,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -48,7 +60,13 @@
             c.subclass,
             c.faction,
             c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
             c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
             c.soul_coins,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -67,7 +85,13 @@
             c.subclass,
             c.faction,
             c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
             c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
             c.soul_coins,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -85,7 +109,13 @@
             c.subclass,
             c.faction,
             c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
             c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
             c.soul_coins,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
@@ -94,7 +124,12 @@
     </select>
 
     <insert id="insert">
-        INSERT INTO "character" (id, user_id, character_name, player_name, race, subclass, faction, avatar_url, current_classes_string, soul_coins, created_at, updated_at)
+        INSERT INTO "character" (
+            id, user_id, character_name, player_name, race, subclass, faction, avatar_url,
+            initial_classes_string, initial_gold, initial_downtime, current_classes_string,
+            current_gold, current_downtime, current_magic_items, soul_coins,
+            created_at, updated_at
+        )
         VALUES (
             #{id}::uuid,
             #{userId}::uuid,
@@ -104,7 +139,13 @@
             #{subclass},
             #{faction},
             #{avatarUrl},
+            #{initialClassesString},
+            #{initialGold},
+            #{initialDowntime},
             #{currentClassesString},
+            #{currentGold},
+            #{currentDowntime},
+            #{currentMagicItems},
             #{soulCoins},
             NOW(),
             NOW()
@@ -120,9 +161,21 @@
             subclass       = #{subclass},
             faction        = #{faction},
             avatar_url     = #{avatarUrl},
+            initial_classes_string = #{initialClassesString},
+            initial_gold = #{initialGold},
+            initial_downtime = #{initialDowntime},
             current_classes_string = #{currentClassesString},
+            current_gold   = #{currentGold},
+            current_downtime = #{currentDowntime},
+            current_magic_items = #{currentMagicItems},
             soul_coins     = #{soulCoins},
             updated_at     = NOW()
+        WHERE id = #{id}::uuid
+    </update>
+
+    <update id="updateCurrentMagicItems">
+        UPDATE "character"
+        SET current_magic_items = #{currentMagicItems}, updated_at = NOW()
         WHERE id = #{id}::uuid
     </update>
 

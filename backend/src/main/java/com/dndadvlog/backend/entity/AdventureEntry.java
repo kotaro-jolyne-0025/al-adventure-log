@@ -37,6 +37,7 @@ public class AdventureEntry {
     private Integer catchupCount;
     private String adventureNotes;
     private String soulCoinChargesUsed;
+    private Integer recordingModelVersion;
 
     private String startingClassesString;
     private String endingClassesString;

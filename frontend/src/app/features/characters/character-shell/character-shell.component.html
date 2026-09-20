@@ -68,7 +68,7 @@
             <span class="hud-label">金幣 (GP)</span>
           </div>
           <span class="hud-value stat-gold">
-            {{ (defaults()?.startingGold ?? 0) | number:'1.2-2' }} <small class="unit">金</small>
+            {{ (character()!.currentGold ?? 0) | number:'1.2-2' }} <small class="unit">金</small>
           </span>
         </div>
 
@@ -78,7 +78,7 @@
             <span class="hud-label">休整期 (Downtime)</span>
           </div>
           <span class="hud-value stat-downtime">
-            {{ defaults()?.startingDowntime ?? 0 }} <small class="unit">天</small>
+            {{ character()!.currentDowntime ?? 0 }} <small class="unit">天</small>
           </span>
         </div>
 
@@ -88,7 +88,7 @@
             <span class="hud-label">魔法物品</span>
           </div>
           <span class="hud-value stat-magic">
-            {{ magicItemsCount() }} <small class="unit">件</small>
+            {{ character()!.currentMagicItems ?? 0 }} <small class="unit">件</small>
           </span>
         </div>
 

@@ -3,6 +3,7 @@ package com.dndadvlog.backend.dto;
 import com.dndadvlog.backend.entity.InventoryItem;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.util.UUID;
@@ -18,6 +19,7 @@ public class InventoryItemRequest {
 
     private InventoryItem.Rarity rarity;
     private Boolean requiresAttunement;
+    @Positive(message = "物品數量必須大於 0")
     private Integer quantity;
     private String source;
     private String notes;
