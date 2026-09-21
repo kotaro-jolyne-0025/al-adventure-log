@@ -1,5 +1,6 @@
 package com.dndadvlog.backend.dto;
 
+import com.dndadvlog.backend.entity.AcquisitionSource;
 import com.dndadvlog.backend.entity.InventoryItem;
 import lombok.Data;
 
@@ -17,6 +18,8 @@ public class InventoryItemResponse {
     private InventoryItem.Rarity rarity;
     private Boolean requiresAttunement;
     private Integer quantity;
+    private AcquisitionSource acquisitionSource;
+    private Boolean needsDetails;
     private String source;
     private String notes;
     private LocalDateTime createdAt;

@@ -470,6 +470,10 @@
   }
 }
 
+.res-inputs-grid.single-col {
+  grid-template-columns: 1fr;
+}
+
 .res-field {
   width: 100%;
   min-width: 0;

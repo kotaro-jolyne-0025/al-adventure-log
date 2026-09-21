@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -55,6 +55,7 @@ export type AdventureSortField = 'playDate' | 'createdAt';
   ],
   templateUrl: './adventure-list.component.html',
   styleUrl: './adventure-list.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdventureListComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -82,6 +83,8 @@ export class AdventureListComponent implements OnInit {
     'desc'
   );
   protected readonly isLoading = signal(true);
+  private readonly pageSize = 20;
+  protected readonly visibleLimit = signal(this.pageSize);
   protected characterId!: string;
 
   protected readonly sortFieldLabel = computed(() => {
@@ -121,11 +124,30 @@ export class AdventureListComponent implements OnInit {
     );
   });
 
+  /** 手機一次只建立 20 張卡片，避免長清單一次塞入過多 DOM。 */
+  protected readonly visibleEntries = computed(() =>
+    this.entries().slice(0, this.visibleLimit())
+  );
+
+  protected readonly hasMoreEntries = computed(() =>
+    this.visibleLimit() < this.entries().length
+  );
+
   /** 是否正在搜尋中（有輸入關鍵字）*/
   protected readonly isSearching = computed(() => this.searchQuery().trim().length > 0);
 
   protected clearSearch(): void {
     this.searchQuery.set('');
+    this.visibleLimit.set(this.pageSize);
+  }
+
+  protected onSearchChange(value: string): void {
+    this.searchQuery.set(value);
+    this.visibleLimit.set(this.pageSize);
+  }
+
+  protected showMoreEntries(): void {
+    this.visibleLimit.update(limit => limit + this.pageSize);
   }
 
   private compareEntries(a: AdventureEntry, b: AdventureEntry, field: AdventureSortField): number {
@@ -168,6 +190,7 @@ export class AdventureListComponent implements OnInit {
     const target = event.target as HTMLSelectElement;
     const field = target.value as AdventureSortField;
     this.sortField.set(field);
+    this.visibleLimit.set(this.pageSize);
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(this.SORT_FIELD_KEY, field);
@@ -178,6 +201,7 @@ export class AdventureListComponent implements OnInit {
   protected toggleSortOrder(): void {
     const nextOrder = this.sortOrder() === 'desc' ? 'asc' : 'desc';
     this.sortOrder.set(nextOrder);
+    this.visibleLimit.set(this.pageSize);
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(this.SORT_ORDER_KEY, nextOrder);

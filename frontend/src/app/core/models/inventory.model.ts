@@ -1,5 +1,6 @@
 export type ItemType = 'PERMANENT' | 'CONSUMABLE';
 export type ItemRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'VERY_RARE' | 'LEGENDARY' | 'ARTIFACT';
+export type AcquisitionSource = 'ADVENTURE' | 'DOWNTIME';
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   PERMANENT: '永久魔法物品',
@@ -34,6 +35,8 @@ export interface InventoryItem {
   rarity?: ItemRarity;
   requiresAttunement?: boolean;
   quantity: number;
+  acquisitionSource?: AcquisitionSource | null;
+  needsDetails?: boolean;
   source?: string;
   notes?: string;
   createdAt?: string;

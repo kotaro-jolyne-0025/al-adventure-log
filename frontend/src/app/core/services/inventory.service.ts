@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { RequestCache } from './request-cache';
 import { environment } from '../../../environments/environment';
 import { InventoryItem, InventoryItemRequest } from '../models/inventory.model';
 import { CharacterService } from './character.service';
@@ -12,40 +13,21 @@ export class InventoryService {
   private readonly base = `${environment.apiUrl}/characters`;
 
   // 記憶體快取
-  private readonly inventoryCache = new Map<string, InventoryItem[]>();
+  private readonly inventoryCache = new RequestCache<InventoryItem[]>();
+
+  constructor() {
+    this.characterService.cacheInvalidated$.subscribe(id => this.clearCache(id));
+  }
 
   clearCache(characterId?: string): void {
-    if (characterId) {
-      this.inventoryCache.delete(characterId);
-    } else {
-      this.inventoryCache.clear();
-    }
+    this.inventoryCache.clear(characterId);
   }
 
   // 後端路徑：/api/characters/{id}/inventory
 
   getAllByCharacter(characterId: string, forceRefresh = false): Observable<InventoryItem[]> {
-    const cached = this.inventoryCache.get(characterId);
-    const fetch$ = this.http.get<InventoryItem[]>(
-      `${this.base}/${characterId}/inventory`
-    ).pipe(
-      tap((items) => this.inventoryCache.set(characterId, items))
-    );
-
-    if (cached && !forceRefresh) {
-      return new Observable<InventoryItem[]>((subscriber) => {
-        subscriber.next(cached);
-        fetch$.subscribe({
-          next: (fresh) => {
-            subscriber.next(fresh);
-            subscriber.complete();
-          },
-          error: () => subscriber.complete(),
-        });
-      });
-    }
-
-    return fetch$;
+    return this.inventoryCache.get(characterId,
+      () => this.http.get<InventoryItem[]>(`${this.base}/${characterId}/inventory`), forceRefresh);
   }
 
   create(characterId: string, req: InventoryItemRequest): Observable<InventoryItem> {
@@ -87,4 +69,3 @@ export class InventoryService {
     );
   }
 }
-

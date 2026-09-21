@@ -14,6 +14,12 @@ public interface InventoryItemMapper {
 
     List<InventoryItem> findByCharacterIdAndItemType(@Param("characterId") UUID characterId, @Param("itemType") String itemType);
 
+    int countByCharacterIdAndItemType(@Param("characterId") UUID characterId, @Param("itemType") String itemType);
+
+    int sumQuantityByCharacterIdAndItemType(@Param("characterId") UUID characterId, @Param("itemType") String itemType);
+
+    int sumUnlinkedPermanentQuantityByCharacterId(@Param("characterId") UUID characterId);
+
     InventoryItem findById(@Param("id") UUID id);
 
     InventoryItem findByAdventureGainedItemId(@Param("gainedItemId") UUID gainedItemId);

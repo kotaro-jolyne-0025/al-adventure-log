@@ -14,6 +14,8 @@ public class AdventureGainedItem {
     private String rarity;
     private Boolean requiresAttunement;
     private Integer quantity;
+    private AcquisitionSource acquisitionSource;
+    private Boolean needsDetails;
     private String notes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

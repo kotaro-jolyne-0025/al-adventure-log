@@ -2,6 +2,8 @@
 
 import { ItemRarity } from './inventory.model';
 
+export type AcquisitionSource = 'ADVENTURE' | 'DOWNTIME';
+
 // ── DowntimeActivity ─────────────────────────────────────────────────────────
 
 export interface DowntimeActivity {
@@ -13,6 +15,7 @@ export interface DowntimeActivity {
 }
 
 export interface DowntimeActivityRequest {
+  id?: string;
   description: string;
 }
 
@@ -26,12 +29,15 @@ export interface AdventureGainedItem {
   rarity?: ItemRarity | null;
   requiresAttunement?: boolean;
   quantity?: number;
+  acquisitionSource?: AcquisitionSource | null;
+  needsDetails?: boolean;
   notes?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface AdventureGainedItemRequest {
+  id?: string;
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
@@ -52,6 +58,7 @@ export interface StoryAward {
 }
 
 export interface StoryAwardRequest {
+  id?: string;
   awardName: string;
   description?: string | null;
 }
@@ -85,6 +92,8 @@ export interface AdventureEntry {
   soulCoinChargesUsed?: string;
   downtimeActivities: DowntimeActivity[];
   storyAwards?: StoryAward[];
+  recordingModelVersion?: number;
+  warnings?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -94,20 +103,29 @@ export interface AdventureEntryRequest {
   adventureName?: string | null;
   playDate?: string | null;
   dmName?: string | null;
-  startingLevel?: number | null;
-  endingLevel?: number | null;
-  startingGold?: number | null;
+  levelChange?: number | null;
+  classChanges?: { className: string; levelChange: number }[] | null;
   goldChange?: number | null;
   goldDowntimeChange?: number | null;
-  startingDowntime?: number | null;
   downtimeChange?: number | null;
   downtimeDowntimeChange?: number | null;
-  startingMagicItems?: number | null;
   magicItemsChange?: number | null;
   magicItemsDowntimeChange?: number | null;
   adventureNotes?: string | null;
   soulCoinChargesUsed?: string | null;
-  endingClassesString?: string | null;
+}
+
+/**
+ * 冒險記錄完整儲存格式。
+ *
+ * 後端會在同一個資料庫交易中同步主記錄與三種子項目；任何一步失敗時，
+ * 整包資料都不會寫入，避免手機網路中斷後留下只存一半的資料。
+ */
+export interface AdventureEntrySaveRequest {
+  entry: AdventureEntryRequest;
+  downtimeActivities: DowntimeActivityRequest[];
+  gainedItems: AdventureGainedItemRequest[];
+  storyAwards: StoryAwardRequest[];
 }
 
 export interface EntryDefaults {

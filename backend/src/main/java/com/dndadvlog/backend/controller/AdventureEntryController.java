@@ -3,6 +3,7 @@ package com.dndadvlog.backend.controller;
 import com.dndadvlog.backend.config.UserPrincipal;
 import com.dndadvlog.backend.dto.*;
 import com.dndadvlog.backend.service.AdventureEntryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -48,7 +49,7 @@ public class AdventureEntryController {
     @PostMapping("/api/characters/{characterId}/entries")
     public ResponseEntity<AdventureEntryResponse> createEntry(
             @PathVariable UUID characterId,
-            @RequestBody AdventureEntryRequest request,
+            @Valid @RequestBody AdventureEntryRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("➕ [POST /api/characters/{}/entries] 新增冒險記錄: 名稱={}, 代碼={}, userId={}",
                 characterId, request.getAdventureName(), request.getAdventureCode(), principal.getId());
@@ -56,14 +57,31 @@ public class AdventureEntryController {
                 .body(adventureEntryService.createEntry(characterId, request, principal.getId()));
     }
 
+    @PostMapping("/api/characters/{characterId}/entries/with-details")
+    public ResponseEntity<AdventureEntryResponse> createEntryWithDetails(
+            @PathVariable UUID characterId,
+            @Valid @RequestBody AdventureEntrySaveRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(adventureEntryService.createEntryWithDetails(characterId, request, principal.getId()));
+    }
+
     @PutMapping("/api/entries/{id}")
     public AdventureEntryResponse updateEntry(
             @PathVariable UUID id,
-            @RequestBody AdventureEntryRequest request,
+            @Valid @RequestBody AdventureEntryRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("✏️ [PUT /api/entries/{}] 更新冒險記錄: 名稱={}, 代碼={}, userId={}",
                 id, request.getAdventureName(), request.getAdventureCode(), principal.getId());
         return adventureEntryService.updateEntry(id, request, principal.getId());
+    }
+
+    @PutMapping("/api/entries/{id}/with-details")
+    public AdventureEntryResponse updateEntryWithDetails(
+            @PathVariable UUID id,
+            @Valid @RequestBody AdventureEntrySaveRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return adventureEntryService.updateEntryWithDetails(id, request, principal.getId());
     }
 
     @DeleteMapping("/api/entries/{id}")
@@ -87,7 +105,7 @@ public class AdventureEntryController {
     @PostMapping("/api/entries/{entryId}/downtime-activities")
     public ResponseEntity<DowntimeActivityResponse> createActivity(
             @PathVariable UUID entryId,
-            @RequestBody DowntimeActivityRequest request,
+            @Valid @RequestBody DowntimeActivityRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("➕ [POST /api/entries/{}/downtime-activities] 新增休整期活動: {}, userId={}", entryId, request.getDescription(), principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -97,7 +115,7 @@ public class AdventureEntryController {
     @PutMapping("/api/downtime-activities/{id}")
     public DowntimeActivityResponse updateActivity(
             @PathVariable UUID id,
-            @RequestBody DowntimeActivityRequest request,
+            @Valid @RequestBody DowntimeActivityRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("✏️ [PUT /api/downtime-activities/{}] 更新休整期活動, userId={}", id, principal.getId());
         return adventureEntryService.updateActivity(id, request, principal.getId());
@@ -124,7 +142,7 @@ public class AdventureEntryController {
     @PostMapping("/api/entries/{entryId}/gained-items")
     public ResponseEntity<AdventureGainedItemResponse> createGainedItem(
             @PathVariable UUID entryId,
-            @RequestBody AdventureGainedItemRequest request,
+            @Valid @RequestBody AdventureGainedItemRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("➕ [POST /api/entries/{}/gained-items] 新增冒險獲得物品快照: {}, userId={}", entryId, request.getItemName(), principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -135,7 +153,7 @@ public class AdventureEntryController {
     public AdventureGainedItemResponse updateGainedItem(
             @PathVariable UUID entryId,
             @PathVariable UUID itemId,
-            @RequestBody AdventureGainedItemRequest request,
+            @Valid @RequestBody AdventureGainedItemRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("✏️ [PUT /api/entries/{}/gained-items/{}] 更新冒險獲得物品快照: {}, userId={}", entryId, itemId, request.getItemName(), principal.getId());
         return adventureEntryService.updateGainedItem(entryId, itemId, request, principal.getId());
@@ -162,7 +180,7 @@ public class AdventureEntryController {
     @PostMapping("/api/entries/{entryId}/story-awards")
     public ResponseEntity<StoryAwardResponse> createStoryAward(
             @PathVariable UUID entryId,
-            @RequestBody StoryAwardRequest request,
+            @Valid @RequestBody StoryAwardRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("➕ [POST /api/entries/{}/story-awards] 新增故事獎勵: {}, userId={}", entryId, request.getAwardName(), principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -173,7 +191,7 @@ public class AdventureEntryController {
     public StoryAwardResponse updateStoryAward(
             @PathVariable UUID entryId,
             @PathVariable UUID awardId,
-            @RequestBody StoryAwardRequest request,
+            @Valid @RequestBody StoryAwardRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("✏️ [PUT /api/entries/{}/story-awards/{}] 更新故事獎勵: {}, userId={}", entryId, awardId, request.getAwardName(), principal.getId());
         return adventureEntryService.updateStoryAward(entryId, awardId, request, principal.getId());

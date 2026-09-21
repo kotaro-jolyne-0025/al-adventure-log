@@ -185,6 +185,12 @@
           </div>
         </div>
       </div>
+      @if (magicItemsReduction() > 0) {
+        <div class="inventory-warning" role="status">
+          <span>本次魔法物品減少 {{ magicItemsReduction() }} 件，請至倉庫刪除對應物品。</span>
+          <button type="button" mat-stroked-button (click)="onOpenInventory()">前往倉庫</button>
+        </div>
+      }
     </div>
 
     <!-- 獲得魔法物品 -->
