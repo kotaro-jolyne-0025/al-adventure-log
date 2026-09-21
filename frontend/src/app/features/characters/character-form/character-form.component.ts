@@ -20,17 +20,16 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { CharacterService } from '../../../core/services/character.service';
-import { CharacterRequest } from '../../../core/models/character.model';
+import { DND_CLASSES, formatClassLevels, parseClassLevels } from '../../../core/models/dnd-classes';
+import { Character, CharacterRequest } from '../../../core/models/character.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { AvatarCropperDialogComponent } from '../avatar-cropper-dialog/avatar-cropper-dialog.component';
 import {
   LucideArrowLeft,
-  LucideLock,
   LucideImagePlus,
   LucideRefreshCw,
   LucideUpload,
   LucideTrash2,
-  LucideShield,
   LucidePlus,
   LucideSave,
 } from '@lucide/angular';
@@ -49,12 +48,10 @@ import {
     MatProgressSpinner,
     MatTooltipModule,
     LucideArrowLeft,
-    LucideLock,
     LucideImagePlus,
     LucideRefreshCw,
     LucideUpload,
     LucideTrash2,
-    LucideShield,
     LucidePlus,
     LucideSave,
   ],
@@ -70,25 +67,13 @@ export class CharacterFormComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
 
-  protected readonly CLASS_OPTIONS = [
-    '戰士',
-    '法師',
-    '牧師',
-    '遊蕩者',
-    '遊俠',
-    '吟遊詩人',
-    '德魯伊',
-    '武僧',
-    '聖騎士',
-    '契術師',
-    '術士',
-    '野蠻人',
-    '奇械師',
-  ];
+  protected readonly CLASS_OPTIONS = DND_CLASSES;
 
   protected isEditMode = signal(false);
   protected isSaving = signal(false);
   protected avatarUrl = signal<string | null>(null);
+  protected hasAdventureEntries = signal(false);
+  private loadedCharacter: Character | null = null;
   private characterId: string | null = null;
 
   protected form: FormGroup = this.fb.group({
@@ -97,6 +82,8 @@ export class CharacterFormComponent implements OnInit {
     subclass: [''],
     faction: [''],
     soulCoins: [0, [Validators.min(0), Validators.pattern('^[0-9]*$')]],
+    initialGold: [0, [Validators.min(0), Validators.pattern('^\\d+(\\.\\d{1,2})?$')]],
+    initialDowntime: [0, [Validators.min(0), Validators.pattern('^[0-9]*$')]],
   });
 
   // 職業等級選擇器
@@ -157,16 +144,16 @@ export class CharacterFormComponent implements OnInit {
           soulCoins: character.soulCoins ?? 0,
         });
         this.avatarUrl.set(character.avatarUrl ?? null);
+        this.loadedCharacter = character;
+        this.hasAdventureEntries.set(character.hasAdventureEntries ?? false);
+        this.form.patchValue({
+          initialGold: character.initialGold ?? 0,
+          initialDowntime: character.initialDowntime ?? 0,
+        });
         // 解析職業字串 → 選擇器
-        if (character.currentClassesString) {
-          const parsed = character.currentClassesString
-            .split('/')
-            .map((seg) => {
-              const match = seg.trim().match(/^(.+?)([\d]+)$/);
-              if (match) return { className: match[1].trim(), level: parseInt(match[2], 10) };
-              return { className: seg.trim(), level: 1 };
-            })
-            .filter((e) => e.className);
+        const openingClasses = character.initialClassesString || character.currentClassesString;
+        if (openingClasses) {
+          const parsed = parseClassLevels(openingClasses);
           if (parsed.length > 0) this.classEntries.set(parsed);
         }
       },
@@ -221,15 +208,19 @@ export class CharacterFormComponent implements OnInit {
   protected onSubmit(): void {
     if (this.isEditMode()) {
       // 編輯模式下僅驗證基本欄位
-      const basicValid = this.form.get('characterName')!.valid && this.form.get('race')!.valid;
+      const basicValid = this.form.get('characterName')!.valid && this.form.get('race')!.valid
+        && this.form.get('initialGold')!.valid && this.form.get('initialDowntime')!.valid
+        && this.totalLevel() >= 1 && this.totalLevel() <= 20
+        && this.classEntries().every(entry => !!entry.className.trim());
       if (!basicValid) {
-        this.form.get('characterName')!.markAsTouched();
-        this.form.get('race')!.markAsTouched();
+        this.form.markAllAsTouched();
         return;
       }
     } else {
-      if (this.form.invalid) {
+      if (this.form.invalid || this.totalLevel() < 1 || this.totalLevel() > 20
+        || this.classEntries().some(entry => !entry.className.trim())) {
         this.form.markAllAsTouched();
+        this.snackBar.open('請完成至少一筆有效的開卡職業與等級（總等級 1 至 20）', '關閉', { duration: 3000 });
         return;
       }
     }
@@ -243,26 +234,47 @@ export class CharacterFormComponent implements OnInit {
       faction: raw.faction?.trim() || null,
       avatarUrl: this.avatarUrl(),
       currentClassesString: this.buildClassesString(),
+      initialClassesString: this.buildClassesString(),
+      initialGold: raw.initialGold ?? 0,
+      initialDowntime: raw.initialDowntime ?? 0,
       soulCoins: raw.soulCoins ?? 0,
     };
 
     if (this.isEditMode() && this.characterId) {
-      this.characterService.update(this.characterId, req).subscribe({
-        next: (updated) => {
-          this.snackBar.open('角色資料已更新', '關閉', { duration: 2500 });
-          this.router.navigate(['/characters', updated.id, 'adventures']);
-        },
-        error: () => {
-          this.isSaving.set(false);
-          this.snackBar.open('更新失敗，請稍後再試', '關閉', { duration: 3000 });
-        },
-      });
+      const baselineChanged = this.loadedCharacter != null && (
+        req.initialClassesString !== (this.loadedCharacter.initialClassesString ?? this.loadedCharacter.currentClassesString ?? null)
+        || Number(req.initialGold) !== Number(this.loadedCharacter.initialGold ?? 0)
+        || Number(req.initialDowntime) !== Number(this.loadedCharacter.initialDowntime ?? 0)
+      );
+      if (this.hasAdventureEntries() && baselineChanged) {
+        this.characterService.previewOpeningBaseline(this.characterId, req).subscribe({
+          next: preview => {
+            const current = this.loadedCharacter!;
+            const message = [
+              '修正開卡資料後，角色目前狀態將重新計算：',
+              `職業：${formatClassLevels(current.currentClassesString) || '無'} → ${formatClassLevels(preview.currentClassesString) || '無'}`,
+              `金幣：${current.currentGold ?? 0} → ${preview.currentGold}`,
+              `休整期：${current.currentDowntime ?? 0} 天 → ${preview.currentDowntime} 天`,
+              '',
+              '既有冒險快照不會改動；後續冒險仍依日期前的快照帶入起始值。若舊快照不正確，請另行逐筆修正該冒險。倉庫物品不會改動。',
+              '',
+              '要儲存這項修正嗎？',
+            ].join('\n');
+            if (window.confirm(message)) this.saveCharacter(req);
+            else this.isSaving.set(false);
+          },
+          error: () => {
+            this.isSaving.set(false);
+            this.snackBar.open('無法預覽修正結果，資料尚未儲存', '關閉', { duration: 3000 });
+          },
+        });
+      } else {
+        this.saveCharacter(req);
+      }
     } else {
       this.characterService.create(req).subscribe({
         next: (created) => {
-          this.snackBar.open(`角色「${created.characterName}」已建立！`, '關閉', {
-            duration: 2500,
-          });
+          this.snackBar.open(`角色「${created.characterName}」已建立！`, '關閉', { duration: 2500 });
           this.router.navigate(['/characters', created.id, 'adventures']);
         },
         error: () => {
@@ -271,6 +283,20 @@ export class CharacterFormComponent implements OnInit {
         },
       });
     }
+  }
+
+  private saveCharacter(req: CharacterRequest): void {
+    if (this.characterId) this.characterService.update(this.characterId, req).subscribe({
+        next: (updated) => {
+          this.snackBar.open(this.hasAdventureEntries()
+            ? '角色與開卡基準已更新；冒險快照維持不變' : '角色資料已更新', '關閉', { duration: 3000 });
+          this.router.navigate(['/characters', updated.id, 'adventures']);
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.snackBar.open('更新失敗，請稍後再試', '關閉', { duration: 3000 });
+        },
+      });
   }
 
   protected onBack(): void {

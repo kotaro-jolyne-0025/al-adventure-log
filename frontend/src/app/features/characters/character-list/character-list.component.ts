@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CharacterService } from '../../../core/services/character.service';
+import { formatClassLevels } from '../../../core/models/dnd-classes';
 import { Character } from '../../../core/models/character.model';
 import {
   ConfirmDialogComponent,
@@ -94,7 +95,7 @@ export class CharacterListComponent implements OnInit {
   }
 
   protected formatClasses(character: Character): string {
-    return character.currentClassesString || '無職業紀錄';
+    return formatClassLevels(character.currentClassesString) || '無職業紀錄';
   }
 
   protected parseTotalLevel(classesString?: string): number {

@@ -1,5 +1,9 @@
 # 冒險紀錄表Web版 — 資料庫 Schema
 
+> 2026-09-19 已加入 Flyway V20 變化式帳本 migration，V23 增加角色開卡金幣與休整期基準欄位，V24 要求每個角色都有非空白的開卡職業／等級基準。倉庫的 `character_id`、
+> `adventure_entry_id`、`adventure_gained_item_id` 不只有各別外鍵存在性要求，
+> 服務層寫入時還必須驗證三者屬於同一角色／冒險，防止不合法關聯影響同步與級聯刪除。
+
 # 請到 Supabase Dashboard → SQL Editor 依序執行以下 SQL
 
 ---
@@ -16,6 +20,12 @@ CREATE TABLE IF NOT EXISTS character (
     faction VARCHAR(100),
     avatar_url TEXT,
     current_classes_string VARCHAR(255),
+    initial_classes_string VARCHAR(255) NOT NULL CHECK (BTRIM(initial_classes_string) <> ''),
+    initial_gold DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (initial_gold >= 0),
+    initial_downtime INTEGER NOT NULL DEFAULT 0 CHECK (initial_downtime >= 0),
+    current_gold DECIMAL(10,2) NOT NULL DEFAULT 0,
+    current_downtime INTEGER NOT NULL DEFAULT 0,
+    current_magic_items INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -54,6 +64,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
     catchup_count INTEGER DEFAULT 0,
     adventure_notes TEXT,
     soul_coin_charges_used VARCHAR(255),
+    recording_model_version INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -141,6 +152,8 @@ CREATE TABLE IF NOT EXISTS inventory_item (
     item_type item_type NOT NULL,
     rarity item_rarity,
     quantity INTEGER DEFAULT 1,
+    acquisition_source VARCHAR(20),
+    needs_details BOOLEAN NOT NULL DEFAULT FALSE,
     source VARCHAR(255),
     notes TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -485,3 +498,21 @@ users
     │   └── inventory_item     (1:N，CASCADE DELETE，手動道具為 NULL)
     └── inventory_item         (1:N，CASCADE DELETE)
 ```
+
+---
+
+## Migration 20（變化式帳本、物品來源與待補狀態）
+
+正式 migration 以 [`V20__add_delta_ledger_persistence_fields.sql`](backend/src/main/resources/db/migration/V20__add_delta_ledger_persistence_fields.sql) 為準，重點如下：
+
+- `character.initial_classes_string`、`initial_gold`、`initial_downtime` 保存可修正且不可缺漏的開卡基準；`current_classes_string`、`current_gold`、`current_downtime`、`current_magic_items` 保存目前值。開卡魔法物品以無冒險關聯的倉庫永久物品明細保存。
+- `adventure_entry.recording_model_version`：既有資料回填為版本 1，新變化式紀錄寫入版本 2。版本 1 保留原快照供讀取；版本 2 由後端依變化值計算初始與總計。
+- `adventure_gained_item` 與 `inventory_item` 新增 nullable `acquisition_source` 及非空 `needs_details`。來源只允許 `ADVENTURE`、`DOWNTIME` 或 `NULL`；手動建立、舊資料或無法可靠判斷者保持 `NULL`，不得猜測來源。
+- 已有冒險快照與具明確冒險／快照外鍵的倉庫物品回填為 `ADVENTURE`；其餘物品不強制補來源。
+- `current_magic_items` 由倉庫內 `PERMANENT` 物品的 `quantity` 加總，不包含 `CONSUMABLE`。
+
+唯讀檢查報表位於 [`delta_ledger_consistency_check.sql`](backend/src/main/resources/db/diagnostics/delta_ledger_consistency_check.sql)，用來列出無法解析的職業字串、來源不明物品及 character／倉庫數量差異，不會修改資料。
+
+## Migration 21（職業識別值正規化）
+
+正式 migration 以 [`V21__migrate_class_names_to_english.sql`](backend/src/main/resources/db/migration/V21__migrate_class_names_to_english.sql) 將既有職業名稱正規化為英文識別值，例如 `野蠻人 (Barbarian)1` 轉為 `Barbarian1`；[`V22__enforce_english_class_identifiers.sql`](backend/src/main/resources/db/migration/V22__enforce_english_class_identifiers.sql) 再以 CHECK constraint 限定 13 種英文 key 與等級格式。新寫入的 character 職業與冒險職業變化亦由後端正規化並保存英文值；前端依職業顯示對照表呈現中文。中文別名可以作為相容輸入，但不作為資料庫識別值。

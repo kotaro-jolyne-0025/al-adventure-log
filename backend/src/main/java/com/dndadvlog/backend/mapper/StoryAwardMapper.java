@@ -12,6 +12,8 @@ public interface StoryAwardMapper {
 
     List<StoryAward> findByAdventureEntryId(@Param("adventureEntryId") UUID adventureEntryId);
 
+    List<StoryAward> findByAdventureEntryIds(@Param("entryIds") List<UUID> entryIds);
+
     StoryAward findById(@Param("id") UUID id);
 
     void insert(StoryAward award);

@@ -85,29 +85,8 @@
             }
           </mat-form-field>
 
-          <!-- 職業與等級 -->
-          @if (isEditMode()) {
-          <div class="readonly-class-box" style="margin-top: 16px;">
-            <h3 class="section-title" style="font-size:0.9rem; margin:0 0 12px;">目前職業與等級</h3>
-            <div class="readonly-classes-list">
-              @for (entry of classEntries(); track $index) {
-              <span class="class-chip">
-                <svg lucideShield [size]="20" class="chip-icon"></svg>
-                {{ entry.className }} Lv.{{ entry.level }}
-              </span>
-              }
-              @if (classEntries().length === 0) {
-              <span style="color: var(--mat-sys-outline); font-size:0.85rem;">無職業紀錄</span>
-              }
-            </div>
-            <p class="readonly-hint">
-              <svg lucideLock [size]="20" class="hint-icon"></svg>
-              職業與等級已鎖定。如需升級或兼職，請透過「冒險紀錄表」新增記錄推進。
-            </p>
-          </div>
-          } @else {
           <div class="section-header" style="margin-top: 8px;">
-            <h3 class="section-title" style="font-size:0.9rem; margin:0;">初始職業與等級</h3>
+            <h3 class="section-title" style="font-size:0.9rem; margin:0;">開卡職業與等級</h3>
             <button type="button" mat-stroked-button (click)="addClass()">
               <svg lucidePlus [size]="20"></svg> 新增職業（兼職）
             </button>
@@ -118,8 +97,8 @@
               <mat-form-field appearance="outline" class="class-name-field">
                 <mat-label>職業</mat-label>
                 <mat-select [value]="entry.className" (selectionChange)="updateClassName(i, $event.value)">
-                  @for (cls of CLASS_OPTIONS; track cls) {
-                  <mat-option [value]="cls">{{ cls }}</mat-option>
+                  @for (cls of CLASS_OPTIONS; track cls.id) {
+                  <mat-option [value]="cls.id">{{ cls.label }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -140,6 +119,30 @@
           <p class="hint-text" style="color: var(--mat-sys-outline); font-size:0.8rem; margin: 4px 0 16px;">
             總等級：{{ totalLevel() }}　兼職最多可達 20 級
           </p>
+
+          <div class="opening-resources">
+            <mat-form-field appearance="outline">
+              <mat-label>開卡金幣 (GP)</mat-label>
+              <input matInput type="number" formControlName="initialGold" min="0" step="0.01" />
+              @if (form.get('initialGold')?.invalid && form.get('initialGold')?.touched) {
+                <mat-error>請輸入大於等於 0、最多兩位小數的金額</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>開卡休整期 (天)</mat-label>
+              <input matInput type="number" formControlName="initialDowntime" min="0" step="1" />
+              @if (form.get('initialDowntime')?.invalid && form.get('initialDowntime')?.touched) {
+                <mat-error>請輸入大於等於 0 的整數</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          <p class="opening-items-hint">
+            開卡時已有的魔法物品請在角色倉庫新增；物品數量由倉庫永久物品自動計算。
+          </p>
+          @if (hasAdventureEntries()) {
+            <p class="opening-baseline-warning">
+              修正後會重新計算角色目前值；既有冒險快照及倉庫物品不會自動修改。
+            </p>
           }
         </section>
 

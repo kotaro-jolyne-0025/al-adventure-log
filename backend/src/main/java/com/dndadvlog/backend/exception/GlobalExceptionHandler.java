@@ -2,6 +2,7 @@ package com.dndadvlog.backend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -39,6 +40,13 @@ public class GlobalExceptionHandler {
                 .orElse("驗證失敗");
         log.warn("⚠️ Validation error on [{}]: {}", request.getRequestURI(), message);
         return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadableMessage(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("Unreadable request body on [{}]: {}", request.getRequestURI(), ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "請求內容包含無效或不允許的欄位", request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)
