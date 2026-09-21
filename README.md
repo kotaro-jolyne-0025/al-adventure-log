@@ -48,18 +48,6 @@ cd backend
 
 後端預設執行於：<http://localhost:8080>
 
-## 環境變數設定（後端）
-
-在 `backend/src/main/resources/` 建立 `application-local.properties`：
-
-```properties
-spring.datasource.url=jdbc:postgresql://<supabase-host>:5432/postgres
-spring.datasource.username=<username>
-spring.datasource.password=<password>
-```
-
-> ⚠️ 此檔案含機密資訊，已加入 `.gitignore`，請勿 commit。
-
 ## 功能範圍（MVP）
 
 - **多角色管理**：建立、編輯、刪除角色，支援職業/等級動態列（多職業混職）
