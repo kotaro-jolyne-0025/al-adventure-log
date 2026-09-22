@@ -2,14 +2,16 @@
 
 將 D&D 冒險聯盟（AL）紙本冒險記錄表數位化，提供可搜尋、結構化的網頁應用程式，支援 PWA（可安裝至桌面）。
 
+🌐 **線上使用：[aladvlog.com](https://aladvlog.com/)**
+
 ## 技術選型
 
-| 層級 | 技術 |
-| --- | --- |
-| 前端 | Angular 22 + PWA |
-| 後端 | Spring Boot 4.1（Java 17） |
-| 資料庫 | PostgreSQL |
-| API 風格 | REST |
+| 層級 | 技術 | 部署位置 |
+| --- | --- | --- |
+| 前端 | Angular 22 + PWA | Firebase Hosting |
+| 後端 | Spring Boot 4.1（Java 17） | GCP Cloud Run (`asia-east1`) |
+| 資料庫 | PostgreSQL | Supabase |
+| API 風格 | REST | — |
 
 ## 專案結構
 
@@ -17,6 +19,10 @@
 dnd-adventure-log/
 ├── frontend/        # Angular 前端專案
 ├── backend/         # Spring Boot 後端專案
+├── openspec/        # 功能規格與任務管理（OpenSpec）
+├── .github/         # GitHub Actions CI/CD（前端自動部署）
+├── system-requirements-spec.md
+├── database-schema.md
 └── README.md
 ```
 
@@ -34,7 +40,7 @@ dnd-adventure-log/
 ```bash
 cd frontend
 npm install
-ng serve
+npm start
 ```
 
 前端預設執行於：<http://localhost:4200>
@@ -60,8 +66,18 @@ spring.datasource.password=<password>
 
 > ⚠️ 此檔案含機密資訊，已加入 `.gitignore`，請勿 commit。
 
-## 功能範圍（MVP）
+## 部署
 
+| 層級 | 觸發方式 |
+| --- | --- |
+| **前端** | push `main` 且 `frontend/**` 有變更 → GitHub Actions 自動部署至 Firebase Hosting |
+| **後端** | push `main` → GCP Cloud Build Trigger 自動 Build → Push → Deploy 至 Cloud Run |
+
+後端部署憑證與基礎設施設定由 GCP Console 管理，不存入 repo。
+
+## 功能範圍
+
+- **會員系統**：Email 註冊／登入、密碼重設
 - **多角色管理**：建立、編輯、刪除角色，支援職業/等級動態列（多職業混職）
 - **冒險紀錄表 CRUD**：新增、編輯、刪除、查看冒險記錄
 - **變化式帳本**：玩家只輸入本次變化；起始值依遊玩日期的前置快照由後端計算，補登不改寫後續快照
