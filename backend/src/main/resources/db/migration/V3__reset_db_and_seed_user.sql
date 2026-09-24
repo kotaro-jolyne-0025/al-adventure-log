@@ -11,4 +11,4 @@ TRUNCATE TABLE user_oauth_accounts CASCADE;
 TRUNCATE TABLE users CASCADE;
 
 -- No default users. Accounts are created through registration or OAuth login.
--- Existing databases: do not rerun this historical reset migration.
+-- Existing databases: see docs/public-repository-cleanup.md before deploying.
