@@ -1,5 +1,5 @@
 -- ==========================================
--- V3: 清除既有測試資料並建立預設玩家帳號 (Clean DB & Seed Default User)
+-- V3: 清除既有測試資料 (Historical DB Reset; No Seed User)
 -- ==========================================
 
 -- 1. 清空所有舊資料（保留表結構與觸發器）
@@ -10,18 +10,5 @@ TRUNCATE TABLE "character" CASCADE;
 TRUNCATE TABLE user_oauth_accounts CASCADE;
 TRUNCATE TABLE users CASCADE;
 
--- 2. 建立預設玩家帳號
--- 帳號：wang.kv25@gmail.com
--- 密碼：kevin567
--- 顯示名稱：可嵐
-INSERT INTO users (id, email, password_hash, display_name, avatar_url, is_active, created_at, updated_at)
-VALUES (
-    'a0000000-0000-0000-0000-000000000001'::uuid,
-    'wang.kv25@gmail.com',
-    '$2a$10$Mna5Q.I/QnKC//dHDaCbYOuuLcQw2.7Lgz5rIuPP8LIPDxHVggqeG',
-    '可嵐',
-    NULL,
-    TRUE,
-    NOW(),
-    NOW()
-);
+-- No default users. Accounts are created through registration or OAuth login.
+-- Existing databases: see docs/public-repository-cleanup.md before deploying.

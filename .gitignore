@@ -46,6 +46,14 @@ yarn-error.log*
 .env
 .env.local
 .env.production
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
 
 # -------
 # 作業系統
@@ -61,6 +69,9 @@ zeabur-deploy-fix-plan.md
 
 # 本機工作任務追蹤（不公開至遠端）
 backlog.md
+
+# 私人資料庫備份與暫存匯出工具（禁止提交）
+.private-backups/
 
 # Agent 配置與本地技能/規則
 .agents/

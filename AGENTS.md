@@ -10,21 +10,27 @@
 
 | 檔案 | 說明 |
 |---|---|
-| [`system-requirements-spec.md`](file:///d:/dnd%20adv%20log/system-requirements-spec.md) | **系統需求規格書 (SRS)**（欄位定義、業務規則、UI/UX 行為） |
-| [`database-schema.md`](file:///d:/dnd%20adv%20log/database-schema.md) | **資料庫綱要與 Migration SQL**（Supabase PostgreSQL 表結構與歷次 ALTER 語句） |
-| [`.agents/rules/project-conventions.md`](file:///d:/dnd%20adv%20log/.agents/rules/project-conventions.md) | **專案開發規範與架構標準**（代碼風格、分層職責、Signals 規範） |
-| [`.agents/skills/git-guidelines/SKILL.md`](file:///d:/dnd%20adv%20log/.agents/skills/git-guidelines/SKILL.md) | **Git 操作指南與安全規範**（嚴禁未經許可自動 commit/push、單次授權原則） |
+| [`system-requirements-spec.md`](system-requirements-spec.md) | **系統需求規格書 (SRS)**（欄位定義、業務規則、UI/UX 行為） |
+| [`database-schema.md`](database-schema.md) | **資料庫綱要與 Migration SQL**（Supabase PostgreSQL 表結構與歷次 ALTER 語句） |
+| 本檔案下方的 Feature SOP | **公開開發規範**；本機 `.agents/` 額外規則若存在可參考，但不作為公開文件的必要依賴 |
 
-### OpenSpec 工作管理
+### 公開版本庫與 Git 安全
+
+- 未經使用者明確授權，不執行 commit、push 或歷史重寫；提交訊息以繁體中文為主。
+- 不將實際帳密、密碼雜湊、私鑰、存取 Token、資料庫備份或私人操作紀錄寫入公開文件與測試資料。
+- 範例使用環境變數或 `example.invalid`；OAuth Client ID、Secret 變數名稱與部署架構可公開，Secret 值不可公開。
+- 發現外洩時先更換憑證；刪除目前檔案不代表 Git 歷史已清理。已套用 migration 的清理程序見 [維運說明](docs/public-repository-cleanup.md)。
+
+### OpenSpec 目錄
 
 本專案使用 **OpenSpec** 進行功能規劃與任務追蹤，所有進行中與已完成的變更均記錄於：
 
 | 路徑 | 說明 |
 |---|---|
-| [`openspec/changes/`](file:///d:/dnd%20adv%20log/openspec/changes/) | 各 change 的設計、規格 delta、任務清單 |
-| [`openspec/changes/archive/`](file:///d:/dnd%20adv%20log/openspec/changes/archive/) | 已完成並封存的 change |
-| [`openspec/specs/`](file:///d:/dnd%20adv%20log/openspec/specs/) | 主規格（由 openspec sync 更新） |
-| [`openspec/config.yaml`](file:///d:/dnd%20adv%20log/openspec/config.yaml) | OpenSpec 設定 |
+| [`openspec/changes/`](openspec/changes/) | 各 change 的設計、規格 delta、任務清單 |
+| [`openspec/changes/archive/`](openspec/changes/archive/) | 已完成並封存的 change |
+| [`openspec/specs/`](openspec/specs/) | 主規格（由 openspec sync 更新） |
+| [`openspec/config.yaml`](openspec/config.yaml) | OpenSpec 設定 |
 
 > **提示**：需要了解目前任務狀態，請讀取進行中 change 下的 `tasks.md`；需要了解規格全貌，請讀取 `openspec/specs/` 或 `system-requirements-spec.md`。
 
@@ -59,7 +65,7 @@ cd backend
 | **後端** | GCP Cloud Run (`asia-east1`) | GCP Cloud Build Trigger 監聽 `main` → Build → Push 至 Artifact Registry → Deploy |
 
 ### 前端（GitHub Actions）
-設定檔：[`.github/workflows/deploy-frontend.yml`](file:///d:/dnd%20adv%20log/.github/workflows/deploy-frontend.yml)
+設定檔：[`.github/workflows/deploy-frontend.yml`](.github/workflows/deploy-frontend.yml)
 - Node 22 build → `npm run build` → `firebase-tools deploy --only hosting`
 - 所需 Secret：`FIREBASE_TOKEN`
 

@@ -109,7 +109,7 @@
                 <mat-label>職業</mat-label>
                 <mat-select [value]="entry.className" (selectionChange)="updateClassName(i, $event.value)">
                   @for (cls of CLASS_OPTIONS; track cls.id) {
-                  <mat-option [value]="cls.id">{{ cls.label }}</mat-option>
+                  <mat-option [value]="cls.id">{{ cls.label }} ({{ cls.id }})</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
