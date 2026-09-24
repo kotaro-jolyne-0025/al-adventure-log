@@ -26,3 +26,14 @@
 #### Scenario: History still contains exposed data
 - **WHEN** 目前檔案已清理但正式密碼或 Git 歷史尚未處理
 - **THEN** 交付紀錄明示尚未完成的工作
+
+### Requirement: Historical migrations are immutable
+Pull request 的 CI SHALL 拒絕修改、刪除或重新命名基準分支中既有的 Flyway migration；新增 migration 檔案 SHALL 允許通過。已套用 migration 的後續變更 SHALL 使用新版本檔案。
+
+#### Scenario: 修改已存在的 V3
+- **WHEN** pull request 修改 V3 的 SQL 或註解
+- **THEN** CI 失敗並指出變動的檔案
+
+#### Scenario: 新增後續 migration
+- **WHEN** pull request 僅新增一個版本號更高的 migration 檔案
+- **THEN** 此檢查通過
