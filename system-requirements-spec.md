@@ -503,11 +503,11 @@
       |
       | HTTPS
       ↓
-[Angular PWA — Zeabur 靜態網站]
+[Angular PWA — Firebase Hosting]
       |
-      | REST API (HTTPS)
+      | HTTPS /api/** Hosting rewrite
       ↓
-[Spring Boot API — Zeabur Java 服務]
+[Spring Boot API — Cloud Run (asia-east1)]
       |
       | JDBC (SSL)
       ↓
@@ -519,7 +519,9 @@
 | 環境 | 前端 URL | 後端 URL |
 | --- | --- | --- |
 | 開發 | <http://localhost:4200> | <http://localhost:8080> |
-| 正式 | https://<zeabur-frontend>.zeabur.app | https://<zeabur-backend>.zeabur.app |
+| 正式 | https://aladvlog.com | Cloud Run service `dnd-adv-backend`，由 Firebase Hosting `/api/**` rewrite 轉送 |
+
+正式部署由 GitHub Actions（Firebase Hosting）與 GCP Cloud Build trigger（Cloud Run）分別處理。含 Project ID、IAM 和 trigger inline 設定的本機操作手冊不納入公開 SRS。
 
 ### 8.2 環境變數清單（後端）
 
