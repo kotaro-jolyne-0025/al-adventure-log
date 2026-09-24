@@ -7,8 +7,8 @@
 ## What Changes
 
 - 移除 V3 預設帳號與憑證；測試自行建立帳號，新資料庫由註冊或 OAuth 登入建立使用者。
-- **BREAKING**：既有資料庫部署前須核對並修復單筆 V3 checksum，不能重跑 V3。
-- 文件改相對連結，提供事件處理與公開資訊界線。
+- **BREAKING**：既有資料庫部署前須由內部維運程序核對並修復單筆 V3 checksum，不能重跑 V3。
+- 公開文件不提供資料庫維運腳本或 checksum 細節。
 
 ## Capabilities
 

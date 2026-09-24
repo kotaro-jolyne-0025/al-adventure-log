@@ -14,10 +14,10 @@
 #### Scenario: Existing OAuth user
 - **WHEN** 既有玩家曾使用預設帳號並綁定 Google 登入
 - **THEN** 本次維護 MUST NOT 刪除、停用或改寫該帳號、OAuth 綁定與玩家資料
-- **AND** 維運文件說明 Google 密碼與本網站本機密碼彼此獨立
+- **AND** 內部維運程序說明 Google 密碼與本網站本機密碼彼此獨立
 
 ### Requirement: Controlled historical migration cleanup
-清理已部署 migration SHALL 提供限定版本與已知 checksum 的維運程序，MUST NOT 重跑初始化或修改既有玩家資料。
+清理已部署 migration SHALL 由不在公開版本庫中的內部維運程序處理，MUST NOT 重跑初始化或修改既有玩家資料；公開版本庫 MUST NOT 包含維運腳本或 checksum 細節。
 
 #### Scenario: Unknown checksum
 - **WHEN** V3 checksum 不符合已核對值

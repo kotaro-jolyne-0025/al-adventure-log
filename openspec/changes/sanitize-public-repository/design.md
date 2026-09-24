@@ -10,13 +10,13 @@ V3 已部署且測試依賴固定占位 UUID，新增 migration 無法清除舊�
 
 ## Decisions
 
-V3 移除建立預設帳號的 SQL，保留歷史 migration 檔名與其餘內容。新資料庫由註冊或 OAuth 登入建立帳號；固定 UUID 僅由測試 fixture 建立。既有資料庫只修正已核對的單筆 checksum，不重跑 V3，不刪除、停用或更新使用者、OAuth 綁定與角色資料。測試驗證 migrations 不建立帳號，以及修復 SQL 不改寫既有帳號與角色。
+V3 移除建立預設帳號的 SQL，保留歷史 migration 檔名與其餘內容。新資料庫由註冊或 OAuth 登入建立帳號；固定 UUID 僅由測試 fixture 建立。既有資料庫只由內部維運程序修正已核對的單筆 checksum，不重跑 V3，不刪除、停用或更新使用者、OAuth 綁定與角色資料。公開版本庫不保存維運腳本或 checksum 細節。
 
 Google 綁定既有 Email 不會清除本機 password_hash；本機密碼登入也不會因 OAuth 綁定而停用。更換 Google 密碼不能取代本網站的密碼處理；本次只檢查程式碼，不推測正式資料庫的密碼狀態、不變更登入政策。
 
 ## Risks / Trade-offs
 
-- V3 checksum 改變：部署前備份並安排維護時段，執行明確限定版本與舊 checksum 的 SQL；不可關閉驗證或自動 repair 全部歷史。
+- V3 checksum 改變：部署前由內部維運程序備份並安排維護時段；不可關閉驗證或自動 repair 全部歷史。
 - 歷史仍可讀到憑證：先改密碼，再協調重寫及 GitHub 快取清理。
 
 ## Migration Plan

@@ -196,33 +196,17 @@ class LedgerPersistenceIntegrationTest {
     }
 
     @Test
-    void sanitizedBootstrapAndTargetedChecksumRepairPreserveData() throws Exception {
+    void sanitizedBootstrapCreatesNoDefaultUserAndPreservesExistingData() throws Exception {
         try (Connection connection = dataSource.getConnection()) {
             assertEquals(1, queryInt(connection, "SELECT COUNT(*) FROM users", null));
-            assertEquals(841749704, queryInt(connection,
-                    "SELECT checksum FROM flyway_schema_history WHERE version = '3'", null));
-            connection.setAutoCommit(false);
-            try (var statement = connection.createStatement()) {
-                statement.executeUpdate("UPDATE flyway_schema_history SET checksum = -1789094287 WHERE version = '3'");
-                var repair = new ClassPathResource("db/maintenance/repair_v3_public_sanitization.sql")
-                        .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
-                statement.execute(repair);
-                statement.execute(repair);
-                assertEquals(841749704, queryInt(connection,
-                        "SELECT checksum FROM flyway_schema_history WHERE version = '3'", null));
-                assertEquals("ledger-test@example.invalid", queryString(connection,
-                        "SELECT email FROM users WHERE id = ?", USER_ID));
-                assertNull(queryString(connection, "SELECT password_hash FROM users WHERE id = ?", USER_ID));
-                assertTrue(queryBoolean(connection, "SELECT is_active FROM users WHERE id = ?", USER_ID));
-                assertEquals("GOOGLE", queryString(connection,
-                        "SELECT provider FROM user_oauth_accounts WHERE user_id = ?", USER_ID));
-                assertEquals("Fighter1", queryString(connection,
-                        "SELECT initial_classes_string FROM \"character\" WHERE id = ?", LEGACY_CHARACTER_ID));
-                statement.executeUpdate("UPDATE flyway_schema_history SET checksum = 0 WHERE version = '3'");
-                assertThrows(SQLException.class, () -> statement.execute(repair));
-            } finally {
-                connection.rollback();
-            }
+            assertEquals("ledger-test@example.invalid", queryString(connection,
+                    "SELECT email FROM users WHERE id = ?", USER_ID));
+            assertNull(queryString(connection, "SELECT password_hash FROM users WHERE id = ?", USER_ID));
+            assertTrue(queryBoolean(connection, "SELECT is_active FROM users WHERE id = ?", USER_ID));
+            assertEquals("GOOGLE", queryString(connection,
+                    "SELECT provider FROM user_oauth_accounts WHERE user_id = ?", USER_ID));
+            assertEquals("Fighter1", queryString(connection,
+                    "SELECT initial_classes_string FROM \"character\" WHERE id = ?", LEGACY_CHARACTER_ID));
         }
     }
 
