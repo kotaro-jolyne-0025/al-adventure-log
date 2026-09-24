@@ -1,8 +1,10 @@
+# repository-hygiene Specification
+
 ## Purpose
 
 規範公開版本庫中的憑證、個人資料與初始化帳號處理，使新部署沒有可由公開內容推導的預設密碼，並確保清理不會損害既有玩家資料或掩蓋尚未完成的事件處理工作。
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Safe public bootstrap and documentation
 公開文件與初始化資料 MUST NOT 包含實際個人登入密碼或密碼雜湊；文件 SHALL 使用相對連結。公開 Client ID、環境變數名稱與架構可保留。
