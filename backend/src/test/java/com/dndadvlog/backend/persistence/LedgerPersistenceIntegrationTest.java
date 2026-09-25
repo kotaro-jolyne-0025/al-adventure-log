@@ -105,6 +105,55 @@ class LedgerPersistenceIntegrationTest {
     }
 
     @Test
+    void categoriesRoundTripAndClearWithoutChangingQuantities() throws Exception {
+        try (Connection connection = dataSource.getConnection()) {
+            try (var statement = connection.createStatement();
+                    var migration = new ClassPathResource("db/migration/V25__add_item_category.sql").getInputStream()) {
+                statement.execute(new String(migration.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            }
+            assertNull(queryString(connection, "SELECT item_category FROM inventory_item WHERE id = ?", LEGACY_LINKED_INVENTORY_ID));
+            assertNull(queryString(connection, "SELECT item_category FROM adventure_gained_item WHERE id = ?", LEGACY_GAINED_ID));
+            for (String table : List.of("inventory_item", "adventure_gained_item")) {
+                assertThrows(SQLException.class, () -> {
+                    try (PreparedStatement statement = connection.prepareStatement(
+                            "UPDATE " + table + " SET item_category = 'INVALID'")) {
+                        statement.executeUpdate();
+                    }
+                });
+            }
+        }
+        try (SqlSession session = sqlSessionFactory.openSession(false)) {
+            InventoryItemMapper inventory = session.getMapper(InventoryItemMapper.class);
+            AdventureGainedItemMapper gained = session.getMapper(AdventureGainedItemMapper.class);
+            InventoryItem item = inventoryItem(LEGACY_CHARACTER_ID, AcquisitionSource.ADVENTURE, false);
+            AdventureGainedItem snapshot = gainedItem(LEGACY_ENTRY_ID, AcquisitionSource.ADVENTURE, false);
+            item.setItemCategory(InventoryItem.ItemCategory.ARMOR);
+            snapshot.setItemCategory(InventoryItem.ItemCategory.ARMOR);
+            inventory.insert(item);
+            gained.insert(snapshot);
+            assertEquals(item.getItemCategory(), inventory.findById(item.getId()).getItemCategory());
+            assertEquals(snapshot.getItemCategory(), gained.findById(snapshot.getId()).getItemCategory());
+            for (InventoryItem.ItemCategory category : InventoryItem.ItemCategory.values()) {
+                item.setItemCategory(category);
+                snapshot.setItemCategory(category);
+                inventory.update(item);
+                gained.update(snapshot);
+                assertEquals(category, inventory.findById(item.getId()).getItemCategory());
+                assertEquals(category, gained.findById(snapshot.getId()).getItemCategory());
+            }
+            item.setItemCategory(null);
+            snapshot.setItemCategory(null);
+            inventory.update(item);
+            gained.update(snapshot);
+            assertNull(inventory.findById(item.getId()).getItemCategory());
+            assertNull(gained.findById(snapshot.getId()).getItemCategory());
+            assertEquals(1, inventory.findById(item.getId()).getQuantity());
+            assertEquals(1, gained.findById(snapshot.getId()).getQuantity());
+            session.rollback();
+        }
+    }
+
+    @Test
     void migrationBackfillsOnlyReliableLegacyValuesAndAddsConstraints() throws Exception {
         try (Connection connection = dataSource.getConnection()) {
             assertEquals("Fighter1", queryString(connection,

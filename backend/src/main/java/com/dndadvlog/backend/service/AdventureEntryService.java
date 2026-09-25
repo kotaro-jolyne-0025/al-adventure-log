@@ -123,6 +123,13 @@ public class AdventureEntryService {
 
     @Transactional
     public AdventureEntryResponse createEntry(UUID characterId, AdventureEntryRequest request, UUID userId) {
+        if (positiveMagicItemChanges(request) > 0) {
+            throw new BusinessException("正數魔法物品變動必須透過完整儲存提供物品明細");
+        }
+        return createEntryInternal(characterId, request, userId);
+    }
+
+    private AdventureEntryResponse createEntryInternal(UUID characterId, AdventureEntryRequest request, UUID userId) {
         Character character = characterService.findCharacter(characterId, userId);
         boolean isFirstEntry = !entryMapper.existsByCharacterId(characterId);
         AdventureEntry entry = new AdventureEntry();
@@ -151,7 +158,22 @@ public class AdventureEntryService {
 
     @Transactional
     public AdventureEntryResponse updateEntry(UUID entryId, AdventureEntryRequest request, UUID userId) {
+        return updateEntryInternal(entryId, request, userId, true);
+    }
+
+    private AdventureEntryResponse updateEntryInternal(
+            UUID entryId, AdventureEntryRequest request, UUID userId, boolean validateExistingDetails) {
         AdventureEntry entry = findOwnedEntry(entryId, userId);
+        if (validateExistingDetails && hasLedgerInput(request)) {
+            int actual = gainedItemMapper.findByAdventureEntryId(entryId).stream()
+                    .filter(item -> !Boolean.TRUE.equals(item.getNeedsDetails()))
+                    .mapToInt(item -> "CONSUMABLE".equalsIgnoreCase(item.getItemType())
+                            ? (item.getQuantity() != null ? item.getQuantity() : 1) : 1)
+                    .sum();
+            if (actual != positiveMagicItemChanges(request)) {
+                throw new BusinessException("魔法物品變動數量必須與物品明細相同，請使用完整儲存提供明細");
+            }
+        }
         AdventureContribution oldContribution = contributionOf(entry);
         Character character = characterService.findCharacter(entry.getCharacterId(), userId);
         mapDescriptiveFields(request, entry);
@@ -177,7 +199,8 @@ public class AdventureEntryService {
     @Transactional
     public AdventureEntryResponse createEntryWithDetails(
             UUID characterId, AdventureEntrySaveRequest request, UUID userId) {
-        AdventureEntryResponse created = createEntry(characterId, request.getEntry(), userId);
+        validateMagicItemDetails(request, positiveMagicItemChanges(request.getEntry()));
+        AdventureEntryResponse created = createEntryInternal(characterId, request.getEntry(), userId);
         syncEntryDetails(created.getId(), request, userId);
         AdventureEntry entry = findOwnedEntry(created.getId(), userId);
         reconcileMagicItemDetails(entry);
@@ -188,6 +211,11 @@ public class AdventureEntryService {
     @Transactional
     public AdventureEntryResponse updateEntryWithDetails(
             UUID entryId, AdventureEntrySaveRequest request, UUID userId) {
+        AdventureEntry original = findOwnedEntry(entryId, userId);
+        validateMagicItemDetails(request, hasLedgerInput(request.getEntry())
+                ? positiveMagicItemChanges(request.getEntry())
+                : Math.max(0, orZero(original.getMagicItemsChange()))
+                        + Math.max(0, orZero(original.getMagicItemsDowntimeChange())));
         // Resolve unlinked legacy provenance against the original title/code before
         // the main record is renamed. These writes share the outer transaction.
         findOwnedEntry(entryId, userId);
@@ -199,7 +227,7 @@ public class AdventureEntryService {
                 existingIds.add(item.getId());
             }
         }
-        updateEntry(entryId, request.getEntry(), userId);
+        updateEntryInternal(entryId, request.getEntry(), userId, false);
         syncEntryDetails(entryId, request, userId);
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         if (hasLedgerInput(request.getEntry())) {
@@ -287,6 +315,7 @@ public class AdventureEntryService {
                 snapshot.setItemName(request.getItemName());
                 snapshot.setItemType(request.getItemType());
                 snapshot.setRarity(request.getRarity());
+                snapshot.setItemCategory(request.getItemCategory());
                 snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
                 snapshot.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
                 snapshot.setAcquisitionSource(AcquisitionSource.ADVENTURE);
@@ -298,6 +327,7 @@ public class AdventureEntryService {
                 existingWarehouse.setAdventureEntryId(entryId);
                 existingWarehouse.setItemName(request.getItemName());
                 existingWarehouse.setRarity(parseRarity(request.getRarity()));
+                existingWarehouse.setItemCategory(request.getItemCategory());
                 existingWarehouse.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
                 existingWarehouse.setAcquisitionSource(AcquisitionSource.ADVENTURE);
                 existingWarehouse.setNeedsDetails(false);
@@ -323,6 +353,7 @@ public class AdventureEntryService {
         snapshot.setItemName(request.getItemName());
         snapshot.setItemType(request.getItemType());
         snapshot.setRarity(request.getRarity());
+        snapshot.setItemCategory(request.getItemCategory());
         snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
         snapshot.setQuantity(newQty);
         if (snapshot.getAcquisitionSource() == null) {
@@ -356,6 +387,7 @@ public class AdventureEntryService {
             // 即時同步名稱、稀有度、同調、備註
             warehouseItem.setItemName(request.getItemName());
             warehouseItem.setRarity(parseRarity(request.getRarity()));
+            warehouseItem.setItemCategory(request.getItemCategory());
             warehouseItem.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
             warehouseItem.setAcquisitionSource(snapshot.getAcquisitionSource());
             warehouseItem.setNeedsDetails(snapshot.getNeedsDetails());
@@ -379,6 +411,7 @@ public class AdventureEntryService {
             newItem.setItemName(request.getItemName());
             newItem.setItemType(parseItemType(request.getItemType()));
             newItem.setRarity(parseRarity(request.getRarity()));
+            newItem.setItemCategory(request.getItemCategory());
             newItem.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
             newItem.setQuantity(delta);
             newItem.setAcquisitionSource(snapshot.getAcquisitionSource());
@@ -520,7 +553,6 @@ public class AdventureEntryService {
 
         existingById.keySet().stream()
                 .filter(id -> !submittedIds.contains(id))
-                .filter(id -> !Boolean.TRUE.equals(existingById.get(id).getNeedsDetails()))
                 .forEach(id -> deleteGainedItem(id, userId));
 
         for (AdventureGainedItemRequest childRequest : requests) {
@@ -543,6 +575,7 @@ public class AdventureEntryService {
         snapshot.setItemName(request.getItemName().trim());
         snapshot.setItemType(request.getItemType());
         snapshot.setRarity(request.getRarity());
+        snapshot.setItemCategory(request.getItemCategory());
         snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
         snapshot.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
         snapshot.setAcquisitionSource(acquisitionSource);
@@ -558,6 +591,7 @@ public class AdventureEntryService {
         warehouseItem.setItemName(snapshot.getItemName());
         warehouseItem.setItemType(parseItemType(snapshot.getItemType()));
         warehouseItem.setRarity(parseRarity(snapshot.getRarity()));
+        warehouseItem.setItemCategory(snapshot.getItemCategory());
         warehouseItem.setRequiresAttunement(snapshot.getRequiresAttunement());
         warehouseItem.setQuantity(snapshot.getQuantity());
         warehouseItem.setAcquisitionSource(acquisitionSource);
@@ -571,94 +605,31 @@ public class AdventureEntryService {
     }
 
     private void reconcileMagicItemDetails(AdventureEntry entry) {
-        List<AdventureGainedItem> items = gainedItemMapper.findByAdventureEntryId(entry.getId());
-        if (items == null) {
-            items = List.of();
-        }
-        boolean changed = reconcileMagicItemSource(
-                entry, items, AcquisitionSource.ADVENTURE, orZero(entry.getMagicItemsChange()));
-        changed |= reconcileMagicItemSource(
-                entry, items, AcquisitionSource.DOWNTIME, orZero(entry.getMagicItemsDowntimeChange()));
-        if (changed) {
-            entry.setMagicItemsTotal(orZero(entry.getStartingMagicItems())
-                    + orZero(entry.getMagicItemsChange())
-                    + orZero(entry.getMagicItemsDowntimeChange()));
-            validateSnapshot(entry);
-            entryMapper.update(entry);
-        }
         refreshCurrentMagicItems(entry.getCharacterId());
     }
 
-    private boolean reconcileMagicItemSource(
-            AdventureEntry entry,
-            List<AdventureGainedItem> items,
-            AcquisitionSource source,
-            int recordedChange) {
-        int namedQuantity = items.stream()
-                .filter(item -> source == item.getAcquisitionSource())
-                .filter(item -> "PERMANENT".equalsIgnoreCase(item.getItemType()))
-                .filter(item -> !Boolean.TRUE.equals(item.getNeedsDetails()))
-                .mapToInt(item -> item.getQuantity() != null ? item.getQuantity() : 1)
-                .sum();
-
-        int effectiveChange = recordedChange;
-        if (recordedChange >= 0 && namedQuantity > recordedChange) {
-            effectiveChange = namedQuantity;
-            if (source == AcquisitionSource.ADVENTURE) {
-                entry.setMagicItemsChange(effectiveChange);
-            } else {
-                entry.setMagicItemsDowntimeChange(effectiveChange);
-            }
+    private void validateMagicItemDetails(AdventureEntrySaveRequest request, int expected) {
+        if (request.getGainedItems().stream().anyMatch(item ->
+                "PERMANENT".equalsIgnoreCase(item.getItemType())
+                        && item.getQuantity() != null && item.getQuantity() != 1)) {
+            throw new BusinessException("永久性魔法物品必須每件分別填寫明細");
         }
-
-        int requiredPlaceholderQuantity = Math.max(0, effectiveChange - namedQuantity);
-        List<AdventureGainedItem> placeholders = items.stream()
-                .filter(item -> source == item.getAcquisitionSource())
+        int actual = request.getGainedItems().stream()
                 .filter(item -> "PERMANENT".equalsIgnoreCase(item.getItemType()))
-                .filter(item -> Boolean.TRUE.equals(item.getNeedsDetails()))
-                .toList();
-        int currentPlaceholderQuantity = placeholders.stream()
-                .mapToInt(item -> item.getQuantity() != null ? item.getQuantity() : 1)
+                .mapToInt(item -> 1)
+                .sum()
+                + request.getGainedItems().stream()
+                .filter(item -> "CONSUMABLE".equalsIgnoreCase(item.getItemType()))
+                .mapToInt(item -> item.getQuantity() == null ? 1 : item.getQuantity())
                 .sum();
-
-        if (currentPlaceholderQuantity < requiredPlaceholderQuantity) {
-            AdventureGainedItemRequest placeholder = new AdventureGainedItemRequest();
-            placeholder.setItemName("未命名魔法物品");
-            placeholder.setItemType("PERMANENT");
-            placeholder.setQuantity(requiredPlaceholderQuantity - currentPlaceholderQuantity);
-            createGainedItemWithWarehouse(entry, placeholder, source, true);
-        } else if (currentPlaceholderQuantity > requiredPlaceholderQuantity) {
-            int excess = currentPlaceholderQuantity - requiredPlaceholderQuantity;
-            for (AdventureGainedItem placeholder : placeholders) {
-                if (excess == 0) break;
-                int oldQuantity = placeholder.getQuantity() != null ? placeholder.getQuantity() : 1;
-                int reduction = Math.min(oldQuantity, excess);
-                resizePlaceholder(placeholder, oldQuantity - reduction);
-                excess -= reduction;
-            }
+        if (actual != expected) {
+            throw new BusinessException("魔法物品數量變動為 " + expected + " 件，物品明細數量必須相同（目前 " + actual + " 件）");
         }
-        return effectiveChange != recordedChange;
     }
 
-    private void resizePlaceholder(AdventureGainedItem placeholder, int newQuantity) {
-        int oldQuantity = placeholder.getQuantity() != null ? placeholder.getQuantity() : 1;
-        InventoryItem warehouseItem = inventoryItemMapper.findByAdventureGainedItemId(placeholder.getId());
-        if (warehouseItem != null) {
-            int targetQuantity = Math.max(0,
-                    orZero(warehouseItem.getQuantity()) + newQuantity - oldQuantity);
-            if (targetQuantity == 0) {
-                inventoryItemMapper.deleteById(warehouseItem.getId());
-            } else {
-                warehouseItem.setQuantity(targetQuantity);
-                inventoryItemMapper.update(warehouseItem);
-            }
-        }
-        if (newQuantity == 0) {
-            gainedItemMapper.deleteById(placeholder.getId());
-        } else {
-            placeholder.setQuantity(newQuantity);
-            gainedItemMapper.update(placeholder);
-        }
+    private int positiveMagicItemChanges(AdventureEntryRequest request) {
+        return Math.max(0, orZero(request.getMagicItemsChange()))
+                + Math.max(0, orZero(request.getMagicItemsDowntimeChange()));
     }
 
     private void refreshCurrentMagicItems(UUID characterId) {
@@ -1050,6 +1021,7 @@ public class AdventureEntryService {
         response.setItemName(item.getItemName());
         response.setItemType(item.getItemType());
         response.setRarity(item.getRarity());
+        response.setItemCategory(item.getItemCategory());
         response.setRequiresAttunement(item.getRequiresAttunement());
         response.setQuantity(item.getQuantity());
         response.setAcquisitionSource(item.getAcquisitionSource());

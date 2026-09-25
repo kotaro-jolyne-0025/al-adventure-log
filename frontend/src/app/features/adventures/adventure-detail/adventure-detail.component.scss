@@ -222,7 +222,7 @@
     background: var(--bg-surface-elevated);
     padding: 10px 14px;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid var(--border-medium);
     display: flex;
     flex-direction: column;
 
@@ -243,16 +243,26 @@
       overflow-wrap: anywhere;
     }
 
-    &.highlight {
-      border-color: rgba(217, 119, 6, 0.35);
-      background: var(--color-gold-bg);
+    &.level-increased {
+      border-color: #bfdbfe;
+      background: #eff6ff;
 
       .level-box-label {
-        color: var(--color-gold);
+        color: #1d4ed8;
       }
 
       .level-box-value {
-        color: var(--color-gold);
+        color: #1d4ed8;
+      }
+
+      :host-context(.theme-dark) & {
+        border-color: var(--color-info);
+        background: var(--color-info-bg);
+
+        .level-box-label,
+        .level-box-value {
+          color: var(--color-info);
+        }
       }
     }
   }
@@ -429,6 +439,7 @@
     color: var(--text-secondary);
     line-height: 1.4;
     overflow-wrap: anywhere;
+    white-space: pre-wrap;
   }
 
   &.story-award-card {

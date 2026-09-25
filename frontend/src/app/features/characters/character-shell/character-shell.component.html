@@ -65,17 +65,17 @@
         <div class="hud-stat-box">
           <div class="hud-stat-header">
             <svg lucideCoins class="hud-icon stat-gold-icon" [size]="16"></svg>
-            <span class="hud-label">金幣 (GP)</span>
+            <span class="hud-label" matTooltip="Gold">金幣</span>
           </div>
           <span class="hud-value stat-gold">
-            {{ (character()!.currentGold ?? 0) | number:'1.2-2' }} <small class="unit">金</small>
+            {{ (character()!.currentGold ?? 0) | number:'1.0-2' }} <small class="unit">金</small>
           </span>
         </div>
 
         <div class="hud-stat-box">
           <div class="hud-stat-header">
             <svg lucideTent class="hud-icon stat-downtime-icon" [size]="16"></svg>
-            <span class="hud-label">休整期 (Downtime)</span>
+            <span class="hud-label" matTooltip="Downtime">休整期</span>
           </div>
           <span class="hud-value stat-downtime">
             {{ character()!.currentDowntime ?? 0 }} <small class="unit">天</small>
@@ -85,7 +85,7 @@
         <div class="hud-stat-box">
           <div class="hud-stat-header">
             <svg lucideSparkles class="hud-icon stat-magic-icon" [size]="16"></svg>
-            <span class="hud-label">魔法物品</span>
+            <span class="hud-label" matTooltip="Permanent Magic Items">永久性魔法物品</span>
           </div>
           <span class="hud-value stat-magic">
             {{ character()!.currentMagicItems ?? 0 }} <small class="unit">件</small>

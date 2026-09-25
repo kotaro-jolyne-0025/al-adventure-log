@@ -23,7 +23,7 @@ import { TextFieldModule } from '@angular/cdk/text-field';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntryRequest, AdventureEntrySaveRequest, AdventureGainedItem } from '../../../core/models/adventure.model';
-import { ItemRarity, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
+import { ItemCategory, ItemRarity, ITEM_CATEGORIES, ITEM_CATEGORY_LABELS, ITEM_CATEGORY_OPTION_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
 import { DND_CLASSES, parseClassLevels } from '../../../core/models/dnd-classes';
 import { of, catchError, forkJoin, map, switchMap } from 'rxjs';
 
@@ -162,6 +162,16 @@ export class AdventureFormComponent implements OnInit {
   private readonly _magicItemsChange = signal<number | null>(null);
   private readonly _magicItemsDowntimeChange = signal<number | null>(null);
 
+  protected readonly goldNetChange = computed(() =>
+    Math.round(((this._goldChange() ?? 0) + (this._goldDowntimeChange() ?? 0)) * 100) / 100
+  );
+  protected readonly downtimeNetChange = computed(() =>
+    (this._downtimeChange() ?? 0) + (this._downtimeDowntimeChange() ?? 0)
+  );
+  protected readonly magicItemsNetChange = computed(() =>
+    (this._magicItemsChange() ?? 0) + (this._magicItemsDowntimeChange() ?? 0)
+  );
+
   protected readonly goldTotal = computed(() => {
     const s = this._startingGold();
     const c = this._goldChange();
@@ -217,11 +227,15 @@ export class AdventureFormComponent implements OnInit {
   // ── 本次獲得的永久性魔法物品清單 ──────────────────────────────────────────
   readonly rarities: (ItemRarity | '')[] = ['', 'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'];
   readonly rarityLabels = ITEM_RARITY_LABELS;
+  readonly categories = ITEM_CATEGORIES;
+  readonly categoryLabels = ITEM_CATEGORY_LABELS;
+  readonly categoryOptionLabels = ITEM_CATEGORY_OPTION_LABELS;
 
   protected gainedMagicItems = signal<{
     id?: string;
     itemName: string;
     rarity: ItemRarity | '';
+    itemCategory: ItemCategory | '';
     requiresAttunement?: boolean;
     acquisitionSource?: 'ADVENTURE' | 'DOWNTIME' | null;
     needsDetails?: boolean;
@@ -233,6 +247,7 @@ export class AdventureFormComponent implements OnInit {
     itemName: string;
     quantity: number;
     rarity: ItemRarity | '';
+    itemCategory: ItemCategory | '';
     notes: string;
   }[]>([]);
 
@@ -468,6 +483,7 @@ export class AdventureFormComponent implements OnInit {
         id: item.id,
         itemName: item.itemName,
         rarity: (item.rarity ?? '') as ItemRarity | '',
+        itemCategory: (item.itemCategory ?? '') as ItemCategory | '',
         requiresAttunement: Boolean(item.requiresAttunement),
         acquisitionSource: item.acquisitionSource,
         needsDetails: item.needsDetails,
@@ -480,6 +496,7 @@ export class AdventureFormComponent implements OnInit {
         itemName: item.itemName,
         quantity: item.quantity ?? 1,
         rarity: (item.rarity ?? '') as ItemRarity | '',
+        itemCategory: (item.itemCategory ?? '') as ItemCategory | '',
         notes: item.notes ?? '',
       })));
   }
@@ -658,7 +675,7 @@ export class AdventureFormComponent implements OnInit {
   protected addGainedItem(): void {
     this.gainedMagicItems.update(list => [
       ...list,
-      { itemName: '', rarity: '', requiresAttunement: false, notes: '' },
+      { itemName: '', rarity: '', itemCategory: '', requiresAttunement: false, notes: '' },
     ]);
     const current = Number(this.form.get('magicItemsChange')?.value) || 0;
     this.form.patchValue({ magicItemsChange: current + 1 });
@@ -685,6 +702,10 @@ export class AdventureFormComponent implements OnInit {
     );
   }
 
+  protected updateGainedItemCategory(index: number, itemCategory: ItemCategory | ''): void {
+    this.gainedMagicItems.update(list => list.map((item, i) => i === index ? { ...item, itemCategory } : item));
+  }
+
   protected updateGainedItemAttunement(index: number, attune: boolean): void {
     this.gainedMagicItems.update(list =>
       list.map((item, i) => i === index ? { ...item, requiresAttunement: attune } : item)
@@ -701,7 +722,7 @@ export class AdventureFormComponent implements OnInit {
   protected addGainedConsumableItem(): void {
     this.gainedConsumableItems.update(list => [
       ...list,
-      { itemName: '', quantity: 1, rarity: '', notes: '' },
+      { itemName: '', quantity: 1, rarity: '', itemCategory: '', notes: '' },
     ]);
   }
 
@@ -726,6 +747,10 @@ export class AdventureFormComponent implements OnInit {
     this.gainedConsumableItems.update(list =>
       list.map((item, i) => i === index ? { ...item, rarity } : item)
     );
+  }
+
+  protected updateGainedConsumableItemCategory(index: number, itemCategory: ItemCategory | ''): void {
+    this.gainedConsumableItems.update(list => list.map((item, i) => i === index ? { ...item, itemCategory } : item));
   }
 
   protected updateGainedConsumableItemNotes(index: number, notes: string): void {
@@ -824,6 +849,7 @@ export class AdventureFormComponent implements OnInit {
           itemName: item.itemName.trim(),
           itemType: 'PERMANENT' as const,
           rarity: item.rarity || null,
+          itemCategory: item.itemCategory || null,
           requiresAttunement: Boolean(item.requiresAttunement),
           notes: item.notes.trim() || null,
         })),
@@ -833,6 +859,7 @@ export class AdventureFormComponent implements OnInit {
           itemType: 'CONSUMABLE' as const,
           quantity: item.quantity,
           rarity: item.rarity || null,
+          itemCategory: item.itemCategory || null,
           notes: item.notes.trim() || null,
         })),
       ],
@@ -874,6 +901,14 @@ export class AdventureFormComponent implements OnInit {
     const hasEmptyConsumable = this.gainedConsumableItems().some(item => !item.itemName.trim());
     if (hasEmptyConsumable) {
       this.snackBar.open('消耗品名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
+      return;
+    }
+    const expectedMagicItems = Math.max(0, Number(this.form.get('magicItemsChange')?.value) || 0)
+      + Math.max(0, Number(this.form.get('magicItemsDowntimeChange')?.value) || 0);
+    const detailedMagicItems = this.gainedMagicItems().length
+      + this.gainedConsumableItems().reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0);
+    if (detailedMagicItems !== expectedMagicItems) {
+      this.snackBar.open(`魔法物品數量變動為 ${expectedMagicItems} 件，請填寫相同數量的永久物品與消耗品明細（目前 ${detailedMagicItems} 件）`, '確定', { duration: 4000 });
       return;
     }
     const hasEmptyActivity = this.downtimeActivities().some(act => !act.description.trim());

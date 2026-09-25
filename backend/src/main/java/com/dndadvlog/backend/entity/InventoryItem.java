@@ -14,6 +14,7 @@ public class InventoryItem {
     private String itemName;
     private ItemType itemType;
     private Rarity rarity;
+    private ItemCategory itemCategory;
     private Boolean requiresAttunement;
     private Integer quantity;
     private AcquisitionSource acquisitionSource;
@@ -29,5 +30,9 @@ public class InventoryItem {
 
     public enum Rarity {
         COMMON, UNCOMMON, RARE, VERY_RARE, LEGENDARY, ARTIFACT
+    }
+
+    public enum ItemCategory {
+        ARMOR, POTION, RING, ROD, SCROLL, STAFF, WAND, WEAPON, WONDROUS_ITEM
     }
 }

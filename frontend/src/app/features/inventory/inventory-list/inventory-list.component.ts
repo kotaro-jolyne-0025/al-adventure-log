@@ -14,6 +14,7 @@ import {
   ItemType,
   ItemRarity,
   ITEM_RARITY_LABELS,
+  ITEM_CATEGORY_LABELS,
   RARITY_COLORS,
 } from '../../../core/models/inventory.model';
 import {
@@ -180,6 +181,7 @@ export class InventoryListComponent implements OnInit {
 
 
   readonly rarityLabels = ITEM_RARITY_LABELS;
+  readonly categoryLabels = ITEM_CATEGORY_LABELS;
   readonly rarityColors = RARITY_COLORS;
 
   protected isRaritySelected(rarity: ItemRarity): boolean {

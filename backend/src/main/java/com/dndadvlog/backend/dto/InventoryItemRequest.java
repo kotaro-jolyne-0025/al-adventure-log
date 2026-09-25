@@ -18,6 +18,7 @@ public class InventoryItemRequest {
     private InventoryItem.ItemType itemType;
 
     private InventoryItem.Rarity rarity;
+    private InventoryItem.ItemCategory itemCategory;
     private Boolean requiresAttunement;
     @Positive(message = "物品數量必須大於 0")
     private Integer quantity;

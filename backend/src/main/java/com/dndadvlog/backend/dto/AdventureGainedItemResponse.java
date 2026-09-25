@@ -1,6 +1,7 @@
 package com.dndadvlog.backend.dto;
 
 import com.dndadvlog.backend.entity.AcquisitionSource;
+import com.dndadvlog.backend.entity.InventoryItem;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,6 +14,7 @@ public class AdventureGainedItemResponse {
     private String itemName;
     private String itemType;
     private String rarity;
+    private InventoryItem.ItemCategory itemCategory;
     private Boolean requiresAttunement;
     private Integer quantity;
     private AcquisitionSource acquisitionSource;

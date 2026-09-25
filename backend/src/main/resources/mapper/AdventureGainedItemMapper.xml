@@ -10,6 +10,7 @@
         <result property="itemName"         column="item_name"/>
         <result property="itemType"         column="item_type"/>
         <result property="rarity"           column="rarity"/>
+        <result property="itemCategory"     column="item_category"/>
         <result property="requiresAttunement" column="requires_attunement"/>
         <result property="quantity"         column="quantity"/>
         <result property="acquisitionSource" column="acquisition_source"/>
@@ -31,11 +32,11 @@
 
     <insert id="insert">
         INSERT INTO adventure_gained_item (
-            id, adventure_entry_id, item_name, item_type, rarity, requires_attunement,
+            id, adventure_entry_id, item_name, item_type, rarity, item_category, requires_attunement,
             quantity, acquisition_source, needs_details, notes, created_at, updated_at
         )
         VALUES (
-            #{id}::uuid, #{adventureEntryId}::uuid, #{itemName}, #{itemType}, #{rarity},
+            #{id}::uuid, #{adventureEntryId}::uuid, #{itemName}, #{itemType}, #{rarity}, #{itemCategory},
             COALESCE(#{requiresAttunement}, false), #{quantity}, #{acquisitionSource},
             COALESCE(#{needsDetails}, false), #{notes}, NOW(), NOW()
         )
@@ -46,6 +47,7 @@
             item_name           = #{itemName},
             item_type           = #{itemType},
             rarity              = #{rarity},
+            item_category       = #{itemCategory},
             requires_attunement = COALESCE(#{requiresAttunement}, false),
             quantity            = #{quantity},
             acquisition_source  = #{acquisitionSource},

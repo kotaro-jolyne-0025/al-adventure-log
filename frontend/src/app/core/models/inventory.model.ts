@@ -1,6 +1,17 @@
 export type ItemType = 'PERMANENT' | 'CONSUMABLE';
 export type ItemRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'VERY_RARE' | 'LEGENDARY' | 'ARTIFACT';
+export type ItemCategory = 'ARMOR' | 'POTION' | 'RING' | 'ROD' | 'SCROLL' | 'STAFF' | 'WAND' | 'WEAPON' | 'WONDROUS_ITEM';
 export type AcquisitionSource = 'ADVENTURE' | 'DOWNTIME';
+
+export const ITEM_CATEGORIES: ItemCategory[] = ['ARMOR', 'POTION', 'RING', 'ROD', 'SCROLL', 'STAFF', 'WAND', 'WEAPON', 'WONDROUS_ITEM'];
+export const ITEM_CATEGORY_LABELS: Record<ItemCategory, string> = {
+  ARMOR: '護甲', POTION: '藥水', RING: '戒指', ROD: '權杖', SCROLL: '捲軸', STAFF: '法杖', WAND: '魔杖', WEAPON: '武器', WONDROUS_ITEM: '奇物',
+};
+export const ITEM_CATEGORY_OPTION_LABELS: Record<ItemCategory, string> = {
+  ARMOR: '護甲 (Armor)', POTION: '藥水 (Potion)', RING: '戒指 (Ring)', ROD: '權杖 (Rod)',
+  SCROLL: '捲軸 (Scroll)', STAFF: '法杖 (Staff)', WAND: '魔杖 (Wand)',
+  WEAPON: '武器 (Weapon)', WONDROUS_ITEM: '奇物 (Wondrous Item)',
+};
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   PERMANENT: '永久魔法物品',
@@ -33,6 +44,7 @@ export interface InventoryItem {
   itemName: string;
   itemType: ItemType;
   rarity?: ItemRarity;
+  itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
   quantity: number;
   acquisitionSource?: AcquisitionSource | null;
@@ -49,6 +61,7 @@ export interface InventoryItemRequest {
   itemName: string;
   itemType: ItemType;
   rarity?: ItemRarity | null;
+  itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
   quantity?: number;
   source?: string | null;

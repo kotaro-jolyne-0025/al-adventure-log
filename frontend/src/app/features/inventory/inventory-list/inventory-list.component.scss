@@ -540,8 +540,10 @@
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
-  flex-shrink: 0;
-  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  white-space: normal;
 
   @media (max-width: 640px) {
     justify-content: flex-start;

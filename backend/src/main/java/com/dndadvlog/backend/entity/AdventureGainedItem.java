@@ -12,6 +12,7 @@ public class AdventureGainedItem {
     private String itemName;
     private String itemType;
     private String rarity;
+    private InventoryItem.ItemCategory itemCategory;
     private Boolean requiresAttunement;
     private Integer quantity;
     private AcquisitionSource acquisitionSource;

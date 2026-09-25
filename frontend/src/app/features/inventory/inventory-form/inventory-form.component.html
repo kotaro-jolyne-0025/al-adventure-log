@@ -40,6 +40,16 @@
         </mat-form-field>
       </div>
 
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>類別</mat-label>
+        <mat-select formControlName="itemCategory">
+          <mat-option value="">— 未指定 —</mat-option>
+          @for (category of categories; track category) {
+            <mat-option [value]="category">{{ categoryOptionLabels[category] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
       @if (form.get('itemType')?.value === 'PERMANENT') {
         <div class="checkbox-row">
           <mat-checkbox formControlName="requiresAttunement" color="primary">

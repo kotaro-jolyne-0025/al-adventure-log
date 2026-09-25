@@ -330,12 +330,15 @@
 }
 
 .hud-value {
+  align-self: flex-end;
   font-size: 1.25rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+  text-align: right;
 
   @media (max-width: 600px) {
+    align-self: auto;
     font-size: 1.1rem;
   }
 

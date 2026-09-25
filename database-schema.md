@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS inventory_item (
     item_name VARCHAR(255) NOT NULL,
     item_type item_type NOT NULL,
     rarity item_rarity,
+    item_category VARCHAR(32) CHECK (item_category IS NULL OR item_category IN ('ARMOR', 'POTION', 'RING', 'ROD', 'SCROLL', 'STAFF', 'WAND', 'WEAPON', 'WONDROUS_ITEM')),
     quantity INTEGER DEFAULT 1,
     acquisition_source VARCHAR(20),
     needs_details BOOLEAN NOT NULL DEFAULT FALSE,
@@ -335,6 +336,7 @@ CREATE TABLE IF NOT EXISTS adventure_gained_item (
     item_name VARCHAR(255) NOT NULL,
     item_type VARCHAR(50) NOT NULL,
     rarity VARCHAR(50),
+    item_category VARCHAR(32) CHECK (item_category IS NULL OR item_category IN ('ARMOR', 'POTION', 'RING', 'ROD', 'SCROLL', 'STAFF', 'WAND', 'WEAPON', 'WONDROUS_ITEM')),
     quantity INTEGER DEFAULT 1,
     notes TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -516,3 +518,7 @@ users
 ## Migration 21（職業識別值正規化）
 
 正式 migration 以 [`V21__migrate_class_names_to_english.sql`](backend/src/main/resources/db/migration/V21__migrate_class_names_to_english.sql) 將既有職業名稱正規化為英文識別值，例如 `野蠻人 (Barbarian)1` 轉為 `Barbarian1`；[`V22__enforce_english_class_identifiers.sql`](backend/src/main/resources/db/migration/V22__enforce_english_class_identifiers.sql) 再以 CHECK constraint 限定 13 種英文 key 與等級格式。新寫入的 character 職業與冒險職業變化亦由後端正規化並保存英文值；前端依職業顯示對照表呈現中文。中文別名可以作為相容輸入，但不作為資料庫識別值。
+
+## Migration 25（倉庫與冒險物品選填分類）
+
+正式 migration 以 [V25__add_item_category.sql](backend/src/main/resources/db/migration/V25__add_item_category.sql) 為準。`inventory_item` 與 `adventure_gained_item` 均增加 nullable `item_category VARCHAR(32)`，CHECK 限制為 `ARMOR`、`POTION`、`RING`、`ROD`、`SCROLL`、`STAFF`、`WAND`、`WEAPON`、`WONDROUS_ITEM`。舊資料及未分類項目維持 NULL；不依物品名稱回填分類。
