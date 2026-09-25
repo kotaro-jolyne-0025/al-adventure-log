@@ -72,7 +72,8 @@
               <span class="level-box-value">{{ formatClassesDisplay(entry()!.startingClassesString, entry()!.startingLevel) }}</span>
             </div>
             <svg lucideArrowRight [size]="16" class="level-arrow"></svg>
-            <div class="level-box highlight">
+            <div class="level-box"
+              [class.level-increased]="(entry()!.endingLevel ?? 0) > (entry()!.startingLevel ?? 0)">
               <span class="level-box-label">結算狀態</span>
               <span class="level-box-value">{{ formatClassesDisplay(entry()!.endingClassesString, entry()!.endingLevel) }}</span>
             </div>
@@ -93,12 +94,12 @@
         <div class="resource-summary-card">
           <div class="res-card-top">
             <svg lucideCoins class="res-icon gold" [size]="18"></svg>
-            <span class="res-name">金幣 (GP)</span>
+            <span class="res-name" matTooltip="Gold">金幣</span>
           </div>
           <div class="res-breakdown">
             <div class="breakdown-row">
-              <span class="row-label">起始</span>
-              <span class="row-val">{{ (entry()!.startingGold ?? 0) | number:'1.2-2' }}</span>
+              <span class="row-label">起始值</span>
+              <span class="row-val">{{ (entry()!.startingGold ?? 0) | number:'1.0-2' }}</span>
             </div>
             <div class="breakdown-row">
               <span class="row-label">冒險中</span>
@@ -117,7 +118,7 @@
           </div>
           <div class="res-total-row">
             <span class="total-label">結算合計</span>
-            <span class="total-val stat-gold">{{ (entry()!.goldTotal ?? 0) | number:'1.2-2' }} 金</span>
+            <span class="total-val stat-gold">{{ (entry()!.goldTotal ?? 0) | number:'1.0-2' }} 金</span>
           </div>
         </div>
 
@@ -125,11 +126,11 @@
         <div class="resource-summary-card">
           <div class="res-card-top">
             <svg lucideTent class="res-icon downtime" [size]="18"></svg>
-            <span class="res-name">休整期 (Downtime)</span>
+            <span class="res-name" matTooltip="Downtime">休整期</span>
           </div>
           <div class="res-breakdown">
             <div class="breakdown-row">
-              <span class="row-label">起始</span>
+              <span class="row-label">起始值</span>
               <span class="row-val">{{ entry()!.startingDowntime ?? 0 }}</span>
             </div>
             <div class="breakdown-row">
@@ -153,15 +154,15 @@
           </div>
         </div>
 
-        <!-- 永久魔法物品卡片 -->
+    <!-- 永久性魔法物品卡片 -->
         <div class="resource-summary-card">
           <div class="res-card-top">
             <svg lucideSparkles class="res-icon magic" [size]="18"></svg>
-            <span class="res-name">魔法物品</span>
+            <span class="res-name" matTooltip="Permanent Magic Items">永久性魔法物品</span>
           </div>
           <div class="res-breakdown">
             <div class="breakdown-row">
-              <span class="row-label">起始</span>
+              <span class="row-label">起始值</span>
               <span class="row-val">{{ entry()!.startingMagicItems ?? 0 }}</span>
             </div>
             <div class="breakdown-row">
@@ -193,12 +194,12 @@
       }
     </div>
 
-    <!-- 獲得魔法物品 -->
+    <!-- 獲得永久性魔法物品 -->
     @if (magicItems().length > 0 || (entry()!.magicItemsChange ?? 0) > 0) {
       <div class="detail-section-card clean-card">
         <div class="section-card-header">
           <svg lucideSparkles [size]="18" class="section-icon" style="color: var(--color-primary);"></svg>
-          <h2 class="section-title">獲得魔法物品</h2>
+          <h2 class="section-title" matTooltip="Permanent Magic Items">獲得永久性魔法物品</h2>
         </div>
 
         @if (magicItems().length > 0) {
@@ -214,6 +215,9 @@
                     <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
                       {{ rarityLabels[item.rarity] }}
                     </span>
+                  }
+                  @if (item.itemCategory) {
+                    <span class="category-pill">{{ categoryLabels[item.itemCategory] }}</span>
                   }
                   @if (item.requiresAttunement) {
                     <span class="attunement-pill">
@@ -256,6 +260,9 @@
                     {{ rarityLabels[item.rarity] }}
                   </span>
                 }
+                @if (item.itemCategory) {
+                  <span class="category-pill">{{ categoryLabels[item.itemCategory] }}</span>
+                }
               </div>
               @if (item.notes) {
                 <p class="item-desc">{{ item.notes }}</p>
@@ -293,16 +300,38 @@
       </div>
     }
 
-    <!-- 📝 備註與休整期活動 -->
+        <!-- ⛺ 休整期活動 -->
+    <div class="detail-section-card clean-card">
+      <div class="section-card-header">
+        <svg lucideTent [size]="18" class="section-icon"></svg>
+        <h2 class="section-title">休整期活動 (Downtime Activities)</h2>
+      </div>
+
+      <div class="notes-and-activities">
+        @if (entry()!.downtimeActivities.length === 0) {
+          <p class="empty-downtime-text">（無）</p>
+        } @else {
+          <div class="downtime-items-list">
+            @for (dt of entry()!.downtimeActivities; track dt.id) {
+              <div class="downtime-row">
+                <svg lucideCircle [size]="6" class="downtime-dot-icon" fill="currentColor"></svg>
+                <span class="downtime-desc">{{ dt.description }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- 📝 冒險備註 -->
     <div class="detail-section-card clean-card">
       <div class="section-card-header">
         <svg lucideFileText [size]="18" class="section-icon"></svg>
-        <h2 class="section-title">備註與休整期活動</h2>
+        <h2 class="section-title">冒險備註</h2>
       </div>
 
       <div class="notes-and-activities">
         <div class="notes-block">
-          <span class="block-label">備註</span>
           <p class="block-text">{{ entry()!.adventureNotes || '（無）' }}</p>
         </div>
 
@@ -313,21 +342,6 @@
           </div>
         }
 
-        <div class="downtime-block" style="margin-top: 16px;">
-          <span class="block-label">休整期活動</span>
-          @if (entry()!.downtimeActivities.length === 0) {
-            <p class="empty-downtime-text">（無）</p>
-          } @else {
-            <div class="downtime-items-list">
-              @for (dt of entry()!.downtimeActivities; track dt.id) {
-                <div class="downtime-row">
-                  <svg lucideCircle [size]="6" class="downtime-dot-icon" fill="currentColor"></svg>
-                  <span class="downtime-desc">{{ dt.description }}</span>
-                </div>
-              }
-            </div>
-          }
-        </div>
       </div>
     </div>
 

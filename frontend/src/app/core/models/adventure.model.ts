@@ -1,6 +1,6 @@
 
 
-import { ItemRarity } from './inventory.model';
+import { ItemCategory, ItemRarity } from './inventory.model';
 
 export type AcquisitionSource = 'ADVENTURE' | 'DOWNTIME';
 
@@ -27,6 +27,7 @@ export interface AdventureGainedItem {
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
+  itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
   quantity?: number;
   acquisitionSource?: AcquisitionSource | null;
@@ -41,6 +42,7 @@ export interface AdventureGainedItemRequest {
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
+  itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
   quantity?: number;
   notes?: string | null;

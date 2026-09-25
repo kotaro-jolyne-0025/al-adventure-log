@@ -16,6 +16,7 @@ public class InventoryItemResponse {
     private String itemName;
     private InventoryItem.ItemType itemType;
     private InventoryItem.Rarity rarity;
+    private InventoryItem.ItemCategory itemCategory;
     private Boolean requiresAttunement;
     private Integer quantity;
     private AcquisitionSource acquisitionSource;

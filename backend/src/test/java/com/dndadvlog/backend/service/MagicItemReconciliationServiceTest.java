@@ -48,7 +48,7 @@ class MagicItemReconciliationServiceTest {
     @InjectMocks AdventureEntryService service;
 
     @Test
-    void createsSourceSpecificPlaceholdersAndRaisesChangeForExtraNamedItems() {
+    void savesExactDetailsIncludingConsumableQuantitiesWithoutPlaceholders() {
         UUID characterId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Character character = new Character();
@@ -75,30 +75,14 @@ class MagicItemReconciliationServiceTest {
         when(gainedItemMapper.findByAdventureEntryId(any())).thenAnswer(invocation -> snapshots.stream()
                 .filter(item -> item.getAdventureEntryId().equals(invocation.getArgument(0)))
                 .toList());
-        when(gainedItemMapper.findById(any())).thenAnswer(invocation -> snapshots.stream()
-                .filter(item -> item.getId().equals(invocation.getArgument(0)))
-                .findFirst().orElse(null));
         doAnswer(invocation -> {
             snapshots.add(invocation.getArgument(0));
             return null;
         }).when(gainedItemMapper).insert(any());
         doAnswer(invocation -> {
-            UUID id = invocation.getArgument(0);
-            snapshots.removeIf(item -> item.getId().equals(id));
-            return null;
-        }).when(gainedItemMapper).deleteById(any());
-        doAnswer(invocation -> {
             inventory.add(invocation.getArgument(0));
             return null;
         }).when(inventoryItemMapper).insert(any());
-        when(inventoryItemMapper.findByAdventureGainedItemId(any())).thenAnswer(invocation -> inventory.stream()
-                .filter(item -> invocation.getArgument(0).equals(item.getAdventureGainedItemId()))
-                .findFirst().orElse(null));
-        doAnswer(invocation -> {
-            UUID id = invocation.getArgument(0);
-            inventory.removeIf(item -> item.getId().equals(id));
-            return null;
-        }).when(inventoryItemMapper).deleteById(any());
         when(inventoryItemMapper.sumQuantityByCharacterIdAndItemType(
                 characterId, InventoryItem.ItemType.PERMANENT.name())).thenAnswer(invocation -> inventory.stream()
                 .filter(item -> item.getItemType() == InventoryItem.ItemType.PERMANENT)
@@ -117,54 +101,45 @@ class MagicItemReconciliationServiceTest {
         save.setEntry(entry);
         save.setDowntimeActivities(List.of());
         save.setStoryAwards(List.of());
-        save.setGainedItems(List.of(permanent("長劍")));
+        AdventureGainedItemRequest potion = permanent("Potion");
+        potion.setItemType("CONSUMABLE");
+        potion.setQuantity(4);
+        potion.setItemCategory(InventoryItem.ItemCategory.POTION);
+        save.setGainedItems(List.of(permanent("Sword"), potion));
 
         AdventureEntryResponse firstResponse = service.createEntryWithDetails(characterId, save, userId);
 
         assertEquals(3, firstResponse.getMagicItemsChange());
-        AdventureGainedItem adventurePlaceholder = snapshots.stream()
-                .filter(item -> item.getAcquisitionSource() == AcquisitionSource.ADVENTURE)
-                .filter(item -> Boolean.TRUE.equals(item.getNeedsDetails()))
-                .findFirst().orElseThrow();
-        assertEquals(2, adventurePlaceholder.getQuantity());
+        assertEquals(2, firstResponse.getMagicItemsDowntimeChange());
+        assertEquals(2, snapshots.size());
+        assertFalse(snapshots.stream().anyMatch(item -> Boolean.TRUE.equals(item.getNeedsDetails())));
+        assertEquals(InventoryItem.ItemCategory.POTION, snapshots.get(1).getItemCategory());
+        assertEquals(InventoryItem.ItemCategory.POTION, inventory.get(1).getItemCategory());
+        verify(characterMapper, atLeastOnce()).updateCurrentMagicItems(characterId, 1);
+    }
 
-        AdventureGainedItem namedAdventureItem = snapshots.stream()
-                .filter(item -> item.getAcquisitionSource() == AcquisitionSource.ADVENTURE)
-                .filter(item -> !Boolean.TRUE.equals(item.getNeedsDetails()))
-                .findFirst().orElseThrow();
-        AdventureGainedItemRequest existingNamed = permanent("長劍");
-        existingNamed.setId(namedAdventureItem.getId());
-        AdventureEntryRequest correctedEntry = new AdventureEntryRequest();
-        correctedEntry.setPlayDate(entry.getPlayDate());
-        correctedEntry.setLevelChange(0);
-        correctedEntry.setClassChanges(List.of());
-        correctedEntry.setMagicItemsChange(1);
-        correctedEntry.setMagicItemsDowntimeChange(2);
-        AdventureEntrySaveRequest corrected = new AdventureEntrySaveRequest();
-        corrected.setEntry(correctedEntry);
-        corrected.setDowntimeActivities(List.of());
-        corrected.setStoryAwards(List.of());
-        corrected.setGainedItems(List.of(existingNamed, permanent("盾牌")));
-
-        AdventureEntryResponse response = service.updateEntryWithDetails(
-                firstResponse.getId(), corrected, userId);
-
-        assertEquals(2, response.getMagicItemsChange());
-        assertEquals(2, response.getMagicItemsDowntimeChange());
-        assertEquals(4, response.getMagicItemsTotal());
-        assertEquals(2, snapshots.stream()
-                .filter(item -> item.getAcquisitionSource() == AcquisitionSource.ADVENTURE)
-                .filter(item -> !Boolean.TRUE.equals(item.getNeedsDetails()))
-                .count());
-        AdventureGainedItem downtimePlaceholder = snapshots.stream()
-                .filter(item -> item.getAcquisitionSource() == AcquisitionSource.DOWNTIME)
-                .findFirst().orElseThrow();
-        assertTrue(downtimePlaceholder.getNeedsDetails());
-        assertEquals(2, downtimePlaceholder.getQuantity());
-        assertFalse(snapshots.stream().anyMatch(item ->
-                item.getAcquisitionSource() == AcquisitionSource.ADVENTURE
-                        && Boolean.TRUE.equals(item.getNeedsDetails())));
-        verify(characterMapper, atLeastOnce()).updateCurrentMagicItems(characterId, 4);
+    @Test
+    void rejectsMissingExtraAndBatchedPermanentDetailsBeforeWriting() {
+        AdventureEntrySaveRequest save = new AdventureEntrySaveRequest();
+        AdventureEntryRequest entry = new AdventureEntryRequest();
+        entry.setMagicItemsChange(2);
+        save.setEntry(entry);
+        for (List<AdventureGainedItemRequest> details : List.of(
+                List.<AdventureGainedItemRequest>of(), List.of(permanent("Sword")),
+                List.of(permanent("Sword"), permanent("Shield"), permanent("Wand")))) {
+            save.setGainedItems(details);
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    com.dndadvlog.backend.exception.BusinessException.class,
+                    () -> service.createEntryWithDetails(UUID.randomUUID(), save, UUID.randomUUID()));
+        }
+        entry.setMagicItemsChange(1);
+        AdventureGainedItemRequest batched = permanent("Sword");
+        batched.setQuantity(2);
+        save.setGainedItems(List.of(batched));
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.dndadvlog.backend.exception.BusinessException.class,
+                () -> service.createEntryWithDetails(UUID.randomUUID(), save, UUID.randomUUID()));
+        org.mockito.Mockito.verifyNoInteractions(entryMapper, gainedItemMapper, inventoryItemMapper);
     }
 
     private AdventureGainedItemRequest permanent(String name) {

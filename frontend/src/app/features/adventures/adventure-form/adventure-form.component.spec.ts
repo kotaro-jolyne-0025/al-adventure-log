@@ -43,7 +43,7 @@ describe('Adventure form complete loading', () => {
     emitEntry(); emitAwards(); submit();
     expect(api.updateWithDetails).not.toHaveBeenCalled();
     items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
-    items.complete(); submit();
+    items.complete(); component['form'].patchValue({ magicItemsChange: 1 }); submit();
     expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
       gainedItems: [expect.objectContaining({ id: 'snapshot' })],
     }));
@@ -71,12 +71,27 @@ describe('Adventure form complete loading', () => {
     expect(api.updateWithDetails).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects mismatched counts and saves a matching consumable quantity with its category', () => {
+    emitEntry(); emitAwards();
+    items.next([{ id: 'potion', adventureEntryId: 'e', itemType: 'CONSUMABLE',
+      itemName: 'Potion', quantity: 2, itemCategory: 'POTION' }]);
+    items.complete();
+    component['form'].patchValue({ magicItemsChange: 3 });
+    submit();
+    expect(api.updateWithDetails).not.toHaveBeenCalled();
+    component['form'].patchValue({ magicItemsChange: 2 });
+    submit();
+    expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
+      gainedItems: [expect.objectContaining({ quantity: 2, itemCategory: 'POTION' })],
+    }));
+  });
+
   it('waits for legacy warehouse fallback and preserves its ID on save', () => {
     emitEntry(); emitAwards(); items.next([]); items.complete(); submit();
     expect(api.updateWithDetails).not.toHaveBeenCalled();
     warehouse.next([{ id: 'legacy', characterId: 'c', adventureEntryId: 'e', itemName: 'Sword',
       itemType: 'PERMANENT', quantity: 1 }]);
-    warehouse.complete(); submit();
+    warehouse.complete(); component['form'].patchValue({ magicItemsChange: 1 }); submit();
     expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
       gainedItems: [expect.objectContaining({ id: 'legacy' })],
     }));
@@ -116,6 +131,10 @@ describe('Adventure form complete loading', () => {
       startingMagicItems: 3, magicItemsChange: 1, magicItemsDowntimeChange: 2,
     });
 
+    component['gainedConsumableItems'].set([{ itemName: 'Potion', quantity: 2, rarity: '', itemCategory: 'POTION', notes: '' }]);
+    expect(component['goldNetChange']()).toBe(30);
+    expect(component['downtimeNetChange']()).toBe(1);
+    expect(component['magicItemsNetChange']()).toBe(3);
     expect(component['goldTotal']()).toBe(130);
     expect(component['downtimeTotal']()).toBe(6);
     expect(component['magicItemsTotal']()).toBe(6);

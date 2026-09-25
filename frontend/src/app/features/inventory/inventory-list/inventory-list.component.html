@@ -46,7 +46,7 @@
 
       <button mat-flat-button color="primary" class="btn-add-item" (click)="onAddItem()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
-        新增{{ activeTab() === 0 ? '魔法物品' : '消耗品' }}
+        新增{{ activeTab() === 0 ? '永久性魔法物品' : '消耗品' }}
       </button>
     </div>
   </div>
@@ -57,7 +57,7 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <svg lucideSparkles [size]="18" class="tab-icon"></svg>
-        <span>魔法物品 ({{ permanentItems().length }}
+        <span matTooltip="Permanent Magic Items">永久性魔法物品 ({{ permanentItems().length }}
           @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawPermanentCount() }}</span> }
           )</span>
       </ng-template>
@@ -136,11 +136,11 @@
     <div class="empty-icon-wrap">
       <svg lucideSparkles [size]="48" class="empty-icon"></svg>
     </div>
-    <h3 class="empty-title">尚無魔法物品</h3>
+    <h3 class="empty-title">尚無永久性魔法物品</h3>
     <p class="empty-desc">在冒險紀錄表記錄戰利品，或點擊下方新增！</p>
     <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
       <svg lucidePlus [size]="18" class="btn-icon"></svg>
-      <span>新增魔法物品</span>
+      <span>新增永久性魔法物品</span>
     </button>
   </div>
   } @else if (permanentItems().length === 0) {
@@ -176,6 +176,9 @@
         <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
           {{ rarityLabels[item.rarity] }}
         </span>
+        }
+        @if (item.itemCategory) {
+        <span class="category-pill">{{ categoryLabels[item.itemCategory] }}</span>
         }
         @if (item.requiresAttunement) {
         <span class="attunement-pill">
@@ -262,6 +265,9 @@
         <span class="rarity-pill" [class]="'rarity-' + item.rarity.toLowerCase().replace('_', '-')">
           {{ rarityLabels[item.rarity] }}
         </span>
+        }
+        @if (item.itemCategory) {
+        <span class="category-pill">{{ categoryLabels[item.itemCategory] }}</span>
         }
       </div>
 

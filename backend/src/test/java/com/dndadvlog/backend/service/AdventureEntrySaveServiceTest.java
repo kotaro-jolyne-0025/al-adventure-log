@@ -138,6 +138,7 @@ class AdventureEntrySaveServiceTest {
     private AdventureEntry ownedEntry() {
         AdventureEntry entry = new AdventureEntry();
         entry.setId(entryId); entry.setCharacterId(characterId); entry.setAdventureName("Old adventure");
+        entry.setMagicItemsChange(1);
         return entry;
     }
 

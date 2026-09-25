@@ -14,6 +14,10 @@ import { InventoryService } from '../../../core/services/inventory.service';
 import {
   ItemType,
   ItemRarity,
+  ItemCategory,
+  ITEM_CATEGORIES,
+  ITEM_CATEGORY_LABELS,
+  ITEM_CATEGORY_OPTION_LABELS,
   ITEM_TYPE_LABELS,
   ITEM_RARITY_LABELS,
   InventoryItemRequest,
@@ -53,11 +57,15 @@ export class InventoryFormComponent implements OnInit {
   readonly rarities: (ItemRarity | '')[] = ['', 'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'];
   readonly typeLabels = ITEM_TYPE_LABELS;
   readonly rarityLabels = ITEM_RARITY_LABELS;
+  readonly categories = ITEM_CATEGORIES;
+  readonly categoryLabels = ITEM_CATEGORY_LABELS;
+  readonly categoryOptionLabels = ITEM_CATEGORY_OPTION_LABELS;
 
   protected form: FormGroup = this.fb.group({
     itemName: ['', Validators.required],
     itemType: ['PERMANENT', Validators.required],
     rarity: [''],
+    itemCategory: [''],
     requiresAttunement: [false],
     quantity: [1],
     source: [''],
@@ -96,6 +104,7 @@ export class InventoryFormComponent implements OnInit {
           itemName: item.itemName,
           itemType: item.itemType,
           rarity: item.rarity ?? '',
+          itemCategory: item.itemCategory ?? '',
           requiresAttunement: Boolean(item.requiresAttunement),
           quantity: item.quantity,
           source: item.source ?? '',
@@ -121,6 +130,7 @@ export class InventoryFormComponent implements OnInit {
       itemName: raw.itemName.trim(),
       itemType: raw.itemType as ItemType,
       rarity: raw.rarity || null,
+      itemCategory: (raw.itemCategory || null) as ItemCategory | null,
       requiresAttunement: isPermanent ? Boolean(raw.requiresAttunement) : false,
       quantity: raw.quantity ? Number(raw.quantity) : 1,
       source: raw.source?.trim() || null,
