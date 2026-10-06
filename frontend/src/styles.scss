@@ -253,6 +253,44 @@ svg {
   }
 }
 
+// 原生卡片導覽：主連結涵蓋卡片，獨立操作保留在連結之外。
+.navigation-card {
+  position: relative;
+}
+
+a.navigation-card,
+.card-navigation-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.navigation-card {
+  display: block;
+}
+
+.card-navigation-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.card-independent-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.navigation-card:focus-visible,
+.navigation-card:has(.card-navigation-link:focus-visible) {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: -3px;
+}
+
+.brand-container:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 // 數值增減標籤
 .delta-tag {
   display: inline-flex;
@@ -388,17 +426,46 @@ svg {
 @media (max-width: 768px) {
   .mat-mdc-form-field input,
   .mat-mdc-form-field textarea,
-  .mat-mdc-select {
+  .mat-mdc-select,
+  .search-input {
     font-size: 16px !important;
   }
 
+  .mat-mdc-icon-button,
+  .search-clear-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .search-bar {
+    min-height: 48px;
+  }
+
   // Material Dialog 小螢幕自適應寬度
-  .cdk-overlay-pane {
+  .cdk-overlay-pane.mat-mdc-dialog-panel {
     max-width: 94vw !important;
   }
 
   .mat-mdc-dialog-container {
     padding: 16px !important;
+  }
+}
+
+// 操作提示：文字可收縮換行，關閉按鈕及邊距保留在可用視窗內。
+mat-snack-bar-container.mat-mdc-snack-bar-container {
+  min-width: 0;
+  max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+
+  .mat-mdc-snackbar-surface {
+    min-width: min(344px, 100%);
+    max-width: min(672px, 100%);
+  }
+
+  .mat-mdc-snack-bar-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 }
 

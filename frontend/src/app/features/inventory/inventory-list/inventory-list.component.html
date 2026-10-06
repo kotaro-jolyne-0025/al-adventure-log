@@ -154,11 +154,13 @@
   } @else {
   <div class="items-list">
     @for (item of permanentItems(); track item.id) {
-    <div class="clean-card item-row-card clickable" (click)="onEditItem($event, item.id)">
+    <div class="clean-card item-row-card clickable navigation-card">
       <!-- 1. 左側主體：物品名稱 + 來源與備註 -->
       <div class="row-left-main">
         <div class="name-block">
-          <h4 class="item-title" [matTooltip]="item.itemName">{{ item.itemName }}</h4>
+          <h4 class="item-title"><a class="card-navigation-link"
+            [routerLink]="['/characters', characterId, 'inventory', item.id, 'edit']"
+            [attr.aria-label]="'編輯物品：' + item.itemName">{{ item.itemName }}</a></h4>
           @if (item.source) {
           <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
             <span class="meta-item">
@@ -189,7 +191,7 @@
       </div>
 
       <!-- 3. 右側：取得時間 + 編輯/刪除按鈕 -->
-      <div class="row-right-actions" (click)="$event.stopPropagation()">
+      <div class="row-right-actions card-independent-actions">
         @if (item.createdAt) {
         <span class="date-text">
           <svg lucideClock [size]="12" class="date-icon"></svg>
@@ -197,10 +199,12 @@
         </span>
         }
         <div class="crud-btns">
-          <button mat-icon-button class="action-btn" matTooltip="編輯物品" (click)="onEditItem($event, item.id)">
+          <button mat-icon-button class="action-btn" matTooltip="編輯物品"
+            [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)">
             <svg lucidePencil [size]="16"></svg>
           </button>
-          <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品" (click)="onDeleteItem($event, item)">
+          <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品"
+            [attr.aria-label]="'刪除物品：' + item.itemName" (click)="onDeleteItem($event, item)">
             <svg lucideTrash2 [size]="16"></svg>
           </button>
         </div>
@@ -236,11 +240,13 @@
   } @else {
   <div class="items-list">
     @for (item of consumableItems(); track item.id) {
-    <div class="clean-card item-row-card consumable-row-card clickable" (click)="onEditItem($event, item.id)">
+    <div class="clean-card item-row-card consumable-row-card clickable navigation-card">
       <!-- 1. 左側主體：物品名稱 + 來源 -->
       <div class="row-left-main">
         <div class="name-block">
-          <h4 class="item-title" [matTooltip]="item.itemName">{{ item.itemName }}</h4>
+          <h4 class="item-title"><a class="card-navigation-link"
+            [routerLink]="['/characters', characterId, 'inventory', item.id, 'edit']"
+            [attr.aria-label]="'編輯物品：' + item.itemName">{{ item.itemName }}</a></h4>
           @if (item.source) {
           <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
             <span class="meta-item">
@@ -272,7 +278,7 @@
       </div>
 
       <!-- 4. 右側：取得時間 + 使用/編輯/刪除按鈕 -->
-      <div class="row-right-actions" (click)="$event.stopPropagation()">
+      <div class="row-right-actions card-independent-actions">
         @if (item.createdAt) {
         <span class="date-text">
           <svg lucideClock [size]="12" class="date-icon"></svg>
@@ -281,10 +287,12 @@
         }
 
         <div class="crud-btns">
-          <button mat-icon-button class="action-btn" matTooltip="編輯物品" (click)="onEditItem($event, item.id)">
+          <button mat-icon-button class="action-btn" matTooltip="編輯物品"
+            [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)">
             <svg lucidePencil [size]="16"></svg>
           </button>
-          <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品" (click)="onDeleteItem($event, item)">
+          <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品"
+            [attr.aria-label]="'刪除物品：' + item.itemName" (click)="onDeleteItem($event, item)">
             <svg lucideTrash2 [size]="16"></svg>
           </button>
         </div>

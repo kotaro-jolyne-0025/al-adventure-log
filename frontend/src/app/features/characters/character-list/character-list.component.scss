@@ -99,6 +99,7 @@
 /* Hero Portrait Layout (Style A) */
 .card-hero-layout {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   align-items: flex-start;
   margin-bottom: 0;
@@ -163,38 +164,24 @@
 }
 
 .char-content-col {
-  flex: 1;
+  flex: 1 1 10rem;
   min-width: 0;
-  height: 128px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   gap: 5px;
-
-  @media (max-width: 600px) {
-    height: 104px;
-    gap: 2px;
-  }
-
-  @media (max-width: 370px) {
-    height: 90px;
-    gap: 1px;
-  }
 }
 
 .char-name-row {
-  height: 26px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  line-height: 26px;
-  flex-wrap: nowrap;
+  line-height: 1.4;
+  flex-wrap: wrap;
   padding-right: 0;
 
   @media (max-width: 600px) {
-    height: 22px;
-    line-height: 22px;
     gap: 6px;
     padding-right: 0;
   }
@@ -204,22 +191,19 @@
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
-  line-height: 26px;
+  line-height: 1.4;
   color: var(--text-primary);
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 
   @media (max-width: 600px) {
     font-size: 1.05rem;
-    line-height: 22px;
   }
 }
 
 .level-badge {
-  font-size: 0.72rem;
+  font-size: 0.875rem;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--radius-full);
@@ -232,7 +216,6 @@
   user-select: none;
 
   @media (max-width: 600px) {
-    font-size: 0.68rem;
     padding: 1px 6px;
   }
 }
@@ -311,15 +294,14 @@
 }
 
 .info-row {
-  height: 24px;
   display: flex;
-  align-items: center;
-  font-size: 0.86rem;
-  line-height: 24px;
+  align-items: baseline;
+  font-size: 0.875rem;
+  line-height: 1.5;
 
   .info-label {
-    color: var(--text-muted);
-    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-size: inherit;
     font-weight: 500;
     min-width: 44px;
     flex-shrink: 0;
@@ -328,32 +310,17 @@
   .info-value {
     color: var(--text-primary);
     font-weight: 600;
-    word-break: break-word;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
+}
 
-  @media (max-width: 600px) {
-    height: 20px;
-    line-height: 20px;
-    font-size: 0.78rem;
-
-    .info-label {
-      font-size: 0.75rem;
-      min-width: 38px;
-    }
-  }
-
-  @media (max-width: 370px) {
-    height: 18px;
-    line-height: 18px;
-    font-size: 0.74rem;
-
-    .info-label {
-      font-size: 0.7rem;
-      min-width: 34px;
-    }
+/* Mobile action targets */
+@media (max-width: 768px) {
+  .card-footer .footer-action-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 

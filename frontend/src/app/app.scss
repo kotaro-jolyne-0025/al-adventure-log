@@ -51,9 +51,9 @@
   @media (max-width: 600px) {
     margin-left: 0;
     margin-right: 2px;
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
 
     mat-icon {
       font-size: 1.25rem;
@@ -190,10 +190,10 @@
   }
 
   @media (max-width: 420px) {
-    width: 40px;
-    min-width: 40px !important;
-    max-width: 40px;
-    height: 40px;
+    width: 44px;
+    min-width: 44px !important;
+    max-width: 44px;
+    height: 44px;
     padding: 0 !important;
     justify-content: center;
 
@@ -272,6 +272,13 @@
   min-width: 0;
   overflow-x: hidden;
   overflow-x: clip;
+}
+
+@media (max-width: 768px) {
+  .user-pill-btn {
+    min-width: 44px !important;
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 420px) {
