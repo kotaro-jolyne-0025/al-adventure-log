@@ -51,7 +51,7 @@
   @if (!isLoading() && characters().length > 0) {
     <div class="card-grid">
       @for (char of characters(); track char.id) {
-        <div class="char-card clean-card clickable" (click)="onViewCharacter(char.id)">
+        <div class="char-card clean-card clickable navigation-card">
 
           <div class="card-hero-layout">
             <!-- 左側大肖像 -->
@@ -67,7 +67,9 @@
             <!-- 右側標題與資料 -->
             <div class="char-content-col">
               <div class="char-name-row">
-                <h3 class="char-name" [title]="char.characterName">{{ char.characterName }}</h3>
+                <h3 class="char-name"><a class="card-navigation-link"
+                  [routerLink]="['/characters', char.id, 'adventures']"
+                  [attr.aria-label]="'查看角色：' + char.characterName">{{ char.characterName }}</a></h3>
                 <span class="level-badge">Lv. {{ parseTotalLevel(char.currentClassesString) }}</span>
               </div>
 
@@ -98,7 +100,7 @@
 
           <!-- 卡片底部操作列 (方案 D) -->
           <div class="card-footer">
-            <div class="card-footer-actions" (click)="$event.stopPropagation()">
+            <div class="card-footer-actions card-independent-actions">
               <button mat-button class="footer-action-btn"
                 matTooltip="編輯角色資訊"
                 (click)="onEditCharacter($event, char.id)">

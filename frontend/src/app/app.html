@@ -6,10 +6,11 @@
       </button>
     }
 
-    <div class="brand-container" [routerLink]="authService.isAuthenticated() ? '/characters' : '/'">
+    <a class="brand-container" [routerLink]="authService.isAuthenticated() ? '/characters' : '/'"
+      aria-label="冒險紀錄表 Web版首頁">
       <img src="logo.png" alt="冒險紀錄表 Web版 Logo" class="brand-logo-img" />
       <span class="brand-title">冒險紀錄表 Web版</span>
-    </div>
+    </a>
 
     <span class="spacer"></span>
 
