@@ -4,7 +4,7 @@
 
 🌐 **線上使用：[aladvlog.com](https://aladvlog.com/)**
 
-版本與發布流程見 [VERSIONING.md](VERSIONING.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+版本與發布流程見 [VERSIONING.md](VERSIONING.md)，發布摘要見 [GitHub Releases](https://github.com/kotaro-jolyne-0025/al-adventure-log/releases)。
 
 ## 技術選型
 
