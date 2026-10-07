@@ -1,7 +1,7 @@
 # Design System: 冒險紀錄表 Web版
 
 > 盤點日期：2026-10-05（Asia/Taipei）。以現有 UI 為基準，供 Google Stitch 生成相容畫面與後續設計討論使用。
-> 本文件區分「現況」、「延伸規則」與「改善紀錄」。1.2.1 已完成 P1、操作提示裁切、本輪 P2；完成範圍與驗證見第 8、10–15 節，使用者於 2026-10-07 完成整體驗收。
+> 本文件區分「現況」、「延伸規則」與「改善紀錄」。1.2.1 已完成 P1、操作提示裁切、本輪 P2 與開卡值確認；完成範圍與驗證見第 8、10–16 節，使用者於 2026-10-07 完成整體驗收。
 > 使用者於 2026-10-06 確認本批修改驗收 OK；相關 3 個 OpenSpec change 已封存。驗收確認不額外推定裝置或測試範圍。
 
 ## 0. 範圍與使用方式
@@ -280,3 +280,9 @@ Material 淺色 primary 沿用 `azure-palette`，深色沿用 `violet-palette`�
 - 68 組 P2 結果、32 個既有單元測試、production build 及 OpenSpec strict 檢查通過；受測文字最低對比為淺色 4.81:1／深色 4.64:1。另完成卡片、焦點及 24 組 Snackbar 回歸。
 - 前端 package／lockfile 與首頁標示為 1.2.1。使用者於 2026-10-07 完成整體驗收並授權提交、push 至 `v1.2.1`；PR 合併 main 為後續交付步驟。新的視覺提案及配色重選留到下一版。
 - 實機鍵盤／地址列／安全區與螢幕閱讀器仍需使用者驗收；未使用的法律彈窗元件只有樣式檢查，不宣稱已有可操作入口。
+
+## 16. 1.2.1 驗收補充：修改開卡值確認
+
+- 編輯角色的開卡職業／等級、金幣或休整期有實際變更時，儲存前使用既有 Material 確認視窗；已有冒險時保留重算預覽。
+- 「繼續編輯」為初始鍵盤焦點；取消或關閉保留輸入，確認後才更新。未變更開卡值與新建角色直接儲存。
+- Change：[confirm-opening-baseline-save](openspec/changes/confirm-opening-baseline-save/proposal.md)；[驗證紀錄](openspec/changes/confirm-opening-baseline-save/verification.md)。44 個單元測試、production build、24 組雙主題／手機／大字／鍵盤流程與 OpenSpec strict 驗證通過。

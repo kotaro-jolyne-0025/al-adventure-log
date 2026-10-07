@@ -1,0 +1,698 @@
+[
+  {
+    "width": 320,
+    "theme": "light",
+    "scale": 1,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 564.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 488.5,
+          "bottom": 532.5,
+          "height": 44,
+          "right": 145.59375
+        },
+        {
+          "top": 488.5,
+          "bottom": 532.5,
+          "height": 44,
+          "right": 293.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "scale": 1,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 614.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 538.5,
+          "bottom": 582.5,
+          "height": 44,
+          "right": 145.59375
+        },
+        {
+          "top": 538.5,
+          "bottom": 582.5,
+          "height": 44,
+          "right": 293.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "scale": 2,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 686.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 594.5,
+          "bottom": 638.5,
+          "height": 44,
+          "right": 141.59375
+        },
+        {
+          "top": 594.5,
+          "bottom": 638.5,
+          "height": 44,
+          "right": 281.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "scale": 2,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 866.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 774.5,
+          "bottom": 818.5,
+          "height": 44,
+          "right": 141.59375
+        },
+        {
+          "top": 774.5,
+          "bottom": 818.5,
+          "height": 44,
+          "right": 281.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "scale": 1,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 564.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 488.5,
+          "bottom": 532.5,
+          "height": 44,
+          "right": 145.59375
+        },
+        {
+          "top": 488.5,
+          "bottom": 532.5,
+          "height": 44,
+          "right": 293.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "scale": 1,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 614.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 538.5,
+          "bottom": 582.5,
+          "height": 44,
+          "right": 145.59375
+        },
+        {
+          "top": 538.5,
+          "bottom": 582.5,
+          "height": 44,
+          "right": 293.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "scale": 2,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 686.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 594.5,
+          "bottom": 638.5,
+          "height": 44,
+          "right": 141.59375
+        },
+        {
+          "top": 594.5,
+          "bottom": 638.5,
+          "height": 44,
+          "right": 281.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "scale": 2,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 9.59375,
+      "right": 310.390625,
+      "bottom": 866.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 774.5,
+          "bottom": 818.5,
+          "height": 44,
+          "right": 141.59375
+        },
+        {
+          "top": 774.5,
+          "bottom": 818.5,
+          "height": 44,
+          "right": 281.59375
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "scale": 1,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 554.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 478.5,
+          "bottom": 522.5,
+          "height": 44,
+          "right": 175
+        },
+        {
+          "top": 478.5,
+          "bottom": 522.5,
+          "height": 44,
+          "right": 350.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "scale": 1,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 604.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 528.5,
+          "bottom": 572.5,
+          "height": 44,
+          "right": 175
+        },
+        {
+          "top": 528.5,
+          "bottom": 572.5,
+          "height": 44,
+          "right": 350.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "scale": 2,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 666.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 574.5,
+          "bottom": 618.5,
+          "height": 44,
+          "right": 171
+        },
+        {
+          "top": 574.5,
+          "bottom": 618.5,
+          "height": 44,
+          "right": 338.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "scale": 2,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 826.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 734.5,
+          "bottom": 778.5,
+          "height": 44,
+          "right": 171
+        },
+        {
+          "top": 734.5,
+          "bottom": 778.5,
+          "height": 44,
+          "right": 338.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "scale": 1,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 554.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 478.5,
+          "bottom": 522.5,
+          "height": 44,
+          "right": 175
+        },
+        {
+          "top": 478.5,
+          "bottom": 522.5,
+          "height": 44,
+          "right": 350.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "scale": 1,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 604.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 528.5,
+          "bottom": 572.5,
+          "height": 44,
+          "right": 175
+        },
+        {
+          "top": 528.5,
+          "bottom": 572.5,
+          "height": 44,
+          "right": 350.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "scale": 2,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 666.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 574.5,
+          "bottom": 618.5,
+          "height": 44,
+          "right": 171
+        },
+        {
+          "top": 574.5,
+          "bottom": 618.5,
+          "height": 44,
+          "right": 338.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "scale": 2,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 11.703125,
+      "right": 378.296875,
+      "bottom": 826.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 734.5,
+          "bottom": 778.5,
+          "height": 44,
+          "right": 171
+        },
+        {
+          "top": 734.5,
+          "bottom": 778.5,
+          "height": 44,
+          "right": 338.296875
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "scale": 1,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 540.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 480.5,
+          "bottom": 520.5,
+          "height": 40,
+          "right": 735.609375
+        },
+        {
+          "top": 480.5,
+          "bottom": 520.5,
+          "height": 40,
+          "right": 856
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "scale": 1,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 590.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 530.5,
+          "bottom": 570.5,
+          "height": 40,
+          "right": 735.609375
+        },
+        {
+          "top": 530.5,
+          "bottom": 570.5,
+          "height": 40,
+          "right": 856
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "scale": 2,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 604.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 524.5,
+          "bottom": 564.5,
+          "height": 40,
+          "right": 647.21875
+        },
+        {
+          "top": 524.5,
+          "bottom": 564.5,
+          "height": 40,
+          "right": 832
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "scale": 2,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 704.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 624.5,
+          "bottom": 664.5,
+          "height": 40,
+          "right": 647.21875
+        },
+        {
+          "top": 624.5,
+          "bottom": 664.5,
+          "height": 40,
+          "right": 832
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "scale": 1,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 540.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 480.5,
+          "bottom": 520.5,
+          "height": 40,
+          "right": 735.609375
+        },
+        {
+          "top": 480.5,
+          "bottom": 520.5,
+          "height": 40,
+          "right": 856
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "scale": 1,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 590.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 530.5,
+          "bottom": 570.5,
+          "height": 40,
+          "right": 735.609375
+        },
+        {
+          "top": 530.5,
+          "bottom": 570.5,
+          "height": 40,
+          "right": 856
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "scale": 2,
+    "hasAdventureEntries": false,
+    "updates": 1,
+    "previews": 0,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 604.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 524.5,
+          "bottom": 564.5,
+          "height": 40,
+          "right": 647.21875
+        },
+        {
+          "top": 524.5,
+          "bottom": 564.5,
+          "height": 40,
+          "right": 832
+        }
+      ]
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "scale": 2,
+    "hasAdventureEntries": true,
+    "updates": 1,
+    "previews": 3,
+    "layout": {
+      "left": 400,
+      "right": 880,
+      "bottom": 704.5,
+      "contentOverflow": false,
+      "whiteSpace": "pre-line",
+      "buttons": [
+        {
+          "top": 624.5,
+          "bottom": 664.5,
+          "height": 40,
+          "right": 647.21875
+        },
+        {
+          "top": 624.5,
+          "bottom": 664.5,
+          "height": 40,
+          "right": 832
+        }
+      ]
+    }
+  }
+]
