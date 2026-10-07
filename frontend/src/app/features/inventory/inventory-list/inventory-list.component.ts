@@ -351,7 +351,7 @@ export class InventoryListComponent implements OnInit {
 
 
   protected getRarityColor(item: InventoryItem): string {
-    return item.rarity ? this.rarityColors[item.rarity] : '#9e9e9e';
+    return item.rarity ? this.rarityColors[item.rarity] : 'var(--rarity-common)';
   }
 
   protected getRarityLabel(item: InventoryItem): string {

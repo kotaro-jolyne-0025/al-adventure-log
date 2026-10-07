@@ -1,5 +1,8 @@
 .loading-wrapper {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   justify-content: center;
   padding: 64px 0;
 }
@@ -135,9 +138,8 @@
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
   min-width: 0;
 
   @media (max-width: 600px) {
@@ -184,9 +186,8 @@
   font-size: 0.88rem;
   color: var(--text-secondary);
   line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
   display: block;
   width: 100%;
 
@@ -241,7 +242,7 @@
 }
 
 
-/* Character HUD Stats Bar (2x2 on mobile, auto-fit on desktop) */
+/* Mobile: level above a 2x2 resource summary. */
 .char-hud-bar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -250,7 +251,7 @@
   border-top: 1px solid var(--border-subtle);
 
   @media (max-width: 600px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     padding-top: 12px;
   }
@@ -268,9 +269,13 @@
 
   @media (max-width: 600px) {
     padding: 8px 12px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+
+    &:first-child {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
   }
 
   &:hover {
@@ -330,12 +335,19 @@
 }
 
 .hud-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
   align-self: flex-end;
   font-size: 1.25rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   text-align: right;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 
   @media (max-width: 600px) {
     align-self: auto;
@@ -345,7 +357,12 @@
   .unit {
     font-size: 0.8rem;
     font-weight: 500;
-    opacity: 0.8;
+    flex-shrink: 0;
+  }
+
+  .hud-number {
+    min-width: 0;
+    max-width: 100%;
   }
 
   &.stat-level {
