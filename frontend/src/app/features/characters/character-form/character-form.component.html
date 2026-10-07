@@ -137,11 +137,11 @@
             </mat-form-field>
           </div>
           <p class="opening-items-hint">
-            開卡時已有的魔法物品請在角色倉庫新增；物品數量由倉庫永久物品自動計算。
+            開卡時已有的魔法物品請在角色倉庫新增。
           </p>
           @if (hasAdventureEntries()) {
             <p class="opening-baseline-warning">
-              修正後會重新計算角色目前值；既有冒險快照及倉庫物品不會自動修改。
+              修改後會重新計算角色目前值；既有冒險及倉庫物品不會自動修改。
             </p>
           }
         </section>
@@ -157,7 +157,7 @@
             } @else {
             <svg lucideSave [size]="20"></svg>
             }
-            {{ isEditMode() ? '儲存變更' : '建立角色' }}
+            {{ isSaving() ? '正在儲存…' : (isEditMode() ? '儲存變更' : '建立角色') }}
           </button>
         </div>
 

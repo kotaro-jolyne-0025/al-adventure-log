@@ -6,7 +6,7 @@
         <svg lucideUsers [size]="20" class="title-icon"></svg>
         我的角色
       </h1>
-      <p class="page-subtitle">管理角色、冒險紀錄表與倉庫</p>
+      <p class="page-subtitle" role="status">{{ isLoading() ? '正在載入角色…' : '管理角色、冒險紀錄表與倉庫' }}</p>
     </div>
     <button mat-flat-button color="primary" class="btn-create-char" (click)="onCreateCharacter()">
       <svg lucidePlus [size]="20"></svg>
@@ -16,17 +16,23 @@
 
   <!-- Loading Skeletons -->
   @if (isLoading()) {
-    <div class="card-grid">
+    <div class="card-grid" aria-hidden="true">
       @for (item of [1, 2, 3]; track $index) {
-        <div class="skeleton-char-card clean-card">
-          <div class="skeleton-top">
-            <div class="skeleton-avatar skeleton-box"></div>
-            <div class="skeleton-lines">
-              <div class="skeleton-line skeleton-box" style="width: 60%; height: 20px;"></div>
-              <div class="skeleton-line skeleton-box" style="width: 40%; height: 14px; margin-top: 6px;"></div>
+        <div class="char-card clean-card">
+          <div class="card-hero-layout">
+            <div class="char-portrait-token skeleton-box"></div>
+            <div class="char-content-col">
+              <div class="skeleton-name skeleton-box" style="width: 60%;"></div>
+              <div class="char-info-list">
+                @for (line of [1, 2, 3, 4]; track line) {
+                  <div class="skeleton-box" style="height: 1.3125rem;"></div>
+                }
+              </div>
             </div>
           </div>
-          <div class="skeleton-box" style="width: 100%; height: 36px; margin-top: 16px;"></div>
+          <div class="card-footer">
+            <div class="skeleton-actions skeleton-box"></div>
+          </div>
         </div>
       }
     </div>

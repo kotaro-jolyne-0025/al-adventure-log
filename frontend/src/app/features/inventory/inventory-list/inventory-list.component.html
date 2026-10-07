@@ -118,7 +118,8 @@
 
   <!-- Loading -->
   @if (isLoading()) {
-  <div class="items-list">
+  <p role="status">正在載入倉庫…</p>
+  <div class="items-list" aria-hidden="true">
     @for (item of [1, 2, 3, 4]; track $index) {
     <div class="clean-card item-row-card skeleton-row">
       <div class="skeleton-box" style="width: 40%; height: 20px;"></div>

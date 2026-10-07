@@ -1,12 +1,12 @@
 # Design System: 冒險紀錄表 Web版
 
 > 盤點日期：2026-10-05（Asia/Taipei）。以現有 UI 為基準，供 Google Stitch 生成相容畫面與後續設計討論使用。
-> 本文件區分「現況」、「延伸規則」與「待改善項目」。截至 2026-10-06 已完成兩批 P1 改善及操作提示裁切修正，見第 8、10、11、12 節；P2 建議尚未實作。
+> 本文件區分「現況」、「延伸規則」與「改善紀錄」。1.2.1 已完成 P1、操作提示裁切、本輪 P2；完成範圍與驗證見第 8、10–15 節，使用者於 2026-10-07 完成整體驗收。
 > 使用者於 2026-10-06 確認本批修改驗收 OK；相關 3 個 OpenSpec change 已封存。驗收確認不額外推定裝置或測試範圍。
 
 ## 0. 範圍與使用方式
 
-初次盤點依據前端模板、SCSS、元件內嵌樣式、主題服務、SRS 與資料結構，涵蓋首頁、驗證頁、角色列表／表單／角色頁、冒險列表／表單／詳情、倉庫列表／表單與共用彈窗。兩批改善另以 Playwright／Chromium、本機虛構資料與測試 API 驗證，範圍見第 10、11 節。其餘發現仍為靜態盤點；尚未進行 iOS／Android 實機或螢幕閱讀器驗證。
+初次盤點依據前端模板、SCSS、元件內嵌樣式、主題服務、SRS 與資料結構，涵蓋首頁、驗證頁、角色列表／表單／角色頁、冒險列表／表單／詳情、倉庫列表／表單與共用彈窗。改善另以 Playwright／Chromium、本機虛構資料與測試 API 驗證，範圍見第 10–15 節。尚未進行 iOS／Android 實機或螢幕閱讀器驗證。
 
 來源優先順序：現有模板與樣式用於描述畫面現況；SRS／OpenSpec 用於判斷業務意圖。兩者有落差時列為待釐清項目，不以本文件自動覆蓋既有需求。
 
@@ -32,7 +32,7 @@ StitchDesign 預設的禁用 Inter、禁用紫色、單一色彩、強制非對�
 
 這是用於跑團時查閱與補登的紀錄工具。視覺為現代無襯線、規律排列、卡片化與明確分區；D&D 氛圍主要由角色肖像、Logo、物品稀有度與資源圖示傳達，沒有羊皮紙背景、裝飾性襯線或大面積奇幻插畫。
 
-- **Clean Light**：冷調 Slate 背景、白色卡片、靛色主色，乾淨明亮。
+- **Clean Light**：冷調 Slate 背景、白色卡片、Material 藍色主色，乾淨明亮。
 - **Soft Charcoal**：Zinc 炭灰背景與卡片、紫色主色，以金色及語意色區分資源。
 - **密度**：首頁較寬鬆；角色與冒險列表均衡；倉庫與冒險表單較密集。
 - **排列**：內容頁左對齊、規律網格；首頁與驗證頁以置中構圖為主。
@@ -59,21 +59,21 @@ StitchDesign 預設的禁用 Inter、禁用紫色、單一色彩、強制非對�
 | 細邊框 `--border-subtle` | `#e2e8f0` | `#3f3f46` | 卡片與分隔線 |
 | 強邊框 `--border-medium` | `#cbd5e1` | `#52525b` | 輸入框、工具列 |
 | 主要文字 `--text-primary` | `#0f172a` | `#f4f4f5` | 標題、重要內容 |
-| 次要文字 `--text-secondary` | `#64748b` | `#a1a1aa` | 說明、欄位資訊 |
-| 弱化文字 `--text-muted` | `#94a3b8` | `#71717a` | 低優先 metadata，閱讀性待檢查 |
-| 靛色／紫色主色 `--color-primary` | `#4f46e5` | `#a855f7` | 自訂主操作、選取、焦點 |
-| 主色 Hover `--color-primary-hover` | `#4338ca` | `#9333ea` | 主操作指向回饋 |
+| 次要文字 `--text-secondary` | `#475569` | `#d4d4d8` | 說明、欄位資訊 |
+| 弱化文字 `--text-muted` | `#526176` | `#b4b4be` | metadata、備註、placeholder，保留可讀性 |
+| 藍色／紫色主色 `--color-primary` | Material `--mat-sys-primary`（azure） | Material `--mat-sys-primary`（violet） | 自訂及 Material 主操作、選取、焦點共用來源 |
+| 主色 Hover `--color-primary-hover` | 主色 88% 與主要文字色混合 | 主色 88% 與主要文字色混合 | 主操作指向回饋 |
 | 半透明導覽底 `--header-bg` | `rgba(255,255,255,0.88)` | `rgba(39,39,42,0.88)` | 黏附頂部導覽列，模糊 12px |
 
 ### 功能色
 
 | 語意 | 淺色文字／底色 | 深色文字／底色 | 用途 |
 | --- | --- | --- | --- |
-| 金幣 `--color-gold` | `#d97706`／`#fef3c7` | `#fbbf24`／`rgba(251,191,36,0.15)` | 金幣、故事獎勵 |
-| 同調 `--color-attunement` | `#d97706`／`#fef3c7` | `#fbbf24`／`rgba(251,191,36,0.15)` | 同調需求 |
-| 正向 `--color-positive` | `#059669`／`#d1fae5` | `#34d399`／`rgba(52,211,153,0.15)` | 增加、成功、休整期識別 |
-| 負向 `--color-negative` | `#e11d48`／`#ffe4e6` | `#fb7185`／`rgba(251,113,133,0.15)` | 扣減、錯誤、刪除 |
-| 資訊 `--color-info` | `#0284c7`／`#e0f2fe` | `#38bdf8`／`rgba(56,189,248,0.15)` | 等級、說明、結算分區 |
+| 金幣 `--color-gold` | `#92400e`／`#fef3c7` | `#fbbf24`／`rgba(251,191,36,0.15)` | 金幣、故事獎勵 |
+| 同調 `--color-attunement` | `#92400e`／`#fef3c7` | `#fbbf24`／`rgba(251,191,36,0.15)` | 同調需求 |
+| 正向 `--color-positive` | `#047857`／`#d1fae5` | `#34d399`／`rgba(52,211,153,0.15)` | 增加、成功、休整期識別 |
+| 負向 `--color-negative` | `#be123c`／`#ffe4e6` | `#fecdd3`／`rgba(251,113,133,0.15)` | 扣減、錯誤、刪除 |
+| 資訊 `--color-info` | `#0369a1`／`#e0f2fe` | `#38bdf8`／`rgba(56,189,248,0.15)` | 等級、說明、結算分區 |
 
 多個語意色代表不同資料類型，不是任意裝飾色。增減必須同時保留正負號或文字，不能只用紅綠區別。HUD 的資源識別色與資源「本次增減」色是兩種用途。
 
@@ -81,18 +81,18 @@ StitchDesign 預設的禁用 Inter、禁用紫色、單一色彩、強制非對�
 
 | 稀有度 | 淺色 Token | 深色 Token |
 | --- | --- | --- |
-| 普通 | `#64748b` | `#a1a1aa` |
-| 非罕見 | `#16a34a` | `#4ade80` |
-| 罕見 | `#2563eb` | `#60a5fa` |
+| 普通 | `#526176` | `#b4b4be` |
+| 非罕見 | `#166534` | `#4ade80` |
+| 罕見 | `#1d4ed8` | `#60a5fa` |
 | 非常罕見 | `#9333ea` | `#c084fc` |
-| 傳奇 | `#d97706` | `#fde047` |
-| 神器 | `#dc2626` | `#f87171` |
+| 傳奇 | `#92400e` | `#fde047` |
+| 神器 | `#b91c1c` | `#fca5a5` |
 
-現況另有 [inventory.model.ts](frontend/src/app/core/models/inventory.model.ts) 的 `RARITY_COLORS`：`#9e9e9e`、`#4caf50`、`#2196f3`、`#9c27b0`、`#ff9800`、`#e53935`。倉庫篩選 chip 引用此組固定值，與全域稀有度 pill 的雙主題 token 不同。後續延伸以全域 token 為設計基準；既有兩套來源的整合列為改善項目。
+[inventory.model.ts](frontend/src/app/core/models/inventory.model.ts) 的 `RARITY_COLORS` 現在對應 `var(--rarity-...)`，不再維護固定 hex；倉庫篩選 chip 與全域 pill 共用上述雙主題 token。明度調整用於閱讀對比，保留原有稀有度色相及文字。
 
-### Material 主題的現況差異
+### Material 主題對應
 
-Material 淺色 primary 使用 `azure-palette`，深色使用 `violet-palette`；自訂元件使用上述 `--color-primary`。角色表單部分標題使用 `--mat-sys-primary`。因此現況存在兩套主色來源，不能聲稱所有 Material 按鈕已使用相同十六進位主色；後續需確認實際 computed style 再統一。
+Material 淺色 primary 沿用 `azure-palette`，深色沿用 `violet-palette`；自訂 `--color-primary` 指向 `--mat-sys-primary`，與既有 Material 主操作及焦點一致。供應商登入品牌色獨立保留。
 
 ## 3. Typography Rules — 字體與層級
 
@@ -118,10 +118,10 @@ Material 淺色 primary 使用 `azure-palette`，深色使用 `violet-palette`�
 | 元件 | 現況／延伸基準 |
 | --- | --- |
 | 卡片 | `.clean-card` 使用表面底、1px 細邊框、10px 圓角與低陰影；只讀資訊、表單分區與可點擊卡片各有用途，保留現有結構 |
-| 圓角 | `--radius-sm: 6px`、`--radius-md: 10px`、`--radius-lg: 14px`、`--radius-full: 9999px`；驗證頁卡片另用 16px |
+| 圓角 | `--radius-xs: 4px`、`--radius-sm: 6px`、`--radius-md: 10px`、`--radius-lg: 14px`、`--radius-full: 9999px`；驗證頁卡片另用 16px |
 | 陰影 | 淺色 small 為 `0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)`；深色 small 為 `0 1px 3px rgba(0,0,0,.4)`。中／大陰影用於更高層次，不新增外發光 |
 | 主要操作 | Material flat button；新增角色／冒險／物品在手機多為滿寬、44px 高。提交按鈕常見 44–46px |
-| 次要操作 | stroked／text button；取消與儲存於表單底部並排；手機分配可用寬度 |
+| 次要操作 | stroked／text button；取消與儲存於表單底部並排；手機冒險表單操作列 sticky，大字可換行，短視窗回到文件流 |
 | 刪除 | 文字或圖示按鈕配確認彈窗；語意、位置及確認內容必須清楚，與編輯分開 |
 | 輸入框 | Material outlined，使用 `mat-label` 浮動標籤，錯誤在欄位下方；保留既有 Material 行為，不強制改成另一套標籤系統 |
 | 資源卡 | 金幣、休整期、永久物品分區，表單區分冒險／故事獎勵／休整期／結算；合計是計算結果，不改為任意可編輯欄位 |
@@ -151,7 +151,7 @@ Material 淺色 primary 使用 `azure-palette`，深色使用 `violet-palette`�
 | 倉庫列表 | 永久物品 3 欄；消耗品 4 欄，含數量欄 | <=640px 卡片直排；消耗品數量定位於右上角並預留品名空間 |
 | 法律頁 | 900px | 隨可用寬度縮減，長文可捲動 |
 
-主要外距為桌機 16–24px、手機 12–16px；清單 gap 常見 10–20px，表單 gap 常見 8–14px。這些是現有慣例，尚未形成完整 spacing token。
+主要外距為桌機 16–24px、手機 12–16px；常用間距尺度為 4／8／12／16／20／24px。清單 gap 10–20px、表單 gap 8–14px 等既有例外依內容保留；目前無須新增整套 spacing token 或為純粹統一數字重構所有頁面。
 
 ### 延伸規則
 
@@ -160,14 +160,14 @@ Material 淺色 primary 使用 `azure-palette`，深色使用 `violet-palette`�
 - 響應式以內容可用空間決定，不強制把所有現有斷點改成 768px。
 - 全站禁止內容水平溢出；現有 `overflow-x: clip` 是防護，不是內容完整可見的證明。
 - `viewport-fit=cover` 與安全區變數已存在；新增貼邊操作應沿用。
-- 現況角色 HUD 在 <=600px 為單欄，且模板有等級、金幣、休整期、永久物品、靈魂幣五項。SRS 的 2×2 描述與 SCSS 註解需釐清。
+- 角色 HUD 在 <=600px 讓等級獨立一列，金幣、休整期、永久物品、靈魂幣排列成 2×2，保留五項資料；長數字與單位可分開換行。
 - 首頁置中 Hero 與現有登入／註冊入口保留；內容頁不需要新增宣傳 Hero 或標題插圖。
 
 ## 6. Motion & Interaction — 動效與互動
 
 ### 現況
 
-卡片 hover 微抬升 1–2px，`.clickable:active` 縮至 `0.985`。常見 transition 為 150–250ms；主題底色／文字轉換約 200ms，角色 Tabs 150ms。骨架使用 1.6 秒 opacity pulse；部分 hover 仍使用 `transition: all`。未在 `frontend/src` 找到 `prefers-reduced-motion` 規則。
+一般偏好下卡片 hover 微抬升 1–2px，`.clickable:active` 縮至 `0.985`。常見 transition 為 150–250ms；主題底色／文字轉換約 200ms，角色 Tabs 150ms，骨架 1.6 秒 pulse。`prefers-reduced-motion: reduce` 時停用 animation、transition、smooth scroll 及 hover／active 位移，保留靜態進度、文字與焦點。
 
 ### 延伸規則
 
@@ -204,18 +204,18 @@ Material 淺色 primary 使用 `azure-palette`，深色使用 `violet-palette`�
 
 | 項目 | 證據與影響 | 建議／後續驗證 |
 | --- | --- | --- |
-| Token 引用缺漏 | 冒險表單引用未定義的 `--text-disabled`／`--radius-xs` 且無 fallback；首頁 `--border-color`、篩選 `--color-error`、詳情 `--color-warning`／`--color-surface-variant` 依賴 fallback | 先決定是否使用現有語意 token 或補齊定義；不要把未定義名稱納入新畫面規範 |
-| 主色與稀有度兩套來源 | Material palette 與自訂 primary 不同；篩選 chip 使用固定 `RARITY_COLORS`，pill 使用雙主題 CSS token | 建立唯一語意來源與 Material 對應，驗證同頁按鈕、focus、chip、pill 在兩種主題下的一致性 |
-| 休整期識別色不一致 | 角色 HUD／冒險表單用 `--color-positive`；詳情 `.total-val.stat-downtime` 用 `--color-info` | 明確區分資源識別色和增減色；目前延伸以綠色休整期為基準，將詳情差異列入統一範圍 |
-| 部分自訂區塊仍保留淺色常數 | 倉庫數量徽章固定 `#2563eb`，delete hover 固定 `#fee2e2`；角色表單 avatar placeholder 為半透明白字；詳情來源／待補 pill fallback 為 `#eef2f7` | 使用雙主題語意值；檢查淺色占位圖、深色數量與待補標籤，不能只修一般狀態 |
-| 暗色故事獎勵覆寫作用域需確認 | 冒險列表 SCSS 以 `body.theme-dark &` 覆寫，但元件沒有宣告停用 Angular 預設樣式封裝 | 檢查編譯後選擇器／computed style 是否命中 body；優先透過既有 token 避免依賴外層選擇器。尚未確認覆寫失效 |
-| 手機全文取得依賴 Tooltip | 倉庫物品名／來源與角色名稱等採省略，並搭配 Tooltip；觸控長按可發現性較低 | 詳情／編輯頁提供全文；摘要視需要可換行或展開。確認來源、職業與完整品名有明確入口 |
-| 次要文字與焦點識別需檢查 | `--text-muted` 用於小字、備註、placeholder；全域移除 tap highlight，自訂搜尋 input 移除 outline，排序原生 select 為 opacity 0 | 深淺色逐一量測文字與底色；補足自訂按鈕及透明 select 的 focus-visible 回饋。現有搜尋容器有 focus-within，勿直接移除 |
-| 長表單操作列可達性 | 冒險表單 `.form-actions` 位於文件底部，沒有 sticky／fixed；SRS 提及 Sticky Action Footer。設定差異確認，鍵盤遮擋待實測 | 先釐清是否要求黏附儲存列；如採用，為內容、鍵盤與 safe area 預留空間，驗證最後欄位不被遮住 |
-| HUD 實作與規格落差 | 角色頁模板五項數值；<=600px SCSS 單欄，註解與 SRS 描述 2×2；手機內容因此較長 | 保留現況並確認期望，評估五項的閱讀順序與冒險列表首屏可見性，再決定是否重排 |
-| 載入骨架與成品尺寸不一致 | 角色列表骨架 avatar 為 44px 圓形，成品為 128px／手機104px圓角肖像；其他頁面混用 spinner | 列表骨架對齊真實版面與行高；提交 spinner 保留，補上明確進度文字，避免載入完成後明顯跳動 |
-| 高度與減少動態處理不足 | 首頁／驗證頁多處使用 `100vh`，root 使用 `100dvh`；法律彈窗用 85vh；未見 reduced-motion 分支 | 新版面使用動態 viewport 策略，驗證地址列及鍵盤開合；減少動態時關閉位移與骨架 pulse |
-| 字級／間距與 SRS 配色尚未同步 | SRS §9.1 記載早期 Slate Dark，現行為 Clean Light／Soft Charcoal；頁面自訂圓角、字級與按鈕高度分散 | 後續以獨立 OpenSpec change 釐清與同步；先整理常用尺度，再評估是否需要抽成 token，避免純為抽象而重構 |
+| Token 引用缺漏：已處理 | 補齊 `--text-disabled`／`--radius-xs`；首頁邊框及篩選錯誤色改用既有語意 token | 自訂設計 token 未定義引用檢查通過；詳情未使用的 source／pending pill 樣式已移除 |
+| 主色與稀有度兩套來源：已統一 | 自訂 primary 指向現有 Material primary；`RARITY_COLORS` 對應 CSS token | 同頁 chip／pill computed color 相同；沿用 azure／violet，保留稀有度文字與色相 |
+| 休整期識別色：已統一 | HUD／表單／詳情採 `--color-positive` | 資源識別維持綠色，金幣、等級與物品仍使用各自語意色 |
+| 淺色常數：已處理 | 數量、刪除 hover、avatar placeholder、升級狀態採雙主題語意值 | 檢查一般與 hover 的文字／底色；原 source／pending 樣式沒有模板引用，移除而不新增標籤 UI |
+| 暗色故事獎勵：已處理 | 移除依賴 `body.theme-dark &` 的覆寫，直接使用 gold token 及配對底色 | 已量測雙主題實際 computed style，圖示繼承文字色 |
+| 手機全文：已改善 | 倉庫品名／來源及角色頁名稱／資訊自然換行、長字可斷行 | 雙主題、五種寬度及 100%／200% 基準字級驗證；保留原生入口與獨立操作 |
+| 次要文字與焦點：已改善 | 提高 muted／secondary 及語意文字對比；列表搜尋、排序及自訂按鈕有 3px 焦點框 | 一般、選取與 hover 狀態量測至少 4.5:1；焦點檢查見第 13 節 |
+| 長表單操作列：已改善 | 冒險表單在 <=768px 採底部 sticky；<=600px 高度回到文件流；提供安全區與欄位捲動外距 | 雙主題、三種寬度及 100%／200% 字級，最後欄位與操作可達；含 34px 安全區模擬。實機鍵盤仍待驗收 |
+| HUD 規格落差：已同步 | 等級一列，四項資源 2×2，長數值及單位可換行 | 保留五項資料與原有順序，SRS 與 OpenSpec 一致 |
+| 載入骨架：已對齊 | 與成品共用 card／hero／portrait／footer；資訊列使用相同行高 | 肖像尺寸一致，載入及提交提供文字；實際長內容仍可使卡片增高 |
+| 高度與減少動態：已改善 | 首頁／驗證頁改用 dvh；法律彈窗樣式 85dvh；全域 reduced-motion 停用持續動畫與位移 | 短視窗、骨架、spinner 與卡片 hover 檢查通過；未代替實機地址列及鍵盤測試 |
+| 字級／間距與 SRS：已同步 | SRS 採現有 Clean Light／Soft Charcoal；整理常用字級、4／8／12／16／20／24px 間距與 4／6／10／14px 圓角 | 保留合理頁面例外，沒有新增僅為抽象的 spacing 系統；新的畫面／配色需求歸下一版 |
 
 ## 9. 後續驗收清單
 
@@ -235,7 +235,7 @@ Material 淺色 primary 使用 `azure-palette`，深色使用 `violet-palette`�
 - 手機布局：320／360／390／768px 的角色列表、角色冒險頁、倉庫永久物品與消耗品，共 16 組量測；指定熱區至少 44×44px，無矩形重疊或水平溢出，搜尋文字至少 16px。
 - 裁切：320／360／390／1280px，預覽寬約 232／258.39／286.59／320px；滑鼠與合成單指事件按比例換算，確認匯出 300×300，並檢查 320px 彈窗截圖。
 - 雙主題驗證頁：16 組表單／失效／登入錯誤／註冊錯誤／忘記密碼成功／重設成功檢查；受測重要文字最低對比約 4.76:1（淺色）及 5.81:1（深色）。
-- 第一批未包含的角色卡小字及卡片鍵盤導覽，已於第二批處理，見第 11 節。第 8 節 P2 項目仍待處理；iOS 鍵盤／安全區、實機手指操作與供應商 OAuth 未由本次桌機 Chromium 驗證取代。
+- 第一批未包含的角色卡小字及卡片鍵盤導覽，已於第二批處理，見第 11 節。第 8 節 P2 已於第 13、15 節完成實作；iOS 鍵盤／安全區、實機手指操作與供應商 OAuth 未由本次桌機 Chromium 驗證取代。
 
 ## 11. 第二批實作與驗證紀錄
 
@@ -251,3 +251,32 @@ Material 淺色 primary 使用 `azure-palette`，深色使用 `violet-palette`�
 - 共用提示容器依 viewport 保留外距與安全區，label 可收縮及斷長字，保留 Material 的文字區垂直捲動；94vw 寬度規則限於 Dialog panel。
 - 六種寬度（320／360／390／600／768／1280px）、明暗主題及 100%／200% 根字級，共 24 組刪除虛構角色流程已驗證，提示和關閉操作留在視窗內；實機安全區仍待驗證。
 - Change：[fix-mobile-snackbar-containment](openspec/changes/archive/2026-10-06-fix-mobile-snackbar-containment/proposal.md)；[驗證紀錄](openspec/changes/archive/2026-10-06-fix-mobile-snackbar-containment/verification.md)。
+
+## 13. P2 第一批：列表控制項焦點
+
+- Change：[improve-search-and-sort-keyboard-focus](openspec/changes/improve-search-and-sort-keyboard-focus/proposal.md)；[驗證紀錄](openspec/changes/improve-search-and-sort-keyboard-focus/verification.md)。
+- 冒險與倉庫共用焦點樣式，以可見容器框選搜尋輸入和透明排序 select；排序方向、搜尋清除、稀有度／同調篩選、清除篩選及無結果清除按鈕也顯示焦點。使用既有 Material primary，不改原生鍵盤處理。
+- 明暗主題、320／390／1280px 及兩種列表，12 組 Chromium 檢查通過：Tab 可到達、方向鍵更改排序、Enter／Space 操作按鈕，焦點框不受祖先 overflow 裁切，也不超出視窗左右。
+- 既有搜尋 focus-within、搜尋中樣式與篩選選取狀態保留；前端 production build 和 OpenSpec 驗證通過。此批未涵蓋 200% 字級、實機手機或螢幕閱讀器。
+
+## 14. 本輪 UI 改善與交付範圍
+
+使用者已確認：完成本文件的 P2 即結束 **1.2.1** 的改善範圍；往後新增的版面或配色需求列入下一個版本。開發持續在 `v1.2.1` 分支累積，沿用現有風格。完成實作與自動檢查後先交付整體驗收，再依明確指示回 main。
+
+| 階段 | 工作範圍 | 完成依據 |
+| --- | --- | --- |
+| 1. 色彩與基礎樣式 | 補齊／替換缺漏 token、統一主色與稀有度來源、休整期識別色、深色常數與故事獎勵作用域，量測次要文字對比 | 雙主題實際 computed style、文字／背景對比及典型狀態檢查；避免僅改 token 名稱 |
+| 2. 手機閱讀與操作 | 完整品名／來源入口、長表單動作列、角色 HUD 資訊密度；涉及版面選擇時先提出具體方案 | 小視窗、長內容與大字完整閱讀；儲存／取消可達且不遮住欄位；HUD 與 SRS 行為一致 |
+| 3. 載入與動態 | 骨架對齊真實卡片，整理動態 viewport 與 reduced-motion | 載入前後尺寸對照、短視窗及捲動檢查、減少動態偏好生效 |
+| 4. 整體驗收與交付 | 更新 SRS／DESIGN.md／OpenSpec，跨頁檢查明暗主題、空資料、長內容、鍵盤及手機操作 | 建置與必要功能驗證通過、使用者整體驗收後再安排回 main |
+
+各階段用 OpenSpec 追蹤規格與任務，保留驗證證據。提交、push 與回 main 依使用者當次明確指示執行；回 main 會觸發既有前端 CI/CD，因此列為整體驗收後的交付步驟。
+
+## 15. P2 完整改善與 1.2.1 驗證
+
+- Change：[complete-v1-2-1-ui-consistency](openspec/changes/complete-v1-2-1-ui-consistency/proposal.md)；[完整驗證紀錄](openspec/changes/complete-v1-2-1-ui-consistency/verification.md)。
+- 第 8 節 P2 均已有改善或確認處理：色彩／token 共用、文字對比、全文換行、手機 HUD、冒險操作列、骨架、dvh、reduced-motion 及規格同步。
+- P2 檢查使用虛構 API 的 Chrome，涵蓋明暗主題、320／360／390／768／1280px、100%／200% 根字級，以及短視窗、34px 安全區模擬、一般／選取／hover 狀態。
+- 68 組 P2 結果、32 個既有單元測試、production build 及 OpenSpec strict 檢查通過；受測文字最低對比為淺色 4.81:1／深色 4.64:1。另完成卡片、焦點及 24 組 Snackbar 回歸。
+- 前端 package／lockfile 與首頁標示為 1.2.1。使用者於 2026-10-07 完成整體驗收並授權提交、push 至 `v1.2.1`；PR 合併 main 為後續交付步驟。新的視覺提案及配色重選留到下一版。
+- 實機鍵盤／地址列／安全區與螢幕閱讀器仍需使用者驗收；未使用的法律彈窗元件只有樣式檢查，不宣稱已有可操作入口。

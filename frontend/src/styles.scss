@@ -21,33 +21,35 @@ body.theme-light {
 
   // Typography
   --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
+  --text-secondary: #475569;
+  --text-muted: #526176;
+  --text-disabled: var(--text-muted);
 
   // Primary & Functional Colors
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
-  --color-gold: #d97706;
+  --color-primary: var(--mat-sys-primary);
+  --color-primary-hover: color-mix(in srgb, var(--mat-sys-primary) 88%, var(--text-primary));
+  --color-gold: #92400e;
   --color-gold-bg: #fef3c7;
-  --color-attunement: #d97706;
+  --color-attunement: #92400e;
   --color-attunement-bg: #fef3c7;
   --color-attunement-border: rgba(217, 119, 6, 0.25);
-  --color-positive: #059669;
+  --color-positive: #047857;
   --color-positive-bg: #d1fae5;
-  --color-negative: #e11d48;
+  --color-negative: #be123c;
   --color-negative-bg: #ffe4e6;
-  --color-info: #0284c7;
+  --color-info: #0369a1;
   --color-info-bg: #e0f2fe;
 
   // D&D Item Rarity (Light Mode)
-  --rarity-common: #64748b;
-  --rarity-uncommon: #16a34a;
-  --rarity-rare: #2563eb;
+  --rarity-common: #526176;
+  --rarity-uncommon: #166534;
+  --rarity-rare: #1d4ed8;
   --rarity-very-rare: #9333ea;
-  --rarity-legendary: #d97706;
-  --rarity-artifact: #dc2626;
+  --rarity-legendary: #92400e;
+  --rarity-artifact: #b91c1c;
 
   // Spacing & Radius
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -88,12 +90,12 @@ body.theme-dark {
 
   // Typography
   --text-primary: #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  --text-secondary: #d4d4d8;
+  --text-muted: #b4b4be;
 
   // Primary & Functional Colors
-  --color-primary: #a855f7;
-  --color-primary-hover: #9333ea;
+  --color-primary: var(--mat-sys-primary);
+  --color-primary-hover: color-mix(in srgb, var(--mat-sys-primary) 88%, var(--text-primary));
   --color-gold: #fbbf24;
   --color-gold-bg: rgba(251, 191, 36, 0.15);
   --color-attunement: #fbbf24;
@@ -101,18 +103,18 @@ body.theme-dark {
   --color-attunement-border: rgba(251, 191, 36, 0.3);
   --color-positive: #34d399;
   --color-positive-bg: rgba(52, 211, 153, 0.15);
-  --color-negative: #fb7185;
+  --color-negative: #fecdd3;
   --color-negative-bg: rgba(251, 113, 133, 0.15);
   --color-info: #38bdf8;
   --color-info-bg: rgba(56, 189, 248, 0.15);
 
   // D&D Item Rarity (Dark Mode)
-  --rarity-common: #a1a1aa;
+  --rarity-common: #b4b4be;
   --rarity-uncommon: #4ade80;
   --rarity-rare: #60a5fa;
   --rarity-very-rare: #c084fc;
   --rarity-legendary: #fde047;
-  --rarity-artifact: #f87171;
+  --rarity-artifact: #fca5a5;
 
   // Shadows
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -291,6 +293,26 @@ a.navigation-card {
   border-radius: var(--radius-sm);
 }
 
+// 自訂列表控制項：將透明選單／無框輸入的焦點顯示在可見容器。
+:is(app-adventure-list, app-inventory-list) {
+  .search-bar:has(.search-input:focus-visible),
+  .select-section:has(.invisible-native-select:focus-visible),
+  .capsule-section.button-section:focus-visible,
+  .search-clear-btn:focus-visible,
+  .filter-chip:focus-visible,
+  .filter-chip-clear:focus-visible,
+  .link-btn:focus-visible {
+    outline: 3px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  .select-section:has(.invisible-native-select:focus-visible),
+  .capsule-section.button-section:focus-visible,
+  .search-clear-btn:focus-visible {
+    outline-offset: -3px;
+  }
+}
+
 // 數值增減標籤
 .delta-tag {
   display: inline-flex;
@@ -400,6 +422,58 @@ a.navigation-card {
   background-color: var(--bg-surface-elevated);
   border-radius: var(--radius-sm);
   animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .clickable:is(:hover, :active),
+  .char-card:hover,
+  .chronicle-card:hover .chevron-icon,
+  .theme-toggle-btn:hover,
+  .btn-hero-action:hover,
+  .feature-card:hover,
+  .btn-return:hover,
+  .official-policy-btn:hover,
+  .policy-link:hover {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  app-adventure-form {
+    .page-container .form-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      background: var(--bg-canvas);
+      border-top: 1px solid var(--border-medium);
+      padding-bottom: max(16px, var(--safe-area-bottom));
+      flex-wrap: wrap;
+
+      button.mat-mdc-button-base {
+        flex: 1 1 8rem;
+        min-width: min(100%, 8rem);
+        min-height: 46px;
+      }
+    }
+
+    :is(input, textarea, mat-select) {
+      scroll-margin-block: 80px 120px;
+    }
+  }
+}
+
+@media (max-width: 768px) and (max-height: 600px) {
+  app-adventure-form .page-container .form-actions {
+    position: static;
+  }
 }
 
 /* ==========================================================================

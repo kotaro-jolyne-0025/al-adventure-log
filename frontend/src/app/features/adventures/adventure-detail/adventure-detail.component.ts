@@ -10,7 +10,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
-import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS, RARITY_COLORS } from '../../../core/models/inventory.model';
+import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
 import { formatClassLevels } from '../../../core/models/dnd-classes';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import {
@@ -80,7 +80,6 @@ export class AdventureDetailComponent implements OnInit {
 
   readonly rarityLabels: Record<string, string> = ITEM_RARITY_LABELS;
   readonly categoryLabels = ITEM_CATEGORY_LABELS;
-  readonly rarityColors: Record<string, string> = RARITY_COLORS;
 
   private characterId!: string;
   private entryId!: string;
