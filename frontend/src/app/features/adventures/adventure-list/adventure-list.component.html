@@ -65,7 +65,8 @@
 
   <!-- Loading Skeletons -->
   @if (isLoading()) {
-  <div class="timeline-container">
+  <p role="status">正在載入冒險紀錄…</p>
+  <div class="timeline-container" aria-hidden="true">
     @for (item of [1, 2, 3]; track $index) {
     <div class="chronicle-card clean-card">
       <div class="skeleton-box" style="width: 40%; height: 16px; margin-bottom: 12px;"></div>
@@ -106,7 +107,9 @@
   @if (!isLoading() && entries().length > 0) {
   <div class="timeline-container">
     @for (row of visibleEntries(); track row.id) {
-    <div class="chronicle-card clean-card clickable" (click)="onViewEntry(row.id)">
+    <a class="chronicle-card clean-card clickable navigation-card"
+      [routerLink]="['/characters', characterId, 'adventures', row.id]"
+      [attr.aria-label]="'查看冒險：' + (row.adventureName || row.adventureCode || '冒險紀錄')">
 
       <!-- Card Top Bar -->
       <div class="card-meta-bar">
@@ -189,7 +192,7 @@
       </p>
       }
 
-    </div>
+    </a>
     }
   </div>
   @if (hasMoreEntries()) {

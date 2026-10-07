@@ -3,6 +3,7 @@ import { Component, ElementRef, Inject, OnInit, ViewChild, signal } from '@angul
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import {
   LucideCrop,
@@ -24,6 +25,7 @@ export interface AvatarCropperDialogData {
     MatDialogModule,
     MatButtonModule,
     MatSliderModule,
+    MatTooltipModule,
     LucideCrop,
     LucideZoomOut,
     LucideZoomIn,
@@ -53,6 +55,7 @@ export interface AvatarCropperDialogData {
             (touchstart)="onTouchStart($event)"
             (touchmove)="onTouchMove($event)"
             (touchend)="onTouchEnd()"
+            (touchcancel)="onTouchEnd()"
             (wheel)="onWheel($event)"
           ></canvas>
         </div>
@@ -69,6 +72,7 @@ export interface AvatarCropperDialogData {
             (click)="resetTransform()"
             matTooltip="重設位置與縮放"
             class="btn-reset"
+            aria-label="重設位置與縮放"
           >
             <svg lucideRotateCcw [size]="20"></svg>
           </button>
@@ -90,6 +94,7 @@ export interface AvatarCropperDialogData {
         display: flex;
         flex-direction: column;
         user-select: none;
+        min-width: 0;
       }
 
       .dialog-title {
@@ -126,8 +131,10 @@ export interface AvatarCropperDialogData {
 
       .canvas-wrapper {
         position: relative;
-        width: 320px;
-        height: 320px;
+        width: 100%;
+        max-width: 320px;
+        aspect-ratio: 1;
+        flex-shrink: 0;
         border-radius: 12px;
         overflow: hidden;
         background: #0f172a;
@@ -140,8 +147,9 @@ export interface AvatarCropperDialogData {
 
         canvas {
           display: block;
-          width: 320px;
-          height: 320px;
+          width: 100%;
+          height: 100%;
+          touch-action: none;
         }
       }
 
@@ -162,6 +170,7 @@ export interface AvatarCropperDialogData {
 
         .zoom-slider {
           flex: 1;
+          min-width: 0;
         }
 
         .btn-reset {
@@ -175,6 +184,12 @@ export interface AvatarCropperDialogData {
       .dialog-actions {
         padding: 8px 24px 16px;
         border-top: 1px solid var(--border-subtle);
+      }
+
+      @media (max-width: 768px) {
+        .dialog-actions button {
+          min-height: 44px;
+        }
       }
     `,
   ],
@@ -264,15 +279,17 @@ export class AvatarCropperDialogComponent implements OnInit {
   }
 
   protected onMouseDown(e: MouseEvent): void {
+    const point = this.getCanvasPoint(e.clientX, e.clientY);
     this.isDragging = true;
-    this.startDragX = e.clientX - this.offsetX;
-    this.startDragY = e.clientY - this.offsetY;
+    this.startDragX = point.x - this.offsetX;
+    this.startDragY = point.y - this.offsetY;
   }
 
   protected onMouseMove(e: MouseEvent): void {
     if (!this.isDragging) return;
-    this.offsetX = e.clientX - this.startDragX;
-    this.offsetY = e.clientY - this.startDragY;
+    const point = this.getCanvasPoint(e.clientX, e.clientY);
+    this.offsetX = point.x - this.startDragX;
+    this.offsetY = point.y - this.startDragY;
     this.draw();
   }
 
@@ -282,22 +299,33 @@ export class AvatarCropperDialogComponent implements OnInit {
 
   protected onTouchStart(e: TouchEvent): void {
     if (e.touches.length === 1) {
+      const point = this.getCanvasPoint(e.touches[0].clientX, e.touches[0].clientY);
       this.isDragging = true;
-      this.startDragX = e.touches[0].clientX - this.offsetX;
-      this.startDragY = e.touches[0].clientY - this.offsetY;
+      this.startDragX = point.x - this.offsetX;
+      this.startDragY = point.y - this.offsetY;
     }
   }
 
   protected onTouchMove(e: TouchEvent): void {
     if (!this.isDragging || e.touches.length !== 1) return;
     e.preventDefault();
-    this.offsetX = e.touches[0].clientX - this.startDragX;
-    this.offsetY = e.touches[0].clientY - this.startDragY;
+    const point = this.getCanvasPoint(e.touches[0].clientX, e.touches[0].clientY);
+    this.offsetX = point.x - this.startDragX;
+    this.offsetY = point.y - this.startDragY;
     this.draw();
   }
 
   protected onTouchEnd(): void {
     this.isDragging = false;
+  }
+
+  private getCanvasPoint(clientX: number, clientY: number): { x: number; y: number } {
+    const canvas = this.canvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) * canvas.width / rect.width,
+      y: (clientY - rect.top) * canvas.height / rect.height,
+    };
   }
 
   protected onWheel(e: WheelEvent): void {

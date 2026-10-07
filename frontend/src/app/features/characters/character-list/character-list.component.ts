@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 
@@ -20,6 +20,7 @@ import { LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus } 
   selector: 'app-character-list',
   standalone: true,
   imports: [
+    RouterLink,
     MatCardModule,
     MatButtonModule,
     MatChipsModule,
@@ -63,10 +64,6 @@ export class CharacterListComponent implements OnInit {
   protected onEditCharacter(event: Event, id: string): void {
     event.stopPropagation();
     this.router.navigate(['/characters', id, 'edit']);
-  }
-
-  protected onViewCharacter(id: string): void {
-    this.router.navigate(['/characters', id, 'adventures']);
   }
 
   protected onDeleteCharacter(event: Event, character: Character): void {

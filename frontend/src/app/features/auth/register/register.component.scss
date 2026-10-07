@@ -2,16 +2,18 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 120px);
+  min-height: calc(100dvh - 120px);
   padding: 1.5rem;
 
   @media (max-width: 480px) {
     padding: 1rem 0.75rem;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100dvh - 80px);
   }
 }
 
 .auth-card {
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
   width: 100%;
   max-width: 440px;
   border-radius: 16px;
@@ -46,7 +48,7 @@
 
   mat-card-subtitle {
     font-size: 0.9rem;
-    color: #666;
+    color: var(--text-secondary);
   }
 }
 
@@ -60,8 +62,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: #fee2e2;
-  color: #b91c1c;
+  background-color: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
   padding: 0.75rem 1rem;
   border-radius: 8px;
   font-size: 0.875rem;
@@ -101,7 +103,7 @@
       background: none;
       border: none;
       padding: 0;
-      color: var(--color-primary);
+      color: var(--mat-sys-primary);
       text-decoration: underline;
       font-size: 0.75rem;
       font-weight: 600;
@@ -122,5 +124,5 @@
   align-items: center;
   margin-top: 1rem;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text-secondary);
 }

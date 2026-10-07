@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -32,6 +32,7 @@ export type AdventureSortField = 'playDate' | 'createdAt';
   selector: 'app-adventure-list',
   standalone: true,
   imports: [
+    RouterLink,
     CommonModule,
     DatePipe,
     MatButtonModule,
@@ -211,10 +212,6 @@ export class AdventureListComponent implements OnInit {
 
   protected onAddEntry(): void {
     this.router.navigate(['/characters', this.characterId, 'adventures', 'new']);
-  }
-
-  protected onViewEntry(entryId: string): void {
-    this.router.navigate(['/characters', this.characterId, 'adventures', entryId]);
   }
 
   protected formatGoldChange(entry: AdventureEntry): string | null {

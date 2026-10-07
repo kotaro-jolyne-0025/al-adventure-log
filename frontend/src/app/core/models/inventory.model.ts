@@ -28,12 +28,12 @@ export const ITEM_RARITY_LABELS: Record<ItemRarity, string> = {
 };
 
 export const RARITY_COLORS: Record<ItemRarity, string> = {
-  COMMON: '#9e9e9e',
-  UNCOMMON: '#4caf50',
-  RARE: '#2196f3',
-  VERY_RARE: '#9c27b0',
-  LEGENDARY: '#ff9800',
-  ARTIFACT: '#e53935',
+  COMMON: 'var(--rarity-common)',
+  UNCOMMON: 'var(--rarity-uncommon)',
+  RARE: 'var(--rarity-rare)',
+  VERY_RARE: 'var(--rarity-very-rare)',
+  LEGENDARY: 'var(--rarity-legendary)',
+  ARTIFACT: 'var(--rarity-artifact)',
 };
 
 export interface InventoryItem {

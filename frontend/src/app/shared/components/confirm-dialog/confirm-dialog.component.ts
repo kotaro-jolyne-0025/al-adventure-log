@@ -28,6 +28,11 @@ export interface ConfirmDialogData {
     </mat-dialog-actions>
   `,
   styles: [`
+    mat-dialog-content p {
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+    }
+
     .dialog-actions {
       padding: 0.75rem 1.5rem 1.25rem;
       gap: 0.5rem;
@@ -37,7 +42,7 @@ export interface ConfirmDialogData {
 
         button {
           flex: 1;
-          height: 42px;
+          min-height: 44px;
         }
       }
     }

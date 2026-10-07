@@ -610,7 +610,7 @@
         } @else {
         <svg lucideSave [size]="18" class="btn-icon"></svg>
         }
-        {{ isEditMode() ? '儲存變更' : '新增紀錄' }}
+        {{ isSaving() ? '正在儲存…' : (isEditMode() ? '儲存變更' : '新增紀錄') }}
       </button>
     </div>
 

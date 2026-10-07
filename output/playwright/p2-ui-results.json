@@ -1,0 +1,395 @@
+[
+  {
+    "check": "light-inventory",
+    "samples": 46,
+    "minimumContrast": 4.807098661029473
+  },
+  {
+    "check": "light-selected-chip",
+    "samples": 1,
+    "minimumContrast": 6.674197599743934
+  },
+  {
+    "check": "light-quantities",
+    "samples": 12,
+    "minimumContrast": 5.171155477170551
+  },
+  {
+    "check": "light-inventory-hover",
+    "samples": 18,
+    "minimumContrast": 4.807098661029473
+  },
+  {
+    "check": "light-adventures",
+    "samples": 20,
+    "minimumContrast": 4.835445678549616
+  },
+  {
+    "check": "light-detail",
+    "samples": 21,
+    "minimumContrast": 5.005785463403848
+  },
+  {
+    "check": "light-avatar-placeholder",
+    "samples": 1,
+    "minimumContrast": 5.756038845672054
+  },
+  {
+    "check": "light-character-delete-hover",
+    "samples": 1,
+    "minimumContrast": 5.235241359842191
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 320,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 320,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 360,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 360,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 390,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 390,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 768,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 768,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 1280,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "light",
+    "width": 1280,
+    "scale": 2
+  },
+  {
+    "check": "dark-inventory",
+    "samples": 46,
+    "minimumContrast": 4.875014316147421
+  },
+  {
+    "check": "dark-selected-chip",
+    "samples": 1,
+    "minimumContrast": 9.951315593855226
+  },
+  {
+    "check": "dark-quantities",
+    "samples": 12,
+    "minimumContrast": 5.263104954615255
+  },
+  {
+    "check": "dark-inventory-hover",
+    "samples": 18,
+    "minimumContrast": 5.07894012240132
+  },
+  {
+    "check": "dark-adventures",
+    "samples": 20,
+    "minimumContrast": 4.875014316147421
+  },
+  {
+    "check": "dark-detail",
+    "samples": 21,
+    "minimumContrast": 4.639101303210005
+  },
+  {
+    "check": "dark-avatar-placeholder",
+    "samples": 1,
+    "minimumContrast": 5.07894012240132
+  },
+  {
+    "check": "dark-character-delete-hover",
+    "samples": 1,
+    "minimumContrast": 6.0861887164650685
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 320,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 320,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 360,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 360,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 390,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 390,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 768,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 768,
+    "scale": 2
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 1280,
+    "scale": 1
+  },
+  {
+    "check": "long-content",
+    "theme": "dark",
+    "width": 1280,
+    "scale": 2
+  },
+  {
+    "check": "sticky-layout",
+    "width": 320,
+    "theme": "light",
+    "scale": 1
+  },
+  {
+    "check": "sticky-layout",
+    "width": 320,
+    "theme": "light",
+    "scale": 2
+  },
+  {
+    "check": "sticky-layout",
+    "width": 320,
+    "theme": "dark",
+    "scale": 1
+  },
+  {
+    "check": "sticky-layout",
+    "width": 320,
+    "theme": "dark",
+    "scale": 2
+  },
+  {
+    "check": "sticky-layout",
+    "width": 390,
+    "theme": "light",
+    "scale": 1
+  },
+  {
+    "check": "sticky-layout",
+    "width": 390,
+    "theme": "light",
+    "scale": 2
+  },
+  {
+    "check": "sticky-layout",
+    "width": 390,
+    "theme": "dark",
+    "scale": 1
+  },
+  {
+    "check": "sticky-layout",
+    "width": 390,
+    "theme": "dark",
+    "scale": 2
+  },
+  {
+    "check": "sticky-layout",
+    "width": 768,
+    "theme": "light",
+    "scale": 1
+  },
+  {
+    "check": "sticky-layout",
+    "width": 768,
+    "theme": "light",
+    "scale": 2
+  },
+  {
+    "check": "sticky-layout",
+    "width": 768,
+    "theme": "dark",
+    "scale": 1
+  },
+  {
+    "check": "sticky-layout",
+    "width": 768,
+    "theme": "dark",
+    "scale": 2
+  },
+  {
+    "check": "form-actions",
+    "sticky": true,
+    "shortViewport": "static",
+    "savingLabel": true
+  },
+  {
+    "check": "skeleton",
+    "viewport": 320,
+    "width": 90,
+    "height": 90,
+    "skeletonCardHeight": 201.515625,
+    "realCardHeight": 201.515625,
+    "reducedMotion": true
+  },
+  {
+    "check": "skeleton",
+    "viewport": 360,
+    "width": 90,
+    "height": 90,
+    "skeletonCardHeight": 201.515625,
+    "realCardHeight": 201.515625,
+    "reducedMotion": true
+  },
+  {
+    "check": "skeleton",
+    "viewport": 390,
+    "width": 104,
+    "height": 104,
+    "skeletonCardHeight": 201.515625,
+    "realCardHeight": 201.515625,
+    "reducedMotion": true
+  },
+  {
+    "check": "skeleton",
+    "viewport": 768,
+    "width": 128,
+    "height": 128,
+    "skeletonCardHeight": 231,
+    "realCardHeight": 231,
+    "reducedMotion": true
+  },
+  {
+    "check": "skeleton",
+    "viewport": 1280,
+    "width": 128,
+    "height": 128,
+    "skeletonCardHeight": 217,
+    "realCardHeight": 217,
+    "reducedMotion": true
+  },
+  {
+    "check": "saving-label",
+    "path": "/characters/new",
+    "disabled": true
+  },
+  {
+    "check": "saving-label",
+    "path": "/characters/preview/inventory/new",
+    "disabled": true
+  },
+  {
+    "check": "short-viewport",
+    "path": "/",
+    "theme": "light"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/login",
+    "theme": "light"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/register",
+    "theme": "light"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/forgot-password",
+    "theme": "light"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/reset-password",
+    "theme": "light"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/legal",
+    "theme": "light"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/",
+    "theme": "dark"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/login",
+    "theme": "dark"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/register",
+    "theme": "dark"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/forgot-password",
+    "theme": "dark"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/reset-password",
+    "theme": "dark"
+  },
+  {
+    "check": "short-viewport",
+    "path": "/legal",
+    "theme": "dark"
+  }
+]
