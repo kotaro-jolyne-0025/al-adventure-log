@@ -541,6 +541,11 @@ mat-snack-bar-container.mat-mdc-snack-bar-container {
     overflow-wrap: anywhere;
     white-space: normal;
   }
+
+  button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 // 底部安全區域輔助類別

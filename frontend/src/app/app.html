@@ -26,7 +26,7 @@
 
     <!-- 已登入狀態 -->
     @if (authService.currentUser(); as user) {
-      <button mat-button [matMenuTriggerFor]="userMenu" class="user-pill-btn">
+      <button mat-button [matMenuTriggerFor]="userMenu" class="user-pill-btn" aria-label="使用者選單">
         <svg lucideUser [size]="20" class="user-icon"></svg>
         <span class="user-name">{{ user.displayName }}</span>
         <svg lucideChevronDown [size]="20" class="dropdown-icon"></svg>
@@ -51,6 +51,8 @@
           <span>版權與免責聲明</span>
         </button>
         <mat-divider></mat-divider>
+        <ng-container *ngTemplateOutlet="updateMenuItems"></ng-container>
+        <mat-divider></mat-divider>
         <button mat-menu-item (click)="logout()" class="logout-menu-item">
           <svg lucideLogOut [size]="20" class="logout-icon"></svg>
           <span class="logout-text">登出系統</span>
@@ -64,9 +66,26 @@
         <a mat-button routerLink="/login" class="btn-login-nav">登入</a>
         <a mat-flat-button color="primary" routerLink="/register" class="btn-register-nav">註冊帳號</a>
       </div>
+      <button mat-icon-button [matMenuTriggerFor]="guestMenu" class="more-menu-btn" aria-label="更多選單">
+        <svg lucideEllipsisVertical [size]="20"></svg>
+      </button>
+      <mat-menu #guestMenu="matMenu" xPosition="before" class="app-user-menu">
+        <ng-container *ngTemplateOutlet="updateMenuItems"></ng-container>
+      </mat-menu>
     }
   </mat-toolbar>
 </header>
+
+<ng-template #updateMenuItems>
+  <div class="menu-version">目前版本 v{{ version }}</div>
+  <button mat-menu-item type="button" (click)="checkForUpdates()"
+    [disabled]="!appUpdate.enabled || appUpdate.checking()">
+    {{ appUpdate.checking() ? '檢查中…' : '檢查更新' }}
+  </button>
+  @if (appUpdate.needsReload()) {
+    <button mat-menu-item type="button" (click)="confirmUpdate()">重新整理以更新</button>
+  }
+</ng-template>
 
 <main class="app-content">
   <router-outlet />

@@ -1,15 +1,18 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 
 import { RouterOutlet, RouterLink, Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs';
+import { filter, take } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { SwUpdate } from '@angular/service-worker';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { AppUpdateService } from './core/services/app-update.service';
+import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
+import { version } from '../../package.json';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
 import { EditProfileDialogComponent } from './features/auth/edit-profile-dialog/edit-profile-dialog.component';
@@ -23,6 +26,7 @@ import {
   LucideIdCard,
   LucideGavel,
   LucideLogOut,
+  LucideEllipsisVertical,
 } from '@lucide/angular';
 
 @Component({
@@ -31,13 +35,13 @@ import {
   imports: [
     RouterOutlet,
     RouterLink,
+    NgTemplateOutlet,
     MatToolbarModule,
     MatButtonModule,
     MatMenuModule,
     MatDividerModule,
     MatDialogModule,
     MatTooltipModule,
-    MatSnackBarModule,
     LucideArrowLeft,
     LucideSun,
     LucideMoon,
@@ -47,6 +51,7 @@ import {
     LucideIdCard,
     LucideGavel,
     LucideLogOut,
+    LucideEllipsisVertical,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -56,8 +61,10 @@ export class App {
   readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
-  private readonly swUpdate = inject(SwUpdate);
   private readonly snackBar = inject(MatSnackBar);
+  readonly appUpdate = inject(AppUpdateService);
+  readonly version = version;
+  private updateDialogOpen = false;
 
   // 判斷是否處於角色內頁（非角色列表、非登入註冊頁面）
   readonly showBack = signal(false);
@@ -74,23 +81,49 @@ export class App {
           url.includes('/inventory');
         this.showBack.set(isDetailPage);
       });
+    effect(() => {
+      if (this.appUpdate.needsReload()) this.showUpdateNotice();
+    });
+  }
 
-    // 監聽 PWA Service Worker 新版本通知
-    if (this.swUpdate.isEnabled) {
-      this.swUpdate.versionUpdates.pipe(
-        filter(evt => evt.type === 'VERSION_READY')
-      ).subscribe(() => {
-        const snackRef = this.snackBar.open('發現新版本！是否立即重新整理以載入最新內容？', '重新整理', {
-          duration: 0, // 不自動關閉
-          horizontalPosition: 'right',
-          verticalPosition: 'bottom'
-        });
-        
-        snackRef.onAction().subscribe(() => {
-          document.location.reload();
-        });
+  async checkForUpdates(): Promise<void> {
+    const alreadyReady = this.appUpdate.needsReload();
+    await this.appUpdate.checkForUpdates();
+    if (this.appUpdate.needsReload()) {
+      if (alreadyReady) this.showUpdateNotice();
+    } else {
+      this.snackBar.open(this.appUpdate.message(), '關閉', {
+        duration: 3000, verticalPosition: 'top', horizontalPosition: 'right',
       });
     }
+  }
+
+  private showUpdateNotice(): void {
+    const message = this.appUpdate.reloadRequired()
+      ? '目前版本需要重新載入，請先儲存資料。'
+      : '新版已準備好，可重新整理以更新。';
+    this.snackBar.open(message, '重新整理', {
+      duration: 8000, verticalPosition: 'top', horizontalPosition: 'right',
+    }).onAction().pipe(take(1)).subscribe(() => this.confirmUpdate());
+  }
+
+  confirmUpdate(): void {
+    if (!this.appUpdate.needsReload() || this.updateDialogOpen) return;
+    this.updateDialogOpen = true;
+    this.dialog.open(ConfirmDialogComponent, {
+      width: '480px',
+      maxWidth: '92vw',
+      autoFocus: 'button',
+      data: {
+        title: '確認重新整理',
+        message: '重新整理會清除尚未儲存的輸入。請先儲存正在編輯的資料，再重新整理。',
+        confirmText: '重新整理',
+        cancelText: '繼續使用',
+      },
+    }).afterClosed().pipe(take(1)).subscribe(confirmed => {
+      this.updateDialogOpen = false;
+      if (confirmed === true) this.appUpdate.reload();
+    });
   }
 
   goBack(): void {
