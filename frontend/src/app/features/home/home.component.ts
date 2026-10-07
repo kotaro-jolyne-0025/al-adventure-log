@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../../core/services/auth.service';
+import { version } from '../../../../package.json';
 
 @Component({
   selector: 'app-home',
@@ -13,5 +14,6 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrl: './home.component.scss',
 })
 export class HomeComponent {
+  readonly version = version;
   readonly authService = inject(AuthService);
 }
