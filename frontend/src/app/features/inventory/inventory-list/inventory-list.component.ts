@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatCardModule } from '@angular/material/card';
@@ -57,6 +57,7 @@ const RARITY_WEIGHT: Record<string, number> = {
   selector: 'app-inventory-list',
   standalone: true,
   imports: [
+    RouterLink,
     CommonModule,
     MatTabsModule,
     MatCardModule,
@@ -350,7 +351,7 @@ export class InventoryListComponent implements OnInit {
 
 
   protected getRarityColor(item: InventoryItem): string {
-    return item.rarity ? this.rarityColors[item.rarity] : '#9e9e9e';
+    return item.rarity ? this.rarityColors[item.rarity] : 'var(--rarity-common)';
   }
 
   protected getRarityLabel(item: InventoryItem): string {

@@ -21,7 +21,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { CharacterService } from '../../../core/services/character.service';
 import { DND_CLASSES, formatClassLevels, parseClassLevels } from '../../../core/models/dnd-classes';
-import { Character, CharacterRequest } from '../../../core/models/character.model';
+import { Character, CharacterBaselinePreview, CharacterRequest } from '../../../core/models/character.model';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { AvatarCropperDialogComponent } from '../avatar-cropper-dialog/avatar-cropper-dialog.component';
 import {
@@ -206,6 +207,8 @@ export class CharacterFormComponent implements OnInit {
   }
 
   protected onSubmit(): void {
+    if (this.isSaving()) return;
+
     if (this.isEditMode()) {
       // 編輯模式下僅驗證基本欄位
       const basicValid = this.form.get('characterName')!.valid && this.form.get('race')!.valid
@@ -242,32 +245,23 @@ export class CharacterFormComponent implements OnInit {
 
     if (this.isEditMode() && this.characterId) {
       const baselineChanged = this.loadedCharacter != null && (
-        req.initialClassesString !== (this.loadedCharacter.initialClassesString ?? this.loadedCharacter.currentClassesString ?? null)
+        this.normalizedClasses(req.initialClassesString) !== this.normalizedClasses(
+          this.loadedCharacter.initialClassesString || this.loadedCharacter.currentClassesString)
         || Number(req.initialGold) !== Number(this.loadedCharacter.initialGold ?? 0)
         || Number(req.initialDowntime) !== Number(this.loadedCharacter.initialDowntime ?? 0)
       );
       if (this.hasAdventureEntries() && baselineChanged) {
         this.characterService.previewOpeningBaseline(this.characterId, req).subscribe({
           next: preview => {
-            const current = this.loadedCharacter!;
-            const message = [
-              '修正開卡資料後，角色目前狀態將重新計算：',
-              `職業：${formatClassLevels(current.currentClassesString) || '無'} → ${formatClassLevels(preview.currentClassesString) || '無'}`,
-              `金幣：${current.currentGold ?? 0} → ${preview.currentGold}`,
-              `休整期：${current.currentDowntime ?? 0} 天 → ${preview.currentDowntime} 天`,
-              '',
-              '既有冒險快照不會改動；後續冒險仍依日期前的快照帶入起始值。若舊快照不正確，請另行逐筆修正該冒險。倉庫物品不會改動。',
-              '',
-              '要儲存這項修正嗎？',
-            ].join('\n');
-            if (window.confirm(message)) this.saveCharacter(req);
-            else this.isSaving.set(false);
+            this.confirmOpeningBaseline(req, preview);
           },
           error: () => {
             this.isSaving.set(false);
             this.snackBar.open('無法預覽修正結果，資料尚未儲存', '關閉', { duration: 3000 });
           },
         });
+      } else if (baselineChanged) {
+        this.confirmOpeningBaseline(req);
       } else {
         this.saveCharacter(req);
       }
@@ -285,11 +279,48 @@ export class CharacterFormComponent implements OnInit {
     }
   }
 
+  private normalizedClasses(value?: string | null): string {
+    const levels = new Map<string, number>();
+    for (const { className, level } of parseClassLevels(value)) {
+      levels.set(className, (levels.get(className) ?? 0) + level);
+    }
+    return JSON.stringify([...levels].sort(([a], [b]) => a.localeCompare(b)));
+  }
+
+  private confirmOpeningBaseline(req: CharacterRequest, preview?: CharacterBaselinePreview): void {
+    const message = [
+      '你已修改開卡值。儲存後會重新計算角色目前值；既有冒險及倉庫物品不會自動修改。',
+    ];
+    if (preview) {
+      const current = this.loadedCharacter!;
+      message.push(
+        '',
+        '重新計算後的角色目前值：',
+        `職業：${formatClassLevels(current.currentClassesString) || '無'} → ${formatClassLevels(preview.currentClassesString) || '無'}`,
+        `金幣：${current.currentGold ?? 0} 金 → ${preview.currentGold} 金`,
+        `休整期：${current.currentDowntime ?? 0} 天 → ${preview.currentDowntime} 天`,
+      );
+    }
+    this.dialog.open(ConfirmDialogComponent, {
+      width: '480px',
+      maxWidth: '92vw',
+      autoFocus: 'button',
+      data: {
+        title: '確認修改開卡值',
+        message: message.join('\n'),
+        confirmText: '確認儲存',
+        cancelText: '繼續編輯',
+      },
+    }).afterClosed().subscribe((confirmed: boolean | undefined) => {
+      if (confirmed === true) this.saveCharacter(req);
+      else this.isSaving.set(false);
+    });
+  }
+
   private saveCharacter(req: CharacterRequest): void {
     if (this.characterId) this.characterService.update(this.characterId, req).subscribe({
         next: (updated) => {
-          this.snackBar.open(this.hasAdventureEntries()
-            ? '角色與開卡基準已更新；冒險快照維持不變' : '角色資料已更新', '關閉', { duration: 3000 });
+          this.snackBar.open('角色資料已更新', '關閉', { duration: 3000 });
           this.router.navigate(['/characters', updated.id, 'adventures']);
         },
         error: () => {

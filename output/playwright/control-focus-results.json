@@ -1,0 +1,146 @@
+[
+  {
+    "width": 320,
+    "theme": "light",
+    "page": "adventures",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(0, 92, 187)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "page": "inventory",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(0, 92, 187)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "page": "adventures",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(213, 186, 255)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "page": "inventory",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(213, 186, 255)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "page": "adventures",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(0, 92, 187)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "page": "inventory",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(0, 92, 187)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "page": "adventures",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(213, 186, 255)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "page": "inventory",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(213, 186, 255)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "page": "adventures",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(0, 92, 187)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "page": "inventory",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(0, 92, 187)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "page": "adventures",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(213, 186, 255)",
+      "visible": true,
+      "contained": true
+    }
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "page": "inventory",
+    "focus": {
+      "style": "solid",
+      "width": 3,
+      "color": "rgb(213, 186, 255)",
+      "visible": true,
+      "contained": true
+    }
+  }
+]

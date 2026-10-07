@@ -47,7 +47,7 @@ import { LucideCircleAlert } from '@lucide/angular';
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: calc(100vh - 120px);
+        min-height: calc(100dvh - 120px);
         padding: 1.5rem;
       }
       .callback-card {

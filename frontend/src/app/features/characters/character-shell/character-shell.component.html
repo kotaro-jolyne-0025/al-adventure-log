@@ -1,6 +1,7 @@
 @if (isLoading()) {
   <div class="loading-wrapper">
     <mat-spinner diameter="48"></mat-spinner>
+    <p role="status">正在載入角色資料…</p>
   </div>
 }
 
@@ -68,7 +69,7 @@
             <span class="hud-label" matTooltip="Gold">金幣</span>
           </div>
           <span class="hud-value stat-gold">
-            {{ (character()!.currentGold ?? 0) | number:'1.0-2' }} <small class="unit">金</small>
+            <span class="hud-number">{{ (character()!.currentGold ?? 0) | number:'1.0-2' }}</span> <small class="unit">金</small>
           </span>
         </div>
 
@@ -78,7 +79,7 @@
             <span class="hud-label" matTooltip="Downtime">休整期</span>
           </div>
           <span class="hud-value stat-downtime">
-            {{ character()!.currentDowntime ?? 0 }} <small class="unit">天</small>
+            <span class="hud-number">{{ character()!.currentDowntime ?? 0 }}</span> <small class="unit">天</small>
           </span>
         </div>
 
@@ -88,7 +89,7 @@
             <span class="hud-label" matTooltip="Permanent Magic Items">永久性魔法物品</span>
           </div>
           <span class="hud-value stat-magic">
-            {{ character()!.currentMagicItems ?? 0 }} <small class="unit">件</small>
+            <span class="hud-number">{{ character()!.currentMagicItems ?? 0 }}</span> <small class="unit">件</small>
           </span>
         </div>
 
@@ -98,7 +99,7 @@
             <span class="hud-label">靈魂幣</span>
           </div>
           <span class="hud-value stat-soul">
-            {{ character()!.soulCoins ?? 0 }} <small class="unit">枚</small>
+            <span class="hud-number">{{ character()!.soulCoins ?? 0 }}</span> <small class="unit">枚</small>
           </span>
         </div>
 
