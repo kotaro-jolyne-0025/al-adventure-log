@@ -4,6 +4,8 @@
 
 🌐 **線上使用：[aladvlog.com](https://aladvlog.com/)**
 
+版本與發布流程見 [VERSIONING.md](VERSIONING.md)，更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 技術選型
 
 | 層級 | 技術 | 部署位置 |
