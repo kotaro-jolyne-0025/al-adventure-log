@@ -70,6 +70,8 @@ body.theme-light {
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
+  --page-safe-left: var(--safe-area-left);
+  --page-safe-right: var(--safe-area-right);
 
   // Fonts
   --font-family-base: 'Inter', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -515,14 +517,41 @@ a.navigation-card {
     min-height: 48px;
   }
 
-  // Material Dialog 小螢幕自適應寬度
-  .cdk-overlay-pane.mat-mdc-dialog-panel {
-    max-width: 94vw !important;
+}
+
+// Dialogs use the visible area, including a keyboard-shortened viewport.
+.cdk-global-overlay-wrapper:has(.mat-mdc-dialog-panel) {
+  top: var(--app-visible-top, 0px);
+  height: var(--app-visible-height, 100dvh);
+  padding: max(8px, var(--safe-area-top)) max(8px, var(--safe-area-right))
+    max(8px, var(--safe-area-bottom)) max(8px, var(--safe-area-left));
+}
+
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  --dialog-width-limit: 80vw;
+  max-width: min(var(--dialog-width-limit), calc(100vw - max(8px, var(--safe-area-left)) - max(8px, var(--safe-area-right)))) !important;
+  max-height: calc(var(--app-visible-height, 100dvh) - max(8px, var(--safe-area-top)) - max(8px, var(--safe-area-bottom))) !important;
+
+  @media (max-width: 768px) { --dialog-width-limit: 94vw; }
+
+  .mat-mdc-dialog-component-host {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
   }
 
-  .mat-mdc-dialog-container {
-    padding: 16px !important;
-  }
+  .mat-mdc-dialog-content { min-height: 0; }
+  .mat-mdc-dialog-actions { flex-shrink: 0; flex-wrap: wrap; }
+}
+
+.app-short-viewport app-adventure-form .page-container .form-actions {
+  position: static;
+}
+
+.full-resource-summary:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 // 操作提示：文字可收縮換行，關閉按鈕及邊距保留在可用視窗內。

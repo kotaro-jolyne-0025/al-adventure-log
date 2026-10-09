@@ -104,6 +104,8 @@ export interface AvatarCropperDialogData {
         flex-direction: column;
         user-select: none;
         min-width: 0;
+        min-height: 0;
+        max-height: 100%;
       }
 
       .dialog-title {
@@ -129,6 +131,7 @@ export interface AvatarCropperDialogData {
         flex-direction: column;
         align-items: center;
         padding: 8px 24px 16px;
+        min-height: 0;
       }
 
       .crop-hint {
