@@ -16,6 +16,7 @@
 
       <!-- 註冊表單 -->
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+          <p class="sr-only" role="status">{{ isLoading() ? '正在處理，請稍候。' : '' }}</p>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>顯示名稱 (玩家暱稱)</mat-label>
           <input matInput formControlName="displayName" autocomplete="name" />
@@ -85,7 +86,7 @@
           [disabled]="registerForm.invalid || isLoading()"
         >
           @if (isLoading()) {
-            <mat-spinner diameter="20" class="spinner"></mat-spinner>
+            <mat-spinner diameter="20" class="spinner" aria-hidden="true"></mat-spinner><span>註冊中…</span>
           }
           @if (!isLoading()) {
             <span>確認註冊</span>

@@ -64,6 +64,11 @@
     </div>
   </div>
 
+
+  @if (loadError()) {
+    <app-read-error [message]="(hasLoaded() ? '資料尚未更新。' : '') + loadError()!" [pending]="isLoading()" (retry)="loadEntries()" />
+  }
+
   <!-- Loading Skeletons -->
   @if (isLoading()) {
   <p role="status">正在載入冒險紀錄…</p>
@@ -79,7 +84,7 @@
   }
 
   <!-- Empty State：無任何冒險紀錄 -->
-  @if (!isLoading() && rawEntries().length === 0) {
+  @if (!isLoading() && (hasLoaded() || !loadError()) && rawEntries().length === 0) {
   <div class="empty-state clean-card">
     <div class="empty-icon-wrap">
       <svg lucideBookOpen [size]="48" class="empty-icon"></svg>
@@ -94,7 +99,7 @@
   }
 
   <!-- Empty State：搜尋無結果 -->
-  @if (!isLoading() && rawEntries().length > 0 && entries().length === 0) {
+  @if (!isLoading() && (hasLoaded() || !loadError()) && rawEntries().length > 0 && entries().length === 0) {
   <div class="empty-state clean-card">
     <div class="empty-icon-wrap">
       <svg lucideSearch [size]="40" class="empty-icon"></svg>
@@ -105,7 +110,7 @@
   }
 
   <!-- Adventure Chronicle Cards Timeline -->
-  @if (!isLoading() && entries().length > 0) {
+  @if (!isLoading() && (hasLoaded() || !loadError()) && entries().length > 0) {
   <div class="timeline-container">
     @for (row of visibleEntries(); track row.id) {
     <a class="chronicle-card clean-card clickable navigation-card"

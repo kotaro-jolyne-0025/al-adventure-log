@@ -386,7 +386,7 @@
     margin-bottom: 16px;
   }
 
-  ::ng-deep .mat-mdc-tab {
+  ::ng-deep .mat-mdc-tab-link {
     @media (max-width: 600px) {
       flex: 1;
       padding: 0 12px;
@@ -429,7 +429,7 @@
         padding: 10px 0;
         box-sizing: border-box;
         color: var(--text-secondary);
-        font-size: 0.875rem;
+        font-size: var(--type-label);
         cursor: pointer;
 
         &:focus-visible {

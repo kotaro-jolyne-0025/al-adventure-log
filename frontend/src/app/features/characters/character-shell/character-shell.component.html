@@ -1,3 +1,6 @@
+@if (loadError()) {
+  <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters']" (retry)="loadCharacterData()" />
+}
 @if (isLoading()) {
   <div class="loading-wrapper">
     <mat-spinner diameter="48"></mat-spinner>
@@ -25,7 +28,7 @@
           <div class="char-identity-text">
             <div class="name-line">
               <h1 class="char-name" [matTooltip]="character()!.characterName">{{ character()!.characterName }}</h1>
-              <button mat-icon-button (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色">
+              <button mat-icon-button (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色" aria-label="編輯角色">
                 <svg lucidePencil [size]="20"></svg>
               </button>
             </div>
@@ -116,29 +119,17 @@
     </div>
 
     <!-- Tab Nav -->
-    <mat-tab-group
-      [selectedIndex]="getActiveTab()"
-      (selectedIndexChange)="onTabChange($event)"
-      animationDuration="150ms"
-      class="character-tabs">
-      <mat-tab>
-        <ng-template mat-tab-label>
-          <svg lucideBookOpen [size]="20" class="tab-icon"></svg>
-          <span>冒險紀錄表</span>
-        </ng-template>
-      </mat-tab>
-      <mat-tab>
-        <ng-template mat-tab-label>
-          <svg lucideBox [size]="20" class="tab-icon"></svg>
-          <span>倉庫</span>
-        </ng-template>
-      </mat-tab>
-    </mat-tab-group>
-
-    <!-- Routed child page (adventures or inventory) -->
-    <div class="tab-content-area">
+    <nav mat-tab-nav-bar [tabPanel]="characterPanel" class="character-tabs" aria-label="角色內容">
+      <a mat-tab-link [routerLink]="['/characters', characterId, 'adventures']" [active]="getActiveTab() === 0">
+        <svg lucideBookOpen [size]="20" class="tab-icon" aria-hidden="true"></svg><span>冒險紀錄表</span>
+      </a>
+      <a mat-tab-link [routerLink]="['/characters', characterId, 'inventory']" [active]="getActiveTab() === 1">
+        <svg lucideBox [size]="20" class="tab-icon" aria-hidden="true"></svg><span>倉庫</span>
+      </a>
+    </nav>
+    <mat-tab-nav-panel #characterPanel class="tab-content-area">
       <router-outlet />
-    </div>
+    </mat-tab-nav-panel>
 
   </div>
 }

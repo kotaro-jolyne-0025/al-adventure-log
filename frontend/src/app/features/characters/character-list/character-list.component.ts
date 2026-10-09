@@ -1,3 +1,4 @@
+import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -20,6 +21,7 @@ import { LucideUsers, LucidePenLine, LucideTrash2, LucidePlus, LucideUserPlus } 
   selector: 'app-character-list',
   standalone: true,
   imports: [
+    ReadErrorComponent,
     RouterLink,
     MatCardModule,
     MatButtonModule,
@@ -38,20 +40,24 @@ export class CharacterListComponent implements OnInit {
 
   protected characters = signal<Character[]>([]);
   protected isLoading = signal(true);
+  protected loadError = signal<string | null>(null);
+  protected hasLoaded = signal(false);
 
   ngOnInit(): void {
     this.loadCharacters();
   }
 
-  private loadCharacters(): void {
+  protected loadCharacters(): void {
+    this.loadError.set(null);
     this.isLoading.set(true);
     this.characterService.getAll().subscribe({
       next: (list) => {
         this.characters.set(list);
+        this.hasLoaded.set(true);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.snackBar.open('載入角色列表失敗，請稍後再試', '關閉', { duration: 3000 });
+      error: (error) => {
+        this.loadError.set(readErrorMessage(error, '角色列表'));
         this.isLoading.set(false);
       },
     });
@@ -70,6 +76,7 @@ export class CharacterListComponent implements OnInit {
     event.stopPropagation();
     const data: ConfirmDialogData = {
       title: '刪除角色',
+      intent: 'destructive',
       message: `確定要刪除「${character.characterName}」嗎？此操作將一併刪除其所有冒險記錄與倉庫物品，且無法復原。`,
       confirmText: '確認刪除',
       cancelText: '取消',

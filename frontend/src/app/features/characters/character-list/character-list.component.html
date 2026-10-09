@@ -14,6 +14,11 @@
     </button>
   </div>
 
+
+  @if (loadError()) {
+    <app-read-error [message]="(hasLoaded() ? '資料尚未更新。' : '') + loadError()!" [pending]="isLoading()" (retry)="loadCharacters()" />
+  }
+
   <!-- Loading Skeletons -->
   @if (isLoading()) {
     <div class="card-grid" aria-hidden="true">
@@ -39,7 +44,7 @@
   }
 
   <!-- Empty State -->
-  @if (!isLoading() && characters().length === 0) {
+  @if (!isLoading() && (hasLoaded() || !loadError()) && characters().length === 0) {
     <div class="empty-state clean-card">
       <div class="empty-icon-wrap">
         <svg lucideUserPlus [size]="20" class="empty-icon"></svg>
@@ -54,7 +59,7 @@
   }
 
   <!-- Character Cards Grid -->
-  @if (!isLoading() && characters().length > 0) {
+  @if (!isLoading() && (hasLoaded() || !loadError()) && characters().length > 0) {
     <div class="card-grid">
       @for (char of characters(); track char.id) {
         <div class="char-card clean-card clickable navigation-card">

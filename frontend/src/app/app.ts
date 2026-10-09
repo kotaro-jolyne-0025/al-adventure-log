@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, afterNextRender, Injector } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 
 import { RouterOutlet, RouterLink, Router, NavigationEnd } from '@angular/router';
@@ -60,6 +60,8 @@ export class App {
   readonly authService = inject(AuthService);
   readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
+  private lastPath = "";
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   readonly appUpdate = inject(AppUpdateService);
@@ -69,11 +71,23 @@ export class App {
   // 判斷是否處於角色內頁（非角色列表、非登入註冊頁面）
   readonly showBack = signal(false);
 
+  protected skipToContent(event: Event): void {
+    event.preventDefault();
+    document.getElementById('main-content')?.focus();
+  }
+
   constructor() {
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((event) => {
         const url = event.urlAfterRedirects;
+        const path = url.split(/[?#]/)[0];
+        if (path !== this.lastPath) {
+          this.lastPath = path;
+          afterNextRender(() => {
+            document.getElementById('main-content')?.focus({ preventScroll: true });
+          }, { injector: this.injector });
+        }
         // 只要不是 /characters 列表首頁，處於角色詳情/新建/編輯時就顯示返回
         const isDetailPage =
           url.startsWith('/characters/') ||

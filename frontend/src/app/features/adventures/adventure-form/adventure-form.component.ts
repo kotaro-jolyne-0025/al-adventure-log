@@ -1,3 +1,4 @@
+import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -65,6 +66,7 @@ type MobileOptionalSection = 'magic-items' | 'consumables' | 'story-awards' | 'd
   selector: 'app-adventure-form',
   standalone: true,
   imports: [
+    FormFeedbackComponent,
     CommonModule,
     DecimalPipe,
     ReactiveFormsModule,
@@ -910,24 +912,32 @@ export class AdventureFormComponent implements OnInit {
     };
   }
 
+  protected formError = signal<string | null>(null);
+  protected errorTarget = signal('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
+
   protected onSubmit(): void {
+    this.formError.set(null);
     if (this.isSaving() || this.isLoading() || this.loadFailed() ||
         (this.isEditMode() && !this.detailsLoaded)) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.snackBar.open('請填寫必填欄位且確認起始數值不可為負數', '關閉', { duration: 3000 });
+      this.formError.set('請填寫必填欄位且確認起始數值不可為負數');
+      this.errorTarget.set('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
       return;
     }
     if (!this.isLevelBalanced()) {
-      this.snackBar.open('職業等級加總與結束等級不符，請調整後再儲存', '關閉', { duration: 3000 });
+      this.formError.set('職業等級加總與結束等級不符，請調整後再儲存');
+      this.errorTarget.set('.level-management-card');
       return;
     }
     if (!this.isClassProgressionValid()) {
-      this.snackBar.open('既有職業等級不可降低，請只分配本次增加的等級', '關閉', { duration: 3000 });
+      this.formError.set('既有職業等級不可降低，請只分配本次增加的等級');
+      this.errorTarget.set('.level-management-card');
       return;
     }
     if (!this.isResourceValid()) {
-      this.snackBar.open('資源起始值與合計皆不得為負值，請調整後再儲存', '關閉', { duration: 3000 });
+      this.formError.set('資源起始值與合計皆不得為負值，請調整後再儲存');
+      this.errorTarget.set('.resource-blocks-grid');
       return;
     }
 
@@ -935,13 +945,15 @@ export class AdventureFormComponent implements OnInit {
     const hasEmptyMagic = this.gainedMagicItems().some(item => !item.itemName.trim());
     if (hasEmptyMagic) {
       this.expandSection('magic-items');
-      this.snackBar.open('魔法物品名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
+      this.formError.set('魔法物品名稱不得為空白，請填寫或刪除該卡片');
+      this.errorTarget.set('#magic-items-content');
       return;
     }
     const hasEmptyConsumable = this.gainedConsumableItems().some(item => !item.itemName.trim());
     if (hasEmptyConsumable) {
       this.expandSection('consumables');
-      this.snackBar.open('消耗品名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
+      this.formError.set('消耗品名稱不得為空白，請填寫或刪除該卡片');
+      this.errorTarget.set('#consumables-content');
       return;
     }
     const expectedMagicItems = this.expectedMagicItems();
@@ -950,19 +962,22 @@ export class AdventureFormComponent implements OnInit {
       this.expandSection('magic-items');
       this.expandSection('consumables');
       this.itemDetailsChecked.set(true);
-      this.snackBar.open(`魔法物品數量變動為 ${expectedMagicItems} 件，請填寫相同數量的永久物品與消耗品明細（目前 ${detailedMagicItems} 件）`, '確定', { duration: 4000 });
+      this.formError.set(`魔法物品數量變動為 ${expectedMagicItems} 件，請填寫相同數量的永久物品與消耗品明細（目前 ${detailedMagicItems} 件）`);
+      this.errorTarget.set('#magic-items-content, #consumables-content');
       return;
     }
     const hasEmptyActivity = this.downtimeActivities().some(act => !act.description.trim());
     if (hasEmptyActivity) {
       this.expandSection('downtime');
-      this.snackBar.open('休整期活動描述不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
+      this.formError.set('休整期活動描述不得為空白，請填寫或刪除該卡片');
+      this.errorTarget.set('#downtime-content');
       return;
     }
     const hasEmptyStoryAward = this.storyAwards().some(award => !award.awardName.trim());
     if (hasEmptyStoryAward) {
       this.expandSection('story-awards');
-      this.snackBar.open('故事獎勵名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
+      this.formError.set('故事獎勵名稱不得為空白，請填寫或刪除該卡片');
+      this.errorTarget.set('#story-awards-content');
       return;
     }
 
@@ -978,7 +993,8 @@ export class AdventureFormComponent implements OnInit {
         },
         error: () => {
           this.isSaving.set(false);
-          this.snackBar.open('更新失敗，請稍後再試', '關閉', { duration: 3000 });
+          this.formError.set('更新失敗，請稍後再試');
+          this.errorTarget.set('');
         },
       });
     } else {
@@ -989,7 +1005,8 @@ export class AdventureFormComponent implements OnInit {
         },
         error: () => {
           this.isSaving.set(false);
-          this.snackBar.open('新增失敗，請稍後再試', '關閉', { duration: 3000 });
+          this.formError.set('新增失敗，請稍後再試');
+          this.errorTarget.set('');
         },
       });
     }

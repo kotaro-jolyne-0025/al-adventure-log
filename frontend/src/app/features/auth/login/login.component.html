@@ -35,6 +35,7 @@
 
       <!-- 帳密登入表單 -->
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+          <p class="sr-only" role="status">{{ isLoading() ? '正在處理，請稍候。' : '' }}</p>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>電子郵件 (Email)</mat-label>
           <input matInput type="email" formControlName="email" placeholder="example@domain.com" autocomplete="email" />
@@ -72,7 +73,7 @@
         <button mat-raised-button color="primary" type="submit" class="btn-submit full-width"
           [disabled]="loginForm.invalid || isLoading()">
           @if (isLoading()) {
-          <mat-spinner diameter="20" class="spinner"></mat-spinner>
+          <mat-spinner diameter="20" class="spinner" aria-hidden="true"></mat-spinner><span>登入中…</span>
           }
           @if (!isLoading()) {
           <span>登入</span>
