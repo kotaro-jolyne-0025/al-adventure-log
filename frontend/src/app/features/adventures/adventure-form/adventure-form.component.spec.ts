@@ -76,10 +76,16 @@ describe('Adventure form complete loading', () => {
     items.next([{ id: 'potion', adventureEntryId: 'e', itemType: 'CONSUMABLE',
       itemName: 'Potion', quantity: 2, itemCategory: 'POTION' }]);
     items.complete();
+    expect(component['isSectionExpanded']('magic-items', 0)).toBe(false);
+    expect(component['isSectionExpanded']('consumables', 1)).toBe(true);
     component['form'].patchValue({ magicItemsChange: 3 });
     submit();
     expect(api.updateWithDetails).not.toHaveBeenCalled();
+    expect(component['hasItemDetailsError']()).toBe(true);
+    expect(component['isSectionExpanded']('magic-items', 0)).toBe(true);
     component['form'].patchValue({ magicItemsChange: 2 });
+    expect(component['hasItemDetailsError']()).toBe(false);
+    expect(component['isSectionExpanded']('magic-items', 0)).toBe(false);
     submit();
     expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
       gainedItems: [expect.objectContaining({ quantity: 2, itemCategory: 'POTION' })],
@@ -95,6 +101,22 @@ describe('Adventure form complete loading', () => {
     expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
       gainedItems: [expect.objectContaining({ id: 'legacy' })],
     }));
+  });
+
+  it('reopens a collapsed item section when adding and when a hidden name fails validation', () => {
+    emitEntry(); emitAwards();
+    items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
+    items.complete();
+    component['form'].patchValue({ magicItemsChange: 1 });
+    component['toggleSection']('magic-items');
+    expect(component['isSectionExpanded']('magic-items', 1)).toBe(false);
+    component['addGainedItem']();
+    expect(component['isSectionExpanded']('magic-items', 2)).toBe(true);
+    expect(component['gainedMagicItems']()[0].id).toBe('snapshot');
+    component['toggleSection']('magic-items');
+    submit();
+    expect(api.updateWithDetails).not.toHaveBeenCalled();
+    expect(component['isSectionExpanded']('magic-items', 2)).toBe(true);
   });
 
   it('does not permit save when the legacy fallback fails', () => {
