@@ -200,16 +200,27 @@
         <!-- 獲得永久性魔法物品清單 -->
         <div class="sub-items-section">
           <div class="sub-section-header">
-            <div class="sub-title-flex">
+            <div class="sub-title-flex" [class.mobile-heading-replaced]="gainedMagicItems().length > 0">
               <svg lucideSparkles [size]="18" class="title-icon magic"></svg>
               <span class="sub-title-text" matTooltip="Permanent Magic Items">獲得永久性魔法物品</span>
+              @if (gainedMagicItems().length > 0) {
+              <button type="button" class="mobile-section-toggle" (click)="toggleSection('magic-items')"
+                [disabled]="hasItemDetailsError()"
+                [attr.aria-expanded]="isSectionExpanded('magic-items', gainedMagicItems().length)" aria-controls="magic-items-content"
+                [attr.aria-label]="(isSectionExpanded('magic-items', gainedMagicItems().length) ? '收合' : '展開') + '永久性魔法物品，' + gainedMagicItems().length + ' 筆'">
+                <span class="section-chevron" aria-hidden="true">{{ isSectionExpanded('magic-items', gainedMagicItems().length) ? '▾' : '▸' }}</span>
+                <span class="section-toggle-title">獲得永久性魔法物品</span>
+                <span class="section-count">· {{ gainedMagicItems().length }} 筆</span>
+              </button>
+              }
             </div>
             <button type="button" mat-stroked-button color="primary" (click)="addGainedItem()">
               <svg lucidePlus [size]="16"></svg> 新增永久性魔法物品
             </button>
           </div>
 
-          <div class="gained-items-list">
+          <div class="gained-items-list" id="magic-items-content"
+            [class.mobile-section-collapsed]="!isSectionExpanded('magic-items', gainedMagicItems().length)">
             @for (item of gainedMagicItems(); track $index; let i = $index) {
             <div class="gained-item-card" [class.snapshot-card]="isEditMode() && item.id">
               <div class="gained-item-header">
@@ -279,16 +290,27 @@
         <!-- 獲得消耗品清單 -->
         <div class="sub-items-section">
           <div class="sub-section-header">
-            <div class="sub-title-flex">
+            <div class="sub-title-flex" [class.mobile-heading-replaced]="gainedConsumableItems().length > 0">
               <svg lucideFlaskConical [size]="18" class="title-icon consumable"></svg>
               <span class="sub-title-text">獲得消耗品</span>
+              @if (gainedConsumableItems().length > 0) {
+              <button type="button" class="mobile-section-toggle" (click)="toggleSection('consumables')"
+                [disabled]="hasItemDetailsError()"
+                [attr.aria-expanded]="isSectionExpanded('consumables', gainedConsumableItems().length)" aria-controls="consumables-content"
+                [attr.aria-label]="(isSectionExpanded('consumables', gainedConsumableItems().length) ? '收合' : '展開') + '消耗品，' + gainedConsumableItems().length + ' 筆'">
+                <span class="section-chevron" aria-hidden="true">{{ isSectionExpanded('consumables', gainedConsumableItems().length) ? '▾' : '▸' }}</span>
+                <span class="section-toggle-title">獲得消耗品</span>
+                <span class="section-count">· {{ gainedConsumableItems().length }} 筆</span>
+              </button>
+              }
             </div>
             <button type="button" mat-stroked-button color="primary" (click)="addGainedConsumableItem()">
               <svg lucidePlus [size]="16"></svg> 新增消耗品
             </button>
           </div>
 
-          <div class="gained-items-list">
+          <div class="gained-items-list" id="consumables-content"
+            [class.mobile-section-collapsed]="!isSectionExpanded('consumables', gainedConsumableItems().length)">
             @for (item of gainedConsumableItems(); track $index; let i = $index) {
             <div class="gained-item-card" [class.snapshot-card]="isEditMode() && item.id">
               <div class="gained-item-header">
@@ -367,16 +389,26 @@
     <mat-card class="form-card phase-card phase-story-award">
       <mat-card-header>
         <div class="card-header-between full-width">
-          <mat-card-title class="card-title-flex">
+          <mat-card-title class="card-title-flex" [class.mobile-heading-replaced]="storyAwards().length > 0">
             <svg lucideStar [size]="20" class="title-icon story-award"></svg>
-            故事獎勵 (Story Awards)
+            <span class="section-heading-label">故事獎勵 (Story Awards)</span>
+            @if (storyAwards().length > 0) {
+            <button type="button" class="mobile-section-toggle" (click)="toggleSection('story-awards')"
+              [attr.aria-expanded]="isSectionExpanded('story-awards', storyAwards().length)" aria-controls="story-awards-content"
+              [attr.aria-label]="(isSectionExpanded('story-awards', storyAwards().length) ? '收合' : '展開') + '故事獎勵，' + storyAwards().length + ' 筆'">
+              <span class="section-chevron" aria-hidden="true">{{ isSectionExpanded('story-awards', storyAwards().length) ? '▾' : '▸' }}</span>
+              <span class="section-toggle-title">故事獎勵</span>
+              <span class="section-count">· {{ storyAwards().length }} 筆</span>
+            </button>
+            }
           </mat-card-title>
           <button type="button" mat-stroked-button color="primary" (click)="addStoryAward()">
             <svg lucidePlus [size]="16"></svg> 新增故事獎勵
           </button>
         </div>
       </mat-card-header>
-      <mat-card-content>
+      <mat-card-content id="story-awards-content"
+        [class.mobile-section-collapsed]="!isSectionExpanded('story-awards', storyAwards().length)">
         <div class="gained-items-list" style="margin-top: 8px;">
           @for (award of storyAwards(); track $index; let i = $index) {
           <div class="gained-item-card" [class.snapshot-card]="isEditMode() && award.id">
@@ -424,16 +456,26 @@
     <mat-card class="form-card phase-card phase-downtime">
       <mat-card-header>
         <div class="card-header-between full-width">
-          <mat-card-title class="card-title-flex">
+          <mat-card-title class="card-title-flex" [class.mobile-heading-replaced]="downtimeActivities().length > 0">
             <svg lucideTent [size]="20" class="title-icon downtime"></svg>
-            休整期活動(Downtime Activities)
+            <span class="section-heading-label">休整期活動(Downtime Activities)</span>
+            @if (downtimeActivities().length > 0) {
+            <button type="button" class="mobile-section-toggle" (click)="toggleSection('downtime')"
+              [attr.aria-expanded]="isSectionExpanded('downtime', downtimeActivities().length)" aria-controls="downtime-content"
+              [attr.aria-label]="(isSectionExpanded('downtime', downtimeActivities().length) ? '收合' : '展開') + '休整期活動，' + downtimeActivities().length + ' 筆'">
+              <span class="section-chevron" aria-hidden="true">{{ isSectionExpanded('downtime', downtimeActivities().length) ? '▾' : '▸' }}</span>
+              <span class="section-toggle-title">休整期活動</span>
+              <span class="section-count">· {{ downtimeActivities().length }} 筆</span>
+            </button>
+            }
           </mat-card-title>
           <button type="button" mat-stroked-button color="primary" (click)="addDowntimeActivity()">
             <svg lucidePlus [size]="16"></svg> 新增休整期活動
           </button>
         </div>
       </mat-card-header>
-      <mat-card-content>
+      <mat-card-content id="downtime-content"
+        [class.mobile-section-collapsed]="!isSectionExpanded('downtime', downtimeActivities().length)">
         <div class="gained-items-list" style="margin-top: 8px;">
           @for (act of downtimeActivities(); track $index; let i = $index) {
           <div class="gained-item-card dt-activity-card" [class.snapshot-card]="isEditMode() && act.id">

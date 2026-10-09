@@ -28,8 +28,8 @@
   margin-bottom: 20px;
 
   @media (max-width: 600px) {
-    padding: 16px 14px;
-    margin-bottom: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
   }
 }
 
@@ -42,7 +42,7 @@
 
   @media (max-width: 600px) {
     display: block;
-    margin-bottom: 14px;
+    margin-bottom: 8px;
   }
 }
 
@@ -143,12 +143,8 @@
   min-width: 0;
 
   @media (max-width: 600px) {
-    font-size: 1.15rem;
+    font-size: 1.0625rem;
     flex: 1;
-  }
-
-  @media (max-width: 370px) {
-    font-size: 1.05rem;
   }
 }
 
@@ -253,7 +249,7 @@
   @media (max-width: 600px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
-    padding-top: 12px;
+    padding-top: 8px;
   }
 }
 
@@ -268,7 +264,7 @@
   min-width: 0;
 
   @media (max-width: 600px) {
-    padding: 8px 12px;
+    padding: 6px 10px;
 
     &:first-child {
       grid-column: 1 / -1;
@@ -351,7 +347,7 @@
 
   @media (max-width: 600px) {
     align-self: auto;
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   .unit {
@@ -408,4 +404,45 @@
 
 .tab-content-area {
   margin-top: 8px;
+}
+
+.full-resource-summary {
+  display: contents;
+}
+
+.compact-resource-summary {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  :host:has(app-character-form, app-adventure-form, app-inventory-form) {
+    .full-resource-summary {
+      display: none;
+    }
+
+    .compact-resource-summary {
+      display: block;
+      border-top: 1px solid var(--border-subtle);
+
+      summary {
+        min-height: 44px;
+        padding: 10px 0;
+        box-sizing: border-box;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        cursor: pointer;
+
+        &:focus-visible {
+          outline: 3px solid var(--mat-sys-primary);
+          outline-offset: -3px;
+          border-radius: var(--radius-sm);
+        }
+      }
+
+      .char-hud-bar {
+        border-top: 0;
+        padding-top: 0;
+      }
+    }
+  }
 }

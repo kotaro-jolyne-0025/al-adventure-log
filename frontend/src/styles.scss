@@ -697,3 +697,226 @@ svg.icon-block {
   display: block;
   margin-right: 6px;
 }
+
+// 手機列表共用排列；桌機保留原有文字與工具列。
+:is(app-adventure-list, app-inventory-list) .mobile-add-label {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  :is(app-adventure-list, app-inventory-list) .page-container {
+    :is(.list-header, .inventory-header) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .header-titles {
+      gap: 4px 8px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      overflow-wrap: anywhere;
+      min-width: 0;
+    }
+
+    .header-actions {
+      display: contents;
+    }
+
+    .sort-toolbar-capsule {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      height: auto;
+      min-height: 44px;
+      align-items: stretch;
+    }
+
+    .capsule-section {
+      height: auto;
+      min-height: 44px;
+      padding: 6px 8px;
+    }
+
+    .capsule-text {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      overflow-wrap: anywhere;
+      line-height: 1.4;
+    }
+
+    .capsule-divider {
+      align-self: center;
+    }
+
+    :is(.btn-add-adv, .btn-add-item) {
+      grid-column: 2;
+      grid-row: 1;
+      width: auto;
+      height: auto;
+      min-height: 44px;
+      max-width: 100%;
+      padding: 10px 12px;
+      white-space: normal;
+
+      .mdc-button__label {
+        line-height: 1.4 !important;
+      }
+    }
+
+    .desktop-add-label {
+      display: none;
+    }
+
+    .mobile-add-label {
+      display: inline;
+    }
+  }
+
+  app-adventure-list .page-container {
+    .adv-title {
+      font-size: 1rem;
+    }
+
+    :is(.adv-title, .adv-code, .adv-dm) {
+      max-width: 100%;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      line-height: 1.4;
+    }
+  }
+
+  :is(app-character-form, app-adventure-form, app-inventory-form, app-adventure-detail) .page-container {
+    :is(.page-title, .adv-title-hero) {
+      font-size: 1.0625rem;
+    }
+
+    :is(.card-title-flex, .section-title) {
+      font-size: 1rem;
+    }
+  }
+}
+
+:is(app-inventory-list, app-adventure-form) :is(.mobile-filter-toggle, .mobile-section-toggle) {
+  display: none;
+}
+
+app-inventory-list .filter-search-row {
+  display: contents;
+}
+
+@media (max-width: 600px) {
+  app-inventory-list {
+    .filter-search-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-panel .search-bar {
+      flex: 1;
+      padding-right: 0;
+    }
+
+    .filter-panel .search-clear-btn {
+      width: 44px;
+      height: 44px;
+    }
+
+    .mobile-filter-toggle {
+      max-width: 50%;
+      border-radius: var(--radius-full);
+    }
+
+    .filter-chip,
+    .filter-chip-clear {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
+  app-adventure-form {
+    .sub-title-flex,
+    .phase-story-award .card-title-flex,
+    .phase-downtime .card-title-flex {
+      min-width: 0;
+      flex-wrap: wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .sub-items-section .sub-title-flex .mobile-section-toggle,
+    .card-header-between .card-title-flex .mobile-section-toggle {
+      width: auto;
+      max-width: 100%;
+      flex-shrink: 1;
+      justify-content: flex-start;
+      gap: 6px;
+      padding: 6px 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: left;
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+    }
+
+    .sub-items-section .sub-title-flex.mobile-heading-replaced,
+    .card-header-between .card-title-flex.mobile-heading-replaced {
+      > :is(.title-icon, .sub-title-text, .section-heading-label) {
+        display: none;
+      }
+    }
+
+    .section-chevron,
+    .section-count {
+      flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+
+    .section-toggle-title {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .section-count {
+      font-size: 0.875em;
+      font-weight: 500;
+    }
+  }
+
+  :is(app-inventory-list, app-adventure-form) :is(.mobile-filter-toggle, .mobile-section-toggle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-medium);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  app-inventory-list .filter-chips-row.mobile-filter-collapsed,
+  app-adventure-form :is(.gained-items-list, mat-card-content).mobile-section-collapsed {
+    display: none;
+  }
+}
