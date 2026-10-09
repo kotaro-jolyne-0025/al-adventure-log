@@ -1,13 +1,20 @@
 <div class="page-container">
   <div class="page-header">
-    <button mat-icon-button (click)="onBack()" class="btn-back" matTooltip="返回倉庫">
+    <button mat-icon-button (click)="onBack()" class="btn-back" matTooltip="返回倉庫" aria-label="返回倉庫">
       <svg lucideArrowLeft [size]="20"></svg>
     </button>
     <h1 class="page-title">{{ isEditMode() ? '編輯物品' : '新增物品' }}</h1>
   </div>
 
   <div class="form-card clean-card">
+    @if (isLoading()) { <p role="status">正在載入物品…</p> }
+    @if (loadError()) {
+      <app-read-error [message]="loadError()!" [pending]="isLoading()" [retryable]="retryable()"
+        [returnTo]="['/characters', characterId, 'inventory']" (retry)="retryLoad()" />
+    }
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <app-form-feedback [message]="formError()" [target]="errorTarget()" />
+    <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>物品名稱 *</mat-label>
@@ -77,7 +84,7 @@
 
       <div class="form-actions">
         <button type="button" mat-stroked-button (click)="onBack()">取消</button>
-        <button type="submit" mat-flat-button color="primary" [disabled]="isSaving() || form.invalid">
+        <button type="submit" mat-flat-button color="primary" [disabled]="isSaving() || isLoading() || (isEditMode() && !itemLoaded())">
           @if (isSaving()) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {

@@ -3,10 +3,10 @@
   min-width: 0;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 24px 16px 80px;
+  padding: 24px max(16px, var(--page-safe-right)) max(80px, var(--safe-area-bottom)) max(16px, var(--page-safe-left));
 
   @media (max-width: 600px) {
-    padding: 16px max(12px, var(--safe-area-right)) 60px max(12px, var(--safe-area-left));
+    padding: 16px max(12px, var(--page-safe-right)) 60px max(12px, var(--page-safe-left));
   }
 }
 
@@ -34,7 +34,7 @@
   color: var(--text-primary);
 
   @media (max-width: 600px) {
-    font-size: 1.35rem;
+    font-size: var(--type-page-title);
   }
 }
 
@@ -203,7 +203,7 @@
 }
 
 .level-badge {
-  font-size: 0.875rem;
+  font-size: var(--type-label);
   font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--radius-full);
@@ -279,7 +279,7 @@
       font-size: 0.78rem;
 
       mat-icon {
-        font-size: 1.1rem;
+        font-size: var(--type-section-title);
         width: 1.1rem;
         height: 1.1rem;
       }
@@ -296,7 +296,7 @@
 .info-row {
   display: flex;
   align-items: baseline;
-  font-size: 0.875rem;
+  font-size: var(--type-label);
   line-height: 1.5;
 
   .info-label {

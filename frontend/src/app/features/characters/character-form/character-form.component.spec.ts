@@ -159,7 +159,7 @@ describe('CharacterFormComponent opening baseline edit', () => {
     expect(component['isSaving']()).toBe(false);
     expect(api.update).not.toHaveBeenCalled();
     expect(openDialog).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith('無法預覽修正結果，資料尚未儲存', '關閉', expect.anything());
+    expect(component['formError']()).toBe('無法預覽修正結果，資料尚未儲存，請重試。');
     component['onSubmit']();
     expect(openDialog).toHaveBeenCalledTimes(1);
     closed.next(true);
@@ -171,7 +171,7 @@ describe('CharacterFormComponent opening baseline edit', () => {
     component['onSubmit']();
     closed.next(true);
     expect(component['isSaving']()).toBe(false);
-    expect(snackBar).toHaveBeenCalledWith('更新失敗，請稍後再試', '關閉', expect.anything());
+    expect(component['formError']()).toBe('更新失敗，請稍後再試');
     component['onSubmit']();
     expect(openDialog).toHaveBeenCalledTimes(2);
     expect(api.update).toHaveBeenCalledTimes(1);

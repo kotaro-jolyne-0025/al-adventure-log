@@ -303,3 +303,48 @@ Material 淺色 primary 沿用 `azure-palette`，深色沿用 `violet-palette`�
 - 手機切換入口再依使用者確認簡化為「小箭頭＋中文標題＋明細筆數」，直接點標題切換，移除獨立外框切換按鈕。新增仍獨立，空白不顯示箭頭；標題區至少 44px 高並有鍵盤焦點。重新驗證 48 組手機條件、64 項測試與 6 組桌機完整表單尺寸均通過。
 - 48 組手機尺寸／雙主題／放大字級檢查、鍵盤／指標操作與切換寬度保留輸入通過。601／768／1280px 的 9 張首屏截圖一致，6 組完整表單元素位置與尺寸一致；完整頁面擷取仍有既有備註自動增高的時機差異。
 - production build 無警告、驗收修正後 64 項測試與 OpenSpec 驗證通過，mobile-pwa 與 SRS 已同步。使用者於 2026-10-09 確認手機排版驗收 OK，兩批 change 已封存，詳見[驗證紀錄](openspec/changes/archive/2026-10-09-compact-mobile-filters-and-form-sections/verification.md)。驗收確認不額外推定裝置或測試範圍；發布準備已同步前後端產品版號為 1.3.0，完整發布依 VERSIONING.md 執行。
+
+## 19. v1.4.0 改善目標：Material Design 3 盤點
+
+- 2026-10-09 使用專案 `material-design-3-ui` 技能完成原始碼與規格盤點；已有 M3 雙主題、業務語意色、鍵盤焦點及手機密度基礎，仍有狀態復原與自訂互動語意缺口。本輪未重新量測 UI，不宣稱已全面符合 M3／WCAG。
+- [完整盤點與評分](openspec/changes/align-v1-4-0-material-design-3/audit.md)、[改善提案](openspec/changes/align-v1-4-0-material-design-3/proposal.md)、[待實作任務](openspec/changes/align-v1-4-0-material-design-3/tasks.md)。
+- P1：讀取錯誤與重試、物品編輯載入門檻、分頁內容關聯、裁切鍵盤操作、表單錯誤定位／狀態播報、M3 破壞性確認。
+- P2：補表面／字體／容器語意角色，保留既有品牌及業務色；補頁面標題／跳到內容、斷點／大字／雙主題／實機與輔助技術驗收。
+- P3：寬視窗與倉庫容器先提供具體方案比較，確認後才調整桌機；不以套用 skill 為由強加 rail、FAB、Expressive 或全面換配色。
+- 本節為 1.4.0 實作追蹤，核心改善與本次約定驗收已結案，前後端產品版號同步為 1.4.0；已驗收的 1.3.0 字級、操作範圍與收合行為持續為回歸基準。螢幕閱讀器實測依使用者決定略過，完整發布另依 VERSIONING.md 執行。
+
+### 19.1 已實作的角色映射
+
+| 產品角色 | 既有／新增 token | Material 對應與使用範圍 |
+|---|---|---|
+| 畫布 | `--surface-canvas` → `--bg-canvas` | surface；保留 slate／zinc 品牌底色 |
+| 一般資料／表單容器 | `--surface-container-low` → `--bg-surface` | surfaceContainerLow；角色身份、冒險摘要及表單區域 |
+| 高一層表面 | `--surface-container-high` → `--bg-surface-elevated` | surfaceContainerHigh；摘要資源／浮層的既有層次 |
+| 文字 | `--on-surface`／`--on-surface-variant` | onSurface／onSurfaceVariant，對應既有主要／次要文字 |
+| 邊界 | `--outline-variant` → `--border-subtle` | outlineVariant；一般容器細邊框 |
+| 主操作／焦點 | `--color-primary` | Material primary；淺藍／深紫主題保持 |
+| 刪除確認 | `--mat-sys-error`／`--mat-sys-on-error` | public button overrides；取消為初始焦點 |
+| 頁面錯誤 | `--color-negative`／`--color-negative-bg` | 品牌錯誤提示；保留文字、定位或重試，與業務支出共用色系但以文案區分 |
+| 字體角色 | `--type-page-title`／`--type-section-title`／`--type-body`／`--type-label` | 1.35／1.1／1／.875rem 的產品角色；手機既有字級覆寫優先 |
+
+品牌表面與 Material 元件表面保留各自 token，角色對應不代表所有實際色碼完全相同。D&D 金幣、休整期、稀有度、同調與故事獎勵是業務識別色；OAuth 官方品牌及裁切深色畫布為用途明確的例外。連續清單與寬視窗參考區仍是選配，不因角色映射改動已驗收版面。
+
+- Outlined 表單框線使用 Angular Material 公開 `form-field-overrides` 設定 normal／hover／focus／error；底層由表單容器提供，不覆寫內部 notch 邊框。
+- 新增 `ReadError` 與 `FormFeedback` 提示：持續顯示可復原錯誤，區分 HTTP 錯誤、初次空資料與背景未更新。物品編輯未成功讀取時不可儲存；刪除失敗恢復本地物品，背景刷新強制重新讀取。
+- 路由分頁／分類內容建立真實 panel 關聯；裁切提供具名稱的位移與縮放、重設、取消及確認。頁面 title、跳到內容與進入焦點只處理新路由，保留同頁篩選焦點。
+- [實作與驗證紀錄](openspec/changes/align-v1-4-0-material-design-3/verification.md)、[寬視窗選配比較](openspec/changes/align-v1-4-0-material-design-3/layout-options.md)。實機、螢幕閱讀器與真正瀏覽器 zoom 驗收尚未完成，不能宣稱全面符合 M3／WCAG。
+- 手機驗收補充：倉庫分類分頁與搜尋列間距為16px（`<=600px`），避免內容panel連接後搜尋框緊貼分頁底線；搜尋、篩選及操作尺寸保持。
+- 倉庫列表上方及空資料的新增入口，桌機／手機均顯示「新增物品」；目前分類仍決定新增表單的預選物品類型。
+- 2026-10-09使用者確認手機驗收通過；不額外推定裝置或逐項測試配置。螢幕閱讀器、真正瀏覽器200% zoom與寬版選配決策仍待完成，詳見驗證紀錄最新補充。
+- 2026-10-09後續確認真正瀏覽器200%縮放驗收通過，完成相關文案修正。縮放驗收以此更新為準；目前剩輔助技術驗收與寬版选配決策。
+- 後續使用者明確要求略過本版螢幕閱讀器人工驗收；保留功能與語意，不宣稱朗讀實測通過。目前只剩寬版選配決策，驗收範圍以verification.md最新決策為準。
+- 使用者後續明確「先保留」，1.4.0維持既有寬版與倉庫布局，候選方案不採用；目前change任務已結案，螢幕閱讀器略過限制保留。摺疊手機驗證另行討論。
+
+## 20. 摺疊與動態視窗第一階段
+
+- 沿用頂部導覽、角色分頁與單頁卡片；600／768 CSS px為既有產品斷點，不推算Duo螢幕尺寸，不改雙欄。
+- 四邊安全區與一般邊距取較大值；shell消耗左右安全區，內頁使用`--page-safe-left/right: 0px`避免重複內縮。安全區為0時保留原容器間距。
+- dialog wrapper與pane依可視高度／offsetTop及安全區排版，內容捲動、確認／取消保留；移除舊手機container重複padding。可視高<=600px時冒險表單操作回文件流；pinch zoom交由瀏覽器，不因此縮小dialog。
+- 尺寸變化保留搜尋、篩選、分類、排序、輸入、明細與錯誤，不重建頁面或提交資料。只有標記區域內原控制項變成隱藏時才接續焦點；可見欄位與新焦點保持。
+- [設計與官方依據](openspec/changes/adapt-foldable-web-layout/design.md)、[工程驗證及限制](openspec/changes/adapt-foldable-web-layout/verification.md)：206項瀏覽器工程檢查、68項前端測試與無警告build通過。Safari／Duo實機／PWA鍵盤待驗；中央折疊區避讓列為第二階段。
+- 本輪未新增套件、後端或資料庫變更，產品版號仍1.4.0；使用者已授權本機提交，尚未推送，不代表已部署或發布。

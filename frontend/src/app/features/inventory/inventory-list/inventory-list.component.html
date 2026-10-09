@@ -46,8 +46,7 @@
 
       <button mat-flat-button color="primary" class="btn-add-item" (click)="onAddItem()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
-        <span class="desktop-add-label">新增{{ activeTab() === 0 ? '永久性魔法物品' : '消耗品' }}</span>
-        <span class="mobile-add-label">新增物品</span>
+        <span>新增物品</span>
       </button>
     </div>
   </div>
@@ -62,85 +61,10 @@
           @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawPermanentCount() }}</span> }
           )</span>
       </ng-template>
-    </mat-tab>
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <svg lucideFlaskConical [size]="18" class="tab-icon"></svg>
-        <span>消耗品 ({{ consumableItems().length }}
-          @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawConsumableCount() }}</span> }
-          )</span>
-      </ng-template>
-    </mat-tab>
-  </mat-tab-group>
-
-  <!-- 🔍 搜尋 & 篩選列 -->
-  <div class="filter-panel">
-    <div class="filter-search-row">
-    <!-- 搜尋框 -->
-    <div class="search-bar" [class.search-bar--active]="searchQuery().trim().length > 0">
-      <svg lucideSearch [size]="17" class="search-icon"></svg>
-      <input class="search-input" type="text" placeholder="搜尋物品名稱、來源" [value]="searchQuery()"
-        (input)="searchQuery.set($any($event.target).value)" aria-label="搜尋倉庫物品" />
-      @if (searchQuery().trim().length > 0) {
-      <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" aria-label="清除搜尋">
-        <svg lucideX [size]="15"></svg>
-      </button>
-      }
-    </div>
-
-      <button type="button" class="mobile-filter-toggle" (click)="filtersExpanded.set(!filtersExpanded())"
-        [attr.aria-expanded]="filtersExpanded()" aria-controls="inventory-filter-options"
-        [attr.aria-label]="(filtersExpanded() ? '收合篩選' : '展開篩選') + '，已選 ' + activeFilterCount() + ' 項'">
-        篩選@if (activeFilterCount() > 0) { ({{ activeFilterCount() }}) }
-      </button>
-    </div>
-
-    <!-- 篩選 Chips 列 -->
-    <div class="filter-chips-row" id="inventory-filter-options" [class.mobile-filter-collapsed]="!filtersExpanded()">
-      <!-- 稀有度 Chips -->
-      @for (rarity of RARITY_OPTIONS; track rarity) {
-      <button type="button" class="filter-chip" [class.filter-chip--active]="isRaritySelected(rarity)"
-        [style.--chip-color]="rarityColors[rarity]" (click)="toggleRarityFilter(rarity)"
-        [attr.aria-pressed]="isRaritySelected(rarity)">
-        {{ RARITY_SHORT_LABELS[rarity] }}
-      </button>
-      }
-
-      <!-- 需同調篩選 Chip -->
-      @if (activeTab() === 0) {
-      <button type="button" class="filter-chip filter-chip--attune" [class.filter-chip--active]="filterAttunementOnly()"
-        (click)="toggleAttunementFilter()" [attr.aria-pressed]="filterAttunementOnly()">
-        <svg lucideInfinity [size]="13" class="chip-icon"></svg>
-        需同調
-      </button>
-      }
-
-      <!-- 清除所有篩選 -->
-      @if (hasActiveFilters()) {
-      <button type="button" class="filter-chip-clear" (click)="clearAllFilters()">
-        <svg lucideX [size]="13"></svg>
-        清除篩選
-      </button>
-      }
-    </div>
-  </div>
-
-  <!-- Loading -->
-  @if (isLoading()) {
-  <p role="status">正在載入倉庫…</p>
-  <div class="items-list" aria-hidden="true">
-    @for (item of [1, 2, 3, 4]; track $index) {
-    <div class="clean-card item-row-card skeleton-row">
-      <div class="skeleton-box" style="width: 40%; height: 20px;"></div>
-      <div class="skeleton-box" style="width: 80px; height: 24px; border-radius: 9999px;"></div>
-      <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
-    </div>
-    }
-  </div>
-  }
-
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="inventoryTools" />
   <!-- Tab 0: 永久性魔法物品 -->
-  @if (!isLoading() && activeTab() === 0) {
+  @if (!isLoading() && (hasLoaded() || !loadError())) {
   @if (rawPermanentCount() === 0) {
   <div class="empty-state clean-card">
     <div class="empty-icon-wrap">
@@ -150,7 +74,7 @@
     <p class="empty-desc">在冒險紀錄表記錄戰利品，或點擊下方新增！</p>
     <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
       <svg lucidePlus [size]="18" class="btn-icon"></svg>
-      <span>新增永久性魔法物品</span>
+      <span>新增物品</span>
     </button>
   </div>
   } @else if (permanentItems().length === 0) {
@@ -225,8 +149,19 @@
   }
   }
 
+      </ng-template>
+    </mat-tab>
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <svg lucideFlaskConical [size]="18" class="tab-icon"></svg>
+        <span>消耗品 ({{ consumableItems().length }}
+          @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawConsumableCount() }}</span> }
+          )</span>
+      </ng-template>
+      <ng-template matTabContent>
+        <ng-container *ngTemplateOutlet="inventoryTools" />
   <!-- Tab 1: 消耗品與藥水卷軸 -->
-  @if (!isLoading() && activeTab() === 1) {
+  @if (!isLoading() && (hasLoaded() || !loadError())) {
   @if (rawConsumableCount() === 0) {
   <div class="empty-state clean-card">
     <div class="empty-icon-wrap">
@@ -236,7 +171,7 @@
     <p class="empty-desc">記錄您冒險所獲得的治療藥水、法術卷軸等消耗物資！</p>
     <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
       <svg lucidePlus [size]="18" class="btn-icon"></svg>
-      <span>新增消耗品</span>
+      <span>新增物品</span>
     </button>
   </div>
   } @else if (consumableItems().length === 0) {
@@ -312,4 +247,82 @@
   </div>
   }
   }
+      </ng-template>
+    </mat-tab>
+  </mat-tab-group>
+<ng-template #inventoryTools>
+
+  <!-- 🔍 搜尋 & 篩選列 -->
+  <div class="filter-panel" data-resize-focus>
+    <div class="filter-search-row">
+    <!-- 搜尋框 -->
+    <div class="search-bar" [class.search-bar--active]="searchQuery().trim().length > 0">
+      <svg lucideSearch [size]="17" class="search-icon"></svg>
+      <input class="search-input" type="text" placeholder="搜尋物品名稱、來源" [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)" aria-label="搜尋倉庫物品" />
+      @if (searchQuery().trim().length > 0) {
+      <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" aria-label="清除搜尋">
+        <svg lucideX [size]="15"></svg>
+      </button>
+      }
+    </div>
+
+      <button type="button" class="mobile-filter-toggle" (click)="filtersExpanded.set(!filtersExpanded())"
+        [attr.aria-expanded]="filtersExpanded()" aria-controls="inventory-filter-options"
+        [attr.aria-label]="(filtersExpanded() ? '收合篩選' : '展開篩選') + '，已選 ' + activeFilterCount() + ' 項'">
+        篩選@if (activeFilterCount() > 0) { ({{ activeFilterCount() }}) }
+      </button>
+    </div>
+
+    <!-- 篩選 Chips 列 -->
+    <div class="filter-chips-row" id="inventory-filter-options" [class.mobile-filter-collapsed]="!filtersExpanded()">
+      <!-- 稀有度 Chips -->
+      @for (rarity of RARITY_OPTIONS; track rarity) {
+      <button type="button" class="filter-chip" [class.filter-chip--active]="isRaritySelected(rarity)"
+        [style.--chip-color]="rarityColors[rarity]" (click)="toggleRarityFilter(rarity)"
+        [attr.aria-pressed]="isRaritySelected(rarity)">
+        {{ RARITY_SHORT_LABELS[rarity] }}
+      </button>
+      }
+
+      <!-- 需同調篩選 Chip -->
+      @if (activeTab() === 0) {
+      <button type="button" class="filter-chip filter-chip--attune" [class.filter-chip--active]="filterAttunementOnly()"
+        (click)="toggleAttunementFilter()" [attr.aria-pressed]="filterAttunementOnly()">
+        <svg lucideInfinity [size]="13" class="chip-icon"></svg>
+        需同調
+      </button>
+      }
+
+      <!-- 清除所有篩選 -->
+      @if (hasActiveFilters()) {
+      <button type="button" class="filter-chip-clear" (click)="clearAllFilters()">
+        <svg lucideX [size]="13"></svg>
+        清除篩選
+      </button>
+      }
+    </div>
+  </div>
+
+
+  @if (loadError()) {
+    <app-read-error [message]="(hasLoaded() ? '資料尚未更新。' : '') + loadError()!" [pending]="isLoading()" (retry)="loadItems()" />
+  }
+
+  <!-- Loading -->
+  @if (isLoading()) {
+  <p role="status">正在載入倉庫…</p>
+  <div class="items-list" aria-hidden="true">
+    @for (item of [1, 2, 3, 4]; track $index) {
+    <div class="clean-card item-row-card skeleton-row">
+      <div class="skeleton-box" style="width: 40%; height: 20px;"></div>
+      <div class="skeleton-box" style="width: 80px; height: 24px; border-radius: 9999px;"></div>
+      <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
+    </div>
+    }
+  </div>
+  }
+
+
+</ng-template>
 </div>

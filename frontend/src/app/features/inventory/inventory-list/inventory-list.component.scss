@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 1.35rem;
+  font-size: var(--type-page-title);
   font-weight: 700;
   margin: 0;
   color: var(--text-primary);
@@ -215,8 +215,6 @@
   .tab-icon {
     margin-right: 6px;
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
     vertical-align: middle;
   }
 }

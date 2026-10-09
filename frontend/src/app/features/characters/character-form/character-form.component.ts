@@ -1,3 +1,4 @@
+import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 
 import { ActivatedRoute, Router } from '@angular/router';
@@ -39,6 +40,7 @@ import {
   selector: 'app-character-form',
   standalone: true,
   imports: [
+    FormFeedbackComponent,
     ReactiveFormsModule,
     FormsModule,
     MatCardModule,
@@ -206,7 +208,11 @@ export class CharacterFormComponent implements OnInit {
     this.avatarUrl.set(null);
   }
 
+  protected formError = signal<string | null>(null);
+  protected errorTarget = signal('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
+
   protected onSubmit(): void {
+    this.formError.set(null);
     if (this.isSaving()) return;
 
     if (this.isEditMode()) {
@@ -217,13 +223,16 @@ export class CharacterFormComponent implements OnInit {
         && this.classEntries().every(entry => !!entry.className.trim());
       if (!basicValid) {
         this.form.markAllAsTouched();
+        this.formError.set('請修正必填欄位、職業或數值後再儲存。');
+        this.errorTarget.set('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid, .form-section mat-select');
         return;
       }
     } else {
       if (this.form.invalid || this.totalLevel() < 1 || this.totalLevel() > 20
         || this.classEntries().some(entry => !entry.className.trim())) {
         this.form.markAllAsTouched();
-        this.snackBar.open('請完成至少一筆有效的開卡職業與等級（總等級 1 至 20）', '關閉', { duration: 3000 });
+        this.formError.set('請填寫必填欄位，並完成至少一筆有效的開卡職業與等級（總等級 1 至 20）');
+        this.errorTarget.set('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid, .form-section mat-select');
         return;
       }
     }
@@ -257,7 +266,8 @@ export class CharacterFormComponent implements OnInit {
           },
           error: () => {
             this.isSaving.set(false);
-            this.snackBar.open('無法預覽修正結果，資料尚未儲存', '關閉', { duration: 3000 });
+            this.formError.set('無法預覽修正結果，資料尚未儲存，請重試。');
+            this.errorTarget.set('');
           },
         });
       } else if (baselineChanged) {
@@ -273,7 +283,8 @@ export class CharacterFormComponent implements OnInit {
         },
         error: () => {
           this.isSaving.set(false);
-          this.snackBar.open('建立失敗，請稍後再試', '關閉', { duration: 3000 });
+          this.formError.set('建立失敗，請稍後再試');
+          this.errorTarget.set('');
         },
       });
     }
@@ -325,7 +336,8 @@ export class CharacterFormComponent implements OnInit {
         },
         error: () => {
           this.isSaving.set(false);
-          this.snackBar.open('更新失敗，請稍後再試', '關閉', { duration: 3000 });
+          this.formError.set('更新失敗，請稍後再試');
+          this.errorTarget.set('');
         },
       });
   }
