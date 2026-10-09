@@ -102,6 +102,10 @@ export class InventoryListComponent implements OnInit {
   protected readonly searchQuery = signal('');
   protected readonly selectedRarities = signal<Set<ItemRarity>>(new Set());
   protected readonly filterAttunementOnly = signal(false);
+  protected readonly filtersExpanded = signal(false);
+  protected readonly activeFilterCount = computed(() =>
+    this.selectedRarities().size + (this.filterAttunementOnly() ? 1 : 0)
+  );
 
   /** 是否有任何篩選條件啟用 */
   protected readonly hasActiveFilters = computed(() =>

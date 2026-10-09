@@ -59,6 +59,8 @@ export interface StoryAwardFormItem {
   description: string;
 }
 
+type MobileOptionalSection = 'magic-items' | 'consumables' | 'story-awards' | 'downtime';
+
 @Component({
   selector: 'app-adventure-form',
   standalone: true,
@@ -256,6 +258,39 @@ export class AdventureFormComponent implements OnInit {
 
   // ── 休整期活動卡片清單 ────────────────────────────────────────────────────
   protected downtimeActivities = signal<DowntimeActivityItem[]>([]);
+
+  private readonly collapsedSections = signal(new Set<MobileOptionalSection>());
+  private readonly itemDetailsChecked = signal(false);
+  private readonly expectedMagicItems = computed(() =>
+    Math.max(0, this._magicItemsChange() || 0) + Math.max(0, this._magicItemsDowntimeChange() || 0)
+  );
+  private readonly detailedMagicItems = computed(() => this.gainedMagicItems().length
+    + this.gainedConsumableItems().reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0)
+  );
+  protected readonly hasItemDetailsError = computed(() =>
+    this.itemDetailsChecked() && this.expectedMagicItems() !== this.detailedMagicItems()
+  );
+
+  protected isSectionExpanded(section: MobileOptionalSection, count: number): boolean {
+    return (count > 0 && !this.collapsedSections().has(section))
+      || ((section === 'magic-items' || section === 'consumables') && this.hasItemDetailsError());
+  }
+
+  protected toggleSection(section: MobileOptionalSection): void {
+    this.collapsedSections.update(sections => {
+      const next = new Set(sections);
+      next.has(section) ? next.delete(section) : next.add(section);
+      return next;
+    });
+  }
+
+  private expandSection(section: MobileOptionalSection): void {
+    this.collapsedSections.update(sections => {
+      const next = new Set(sections);
+      next.delete(section);
+      return next;
+    });
+  }
 
   protected form: FormGroup = this.fb.group({
     adventureCode: [''],
@@ -560,6 +595,7 @@ export class AdventureFormComponent implements OnInit {
   // ── 休整期活動操作（卡片清單模式）─────────────────────────────────────────
 
   protected addDowntimeActivity(): void {
+    this.expandSection('downtime');
     this.downtimeActivities.update(list => [
       ...list,
       {
@@ -673,6 +709,7 @@ export class AdventureFormComponent implements OnInit {
 
   // ── 獲得永久性魔法物品清單操作 ──────────────────────────────────────────
   protected addGainedItem(): void {
+    this.expandSection('magic-items');
     this.gainedMagicItems.update(list => [
       ...list,
       { itemName: '', rarity: '', itemCategory: '', requiresAttunement: false, notes: '' },
@@ -720,6 +757,7 @@ export class AdventureFormComponent implements OnInit {
 
   // ── 獲得消耗品清單操作 ──────────────────────────────────────────
   protected addGainedConsumableItem(): void {
+    this.expandSection('consumables');
     this.gainedConsumableItems.update(list => [
       ...list,
       { itemName: '', quantity: 1, rarity: '', itemCategory: '', notes: '' },
@@ -761,6 +799,7 @@ export class AdventureFormComponent implements OnInit {
 
   // ── 故事獎勵操作 ──────────────────────────────────────────
   protected addStoryAward(): void {
+    this.expandSection('story-awards');
     this.storyAwards.update(list => [
       ...list,
       { awardName: '', description: '' },
@@ -895,29 +934,34 @@ export class AdventureFormComponent implements OnInit {
     // 防呆驗證：若有卡片未填寫名稱或描述，提示使用者填寫或移除
     const hasEmptyMagic = this.gainedMagicItems().some(item => !item.itemName.trim());
     if (hasEmptyMagic) {
+      this.expandSection('magic-items');
       this.snackBar.open('魔法物品名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
       return;
     }
     const hasEmptyConsumable = this.gainedConsumableItems().some(item => !item.itemName.trim());
     if (hasEmptyConsumable) {
+      this.expandSection('consumables');
       this.snackBar.open('消耗品名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
       return;
     }
-    const expectedMagicItems = Math.max(0, Number(this.form.get('magicItemsChange')?.value) || 0)
-      + Math.max(0, Number(this.form.get('magicItemsDowntimeChange')?.value) || 0);
-    const detailedMagicItems = this.gainedMagicItems().length
-      + this.gainedConsumableItems().reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0);
+    const expectedMagicItems = this.expectedMagicItems();
+    const detailedMagicItems = this.detailedMagicItems();
     if (detailedMagicItems !== expectedMagicItems) {
+      this.expandSection('magic-items');
+      this.expandSection('consumables');
+      this.itemDetailsChecked.set(true);
       this.snackBar.open(`魔法物品數量變動為 ${expectedMagicItems} 件，請填寫相同數量的永久物品與消耗品明細（目前 ${detailedMagicItems} 件）`, '確定', { duration: 4000 });
       return;
     }
     const hasEmptyActivity = this.downtimeActivities().some(act => !act.description.trim());
     if (hasEmptyActivity) {
+      this.expandSection('downtime');
       this.snackBar.open('休整期活動描述不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
       return;
     }
     const hasEmptyStoryAward = this.storyAwards().some(award => !award.awardName.trim());
     if (hasEmptyStoryAward) {
+      this.expandSection('story-awards');
       this.snackBar.open('故事獎勵名稱不得為空白，請填寫或刪除該卡片', '關閉', { duration: 3000 });
       return;
     }

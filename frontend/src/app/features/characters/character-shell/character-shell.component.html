@@ -54,6 +54,7 @@
       </div>
 
       <!-- Character HUD Stats Bar (即時數值看板) -->
+      <ng-template #resourceSummary>
       <div class="char-hud-bar">
         
         <div class="hud-stat-box">
@@ -104,6 +105,14 @@
         </div>
 
       </div>
+      </ng-template>
+      <div class="full-resource-summary">
+        <ng-container *ngTemplateOutlet="resourceSummary" />
+      </div>
+      <details class="compact-resource-summary">
+        <summary>角色資源</summary>
+        <ng-container *ngTemplateOutlet="resourceSummary" />
+      </details>
     </div>
 
     <!-- Tab Nav -->

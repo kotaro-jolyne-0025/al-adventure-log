@@ -46,7 +46,8 @@
 
       <button mat-flat-button color="primary" class="btn-add-item" (click)="onAddItem()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
-        新增{{ activeTab() === 0 ? '永久性魔法物品' : '消耗品' }}
+        <span class="desktop-add-label">新增{{ activeTab() === 0 ? '永久性魔法物品' : '消耗品' }}</span>
+        <span class="mobile-add-label">新增物品</span>
       </button>
     </div>
   </div>
@@ -74,6 +75,7 @@
 
   <!-- 🔍 搜尋 & 篩選列 -->
   <div class="filter-panel">
+    <div class="filter-search-row">
     <!-- 搜尋框 -->
     <div class="search-bar" [class.search-bar--active]="searchQuery().trim().length > 0">
       <svg lucideSearch [size]="17" class="search-icon"></svg>
@@ -86,8 +88,15 @@
       }
     </div>
 
+      <button type="button" class="mobile-filter-toggle" (click)="filtersExpanded.set(!filtersExpanded())"
+        [attr.aria-expanded]="filtersExpanded()" aria-controls="inventory-filter-options"
+        [attr.aria-label]="(filtersExpanded() ? '收合篩選' : '展開篩選') + '，已選 ' + activeFilterCount() + ' 項'">
+        篩選@if (activeFilterCount() > 0) { ({{ activeFilterCount() }}) }
+      </button>
+    </div>
+
     <!-- 篩選 Chips 列 -->
-    <div class="filter-chips-row">
+    <div class="filter-chips-row" id="inventory-filter-options" [class.mobile-filter-collapsed]="!filtersExpanded()">
       <!-- 稀有度 Chips -->
       @for (rarity of RARITY_OPTIONS; track rarity) {
       <button type="button" class="filter-chip" [class.filter-chip--active]="isRaritySelected(rarity)"
