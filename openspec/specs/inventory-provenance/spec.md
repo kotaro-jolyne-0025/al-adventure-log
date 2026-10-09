@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Inventory categories and item records
-系統 SHALL 以永久魔法物品及消耗品兩類呈現倉庫；物品具有名稱、類型、數量及選填的稀有度、來源、備註，數量未提供時預設 1。由冒險或休整期變化建立的魔法物品 SHALL 顯示「冒險獲得」或「休整期獲得」來源標籤。新增時 SHALL 由目前分類帶入類型，名稱 MUST 非空白且不超過 255 字。
+系統 SHALL 以永久性魔法物品及消耗品兩類呈現倉庫；物品具有名稱、類型、數量及選填的稀有度、來源、備註，數量未提供時預設 1。由冒險或休整期變化建立的魔法物品 SHALL 顯示「冒險獲得」或「休整期獲得」來源標籤。新增時 SHALL 由目前分類帶入類型，名稱 MUST 非空白且不超過 255 字。
 
 #### Scenario: 從消耗品分類新增
 - **WHEN** 玩家從消耗品分類建立有效名稱的物品且未另設數量
@@ -21,18 +21,18 @@
 - **THEN** 倉庫不再包含該物品，但冒險仍顯示當時獲得的名稱及數量
 
 ### Requirement: Inventory-derived current magic item count
-角色目前魔法物品數 SHALL 為其倉庫內所有永久魔法物品 `quantity` 的加總，MUST NOT 包含消耗品。倉庫新增、數量修改、刪除或冒險戰利品同步成功時，系統 SHALL 將重新計算的目前數量保存至 character，character-shell SHALL 顯示此值。後續倉庫異動 MUST NOT 改寫冒險歷史中的魔法物品快照。
+角色目前魔法物品數 SHALL 為其倉庫內所有永久性魔法物品 `quantity` 的加總，MUST NOT 包含消耗品。倉庫新增、數量修改、刪除或冒險戰利品同步成功時，系統 SHALL 將重新計算的目前數量保存至 character，character-shell SHALL 顯示此值。後續倉庫異動 MUST NOT 改寫冒險歷史中的魔法物品快照。
 
 #### Scenario: 永久物品按數量加總
-- **WHEN** 倉庫有一筆數量 3 的永久魔法物品、一筆數量 2 的永久魔法物品及一筆數量 5 的消耗品
+- **WHEN** 倉庫有一筆數量 3 的永久性魔法物品、一筆數量 2 的永久性魔法物品及一筆數量 5 的消耗品
 - **THEN** character 的目前魔法物品數及 character-shell 均顯示 5，而非資料列數 2 或包含消耗品的 10
 
 #### Scenario: 移除永久物品同步目前數量
-- **WHEN** 角色目前有 3 件永久魔法物品，玩家從倉庫移除其中 1 件
+- **WHEN** 角色目前有 3 件永久性魔法物品，玩家從倉庫移除其中 1 件
 - **THEN** character 的目前魔法物品數及 character-shell 更新為 2，相關冒險歷史快照仍保留原數量
 
 #### Scenario: 消耗品異動不影響魔法物品數
-- **WHEN** 玩家新增、使用或刪除消耗品，但永久魔法物品沒有改變
+- **WHEN** 玩家新增、使用或刪除消耗品，但永久性魔法物品沒有改變
 - **THEN** character 的目前魔法物品數保持不變
 
 ### Requirement: Traceable placeholder magic items
