@@ -23,6 +23,16 @@ describe('AvatarCropperDialogComponent responsive preview', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
+  it('moves the crop with keyboard controls only after the image is ready', () => {
+    component['moveImage'](10, -10);
+    expect(component['offsetX']).toBe(10);
+    expect(component['offsetY']).toBe(15);
+    component['imageLoaded'].set(true);
+    component['moveImage'](10, -10);
+    expect(component['offsetX']).toBe(20);
+    expect(component['offsetY']).toBe(5);
+  });
+
   function preview(width: number): void {
     vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
       left: 20, top: 30, width, height: width,

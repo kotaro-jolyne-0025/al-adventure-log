@@ -1,3 +1,4 @@
+import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -32,6 +33,7 @@ export type AdventureSortField = 'playDate' | 'createdAt';
   selector: 'app-adventure-list',
   standalone: true,
   imports: [
+    ReadErrorComponent,
     RouterLink,
     CommonModule,
     DatePipe,
@@ -84,6 +86,8 @@ export class AdventureListComponent implements OnInit {
     'desc'
   );
   protected readonly isLoading = signal(true);
+  protected loadError = signal<string | null>(null);
+  protected hasLoaded = signal(false);
   private readonly pageSize = 20;
   protected readonly visibleLimit = signal(this.pageSize);
   protected characterId!: string;
@@ -173,15 +177,17 @@ export class AdventureListComponent implements OnInit {
     this.loadEntries();
   }
 
-  private loadEntries(): void {
+  protected loadEntries(): void {
+    this.loadError.set(null);
     this.isLoading.set(true);
     this.adventureService.getAllByCharacter(this.characterId).subscribe({
       next: (list) => {
         this.rawEntries.set(list);
+        this.hasLoaded.set(true);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.snackBar.open('載入冒險記錄失敗', '關閉', { duration: 3000 });
+      error: (error) => {
+        this.loadError.set(readErrorMessage(error, '冒險紀錄'));
         this.isLoading.set(false);
       },
     });

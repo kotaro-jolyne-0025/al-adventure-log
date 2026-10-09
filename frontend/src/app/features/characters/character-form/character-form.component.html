@@ -1,6 +1,6 @@
 <div class="page-container">
   <div class="page-header">
-    <button mat-icon-button (click)="onBack()">
+    <button mat-icon-button (click)="onBack()" aria-label="返回角色列表">
       <svg lucideArrowLeft [size]="20"></svg>
     </button>
     <h1 class="page-title">{{ isEditMode() ? '編輯角色' : '新增角色' }}</h1>
@@ -9,6 +9,8 @@
   <mat-card class="form-card">
     <mat-card-content>
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <app-form-feedback [message]="formError()" [target]="errorTarget()" />
+    <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
 
         <!-- 基本資料區 -->
         <section class="form-section">
@@ -109,7 +111,7 @@
               </mat-form-field>
               @if (classEntries().length > 1) {
               <button type="button" mat-icon-button color="warn" style="margin-top: 8px;" (click)="removeClass(i)"
-                matTooltip="移除此職業">
+                matTooltip="移除此職業" aria-label="移除此職業">
                 <svg lucideTrash2 [size]="20"></svg>
               </button>
               }

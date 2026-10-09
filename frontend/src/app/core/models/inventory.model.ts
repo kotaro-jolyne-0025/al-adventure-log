@@ -14,7 +14,7 @@ export const ITEM_CATEGORY_OPTION_LABELS: Record<ItemCategory, string> = {
 };
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
-  PERMANENT: '永久魔法物品',
+  PERMANENT: '永久性魔法物品',
   CONSUMABLE: '消耗品',
 };
 

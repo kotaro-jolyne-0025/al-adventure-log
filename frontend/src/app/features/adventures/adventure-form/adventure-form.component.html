@@ -1,10 +1,12 @@
 <div class="page-container">
   <div class="page-header">
-    <button mat-icon-button (click)="onBack()" matTooltip="返回"><svg lucideArrowLeft [size]="20"></svg></button>
+    <button mat-icon-button (click)="onBack()" matTooltip="返回" aria-label="返回"><svg lucideArrowLeft [size]="20"></svg></button>
     <h1 class="page-title">{{ isEditMode() ? '編輯冒險紀錄' : '新增冒險紀錄' }}</h1>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <app-form-feedback [message]="formError()" [target]="errorTarget()" />
+    <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
 
     <!-- 冒險基本資訊 -->
     <mat-card class="form-card">
@@ -122,7 +124,7 @@
               </mat-form-field>
 
               @if (classEntries().length > 1) {
-              <button type="button" mat-icon-button color="warn" (click)="removeClass(i)" matTooltip="移除此職業">
+              <button type="button" mat-icon-button color="warn" (click)="removeClass(i)" matTooltip="移除此職業" aria-label="移除此職業">
                 <svg lucideTrash2 [size]="16"></svg>
               </button>
               }
@@ -198,7 +200,7 @@
 
 
         <!-- 獲得永久性魔法物品清單 -->
-        <div class="sub-items-section">
+        <div class="sub-items-section" data-resize-focus>
           <div class="sub-section-header">
             <div class="sub-title-flex" [class.mobile-heading-replaced]="gainedMagicItems().length > 0">
               <svg lucideSparkles [size]="18" class="title-icon magic"></svg>
@@ -232,7 +234,7 @@
                   <span class="new-tag">新增</span>
                   }
                 </div>
-                <button type="button" mat-icon-button color="warn" (click)="removeGainedItem(i)" matTooltip="移除此物品">
+                <button type="button" mat-icon-button color="warn" (click)="removeGainedItem(i)" matTooltip="移除此物品" aria-label="移除此物品">
                   <svg lucideTrash2 [size]="16"></svg>
                 </button>
               </div>
@@ -288,7 +290,7 @@
         </div>
 
         <!-- 獲得消耗品清單 -->
-        <div class="sub-items-section">
+        <div class="sub-items-section" data-resize-focus>
           <div class="sub-section-header">
             <div class="sub-title-flex" [class.mobile-heading-replaced]="gainedConsumableItems().length > 0">
               <svg lucideFlaskConical [size]="18" class="title-icon consumable"></svg>
@@ -323,7 +325,7 @@
                   }
                 </div>
                 <button type="button" mat-icon-button color="warn" (click)="removeGainedConsumableItem(i)"
-                  matTooltip="移除此物品">
+                  matTooltip="移除此物品" aria-label="移除此物品">
                   <svg lucideTrash2 [size]="16"></svg>
                 </button>
               </div>
@@ -386,7 +388,7 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- ⭐ 區塊二：故事獎勵 (Story Awards)                       -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <mat-card class="form-card phase-card phase-story-award">
+    <mat-card class="form-card phase-card phase-story-award" data-resize-focus>
       <mat-card-header>
         <div class="card-header-between full-width">
           <mat-card-title class="card-title-flex" [class.mobile-heading-replaced]="storyAwards().length > 0">
@@ -421,7 +423,7 @@
                 <span class="new-tag">新增</span>
                 }
               </div>
-              <button type="button" mat-icon-button color="warn" (click)="removeStoryAward(i)" matTooltip="移除此故事獎勵">
+              <button type="button" mat-icon-button color="warn" (click)="removeStoryAward(i)" matTooltip="移除此故事獎勵" aria-label="移除此故事獎勵">
                 <svg lucideTrash2 [size]="16"></svg>
               </button>
             </div>
@@ -453,7 +455,7 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- ⛺ 區塊三：休整期資源變動與活動（卡片清單模式）           -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <mat-card class="form-card phase-card phase-downtime">
+    <mat-card class="form-card phase-card phase-downtime" data-resize-focus>
       <mat-card-header>
         <div class="card-header-between full-width">
           <mat-card-title class="card-title-flex" [class.mobile-heading-replaced]="downtimeActivities().length > 0">
@@ -488,7 +490,7 @@
                 <span class="new-tag">新增</span>
                 }
               </div>
-              <button type="button" mat-icon-button color="warn" (click)="removeDowntimeActivity(i)" matTooltip="移除此活動">
+              <button type="button" mat-icon-button color="warn" (click)="removeDowntimeActivity(i)" matTooltip="移除此活動" aria-label="移除此活動">
                 <svg lucideTrash2 [size]="16"></svg>
               </button>
             </div>

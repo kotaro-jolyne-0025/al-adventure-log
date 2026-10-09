@@ -8,11 +8,14 @@
 }
 
 .shell-container {
+  // The shell already reserves the side insets; nested pages keep normal spacing.
+  --page-safe-left: 0px;
+  --page-safe-right: 0px;
   width: 100%;
   max-width: 1080px;
   min-width: 0;
   margin: 0 auto;
-  padding: 20px 16px 80px;
+  padding: 20px max(16px, var(--safe-area-right)) max(80px, var(--safe-area-bottom)) max(16px, var(--safe-area-left));
 
   @media (max-width: 600px) {
     padding: 12px max(12px, var(--safe-area-right)) 60px max(12px, var(--safe-area-left));
@@ -386,7 +389,7 @@
     margin-bottom: 16px;
   }
 
-  ::ng-deep .mat-mdc-tab {
+  ::ng-deep .mat-mdc-tab-link {
     @media (max-width: 600px) {
       flex: 1;
       padding: 0 12px;
@@ -407,7 +410,7 @@
 }
 
 .full-resource-summary {
-  display: contents;
+  display: block;
 }
 
 .compact-resource-summary {
@@ -429,7 +432,7 @@
         padding: 10px 0;
         box-sizing: border-box;
         color: var(--text-secondary);
-        font-size: 0.875rem;
+        font-size: var(--type-label);
         cursor: pointer;
 
         &:focus-visible {

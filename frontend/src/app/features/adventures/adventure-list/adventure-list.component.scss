@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 1.35rem;
+  font-size: var(--type-page-title);
   font-weight: 700;
   margin: 0;
   color: var(--text-primary);
