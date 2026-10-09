@@ -40,12 +40,13 @@ export interface AvatarCropperDialogData {
       </h2>
 
       <mat-dialog-content class="dialog-content">
-        <p class="crop-hint">可拖曳圖片移動位置，或使用下方滑桿縮放大小以配合肖像框</p>
+        <p class="crop-hint" id="crop-instructions">拖曳圖片或使用下方位移按鈕調整位置，使用縮放滑桿調整大小。</p>
 
         <!-- Canvas Container -->
         <div class="canvas-wrapper">
           <canvas
             #cropCanvas
+            role="img" aria-label="頭像裁切預覽" aria-describedby="crop-instructions"
             width="320"
             height="320"
             (mousedown)="onMouseDown($event)"
@@ -60,11 +61,17 @@ export interface AvatarCropperDialogData {
           ></canvas>
         </div>
 
+        <div class="position-controls" role="group" aria-label="圖片位置">
+          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(0, -10)">上移</button>
+          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(0, 10)">下移</button>
+          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(-10, 0)">左移</button>
+          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(10, 0)">右移</button>
+        </div>
         <!-- Controls Bar -->
         <div class="controls-row">
           <svg lucideZoomOut [size]="20" class="zoom-icon"></svg>
           <mat-slider [min]="minScale()" [max]="maxScale()" [step]="0.01" class="zoom-slider">
-            <input matSliderThumb [ngModel]="scale()" (ngModelChange)="onScaleChange($event)" />
+            <input matSliderThumb aria-label="圖片縮放比例" [attr.aria-valuetext]="scale().toFixed(2) + ' 倍'" [ngModel]="scale()" (ngModelChange)="onScaleChange($event)" />
           </mat-slider>
           <svg lucideZoomIn [size]="20" class="zoom-icon"></svg>
           <button
@@ -90,6 +97,8 @@ export interface AvatarCropperDialogData {
   `,
   styles: [
     `
+      .position-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .5rem; }
+      .position-controls button { min-height: 44px; }
       .cropper-dialog {
         display: flex;
         flex-direction: column;
@@ -228,13 +237,13 @@ export class AvatarCropperDialogComponent implements OnInit {
 
   private loadImage(source: string | File): void {
     if (typeof source === 'string') {
-      this.img.src = source;
       this.setupImageHandlers();
+      this.img.src = source;
     } else if (source instanceof File) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        this.img.src = e.target?.result as string;
         this.setupImageHandlers();
+        this.img.src = e.target?.result as string;
       };
       reader.readAsDataURL(source);
     }
@@ -252,7 +261,16 @@ export class AvatarCropperDialogComponent implements OnInit {
     };
   }
 
+  protected moveImage(dx: number, dy: number): void {
+    if (!this.imageLoaded()) return;
+    this.offsetX += dx;
+    this.offsetY += dy;
+    this.draw();
+  }
+
   protected resetTransform(): void {
+    if (!this.imageLoaded()) return;
+    this.scale.set(Math.max(this.CROP_SIZE / this.img.width, this.CROP_SIZE / this.img.height));
     const s = this.scale();
     // 預設將圖片中心置於裁切框中心
     this.offsetX = (this.CANVAS_SIZE - this.img.width * s) / 2;

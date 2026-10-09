@@ -1,3 +1,5 @@
+import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
+import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -27,6 +29,8 @@ import {
   selector: 'app-inventory-form',
   standalone: true,
   imports: [
+    FormFeedbackComponent,
+    ReadErrorComponent,
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
@@ -50,7 +54,11 @@ export class InventoryFormComponent implements OnInit {
 
   protected isEditMode = signal(false);
   protected isSaving = signal(false);
-  private characterId!: string;
+  protected isLoading = signal(false);
+  protected loadError = signal<string | null>(null);
+  protected retryable = signal(true);
+  protected itemLoaded = signal(false);
+  protected characterId!: string;
   private itemId?: string;
 
   readonly itemTypes: ItemType[] = ['PERMANENT', 'CONSUMABLE'];
@@ -91,13 +99,22 @@ export class InventoryFormComponent implements OnInit {
     }
   }
 
+  protected retryLoad(): void {
+    if (this.itemId && !this.isLoading()) this.loadItem(this.itemId);
+  }
+
   private loadItem(id: string): void {
+    this.isLoading.set(true);
+    this.itemLoaded.set(false);
+    this.loadError.set(null);
+    this.form.disable();
     this.inventoryService.getAllByCharacter(this.characterId).subscribe({
       next: (items) => {
         const item = items.find((i) => i.id === id);
         if (!item) {
-          this.snackBar.open('找不到此物品', '關閉', { duration: 3000 });
-          this.onBack();
+          this.isLoading.set(false);
+          this.retryable.set(false);
+          this.loadError.set('找不到此物品，資料可能已移除。');
           return;
         }
         this.form.patchValue({
@@ -110,17 +127,28 @@ export class InventoryFormComponent implements OnInit {
           source: item.source ?? '',
           notes: item.notes ?? '',
         });
+        this.form.enable();
+        this.itemLoaded.set(true);
+        this.isLoading.set(false);
       },
-      error: () => {
-        this.snackBar.open('載入物品失敗', '關閉', { duration: 3000 });
-        this.onBack();
+      error: (error) => {
+        this.isLoading.set(false);
+        this.retryable.set(![401, 403, 404].includes(error.status));
+        this.loadError.set(readErrorMessage(error, '物品'));
       },
     });
   }
 
+  protected formError = signal<string | null>(null);
+  protected errorTarget = signal('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
+
   protected onSubmit(): void {
+    this.formError.set(null);
+    if (this.isSaving() || this.isLoading() || (this.isEditMode() && !this.itemLoaded())) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+        this.formError.set('請修正必填欄位、職業或數值後再儲存。');
+        this.errorTarget.set('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid, .form-section mat-select');
       return;
     }
     this.isSaving.set(true);
@@ -145,7 +173,8 @@ export class InventoryFormComponent implements OnInit {
         },
         error: () => {
           this.isSaving.set(false);
-          this.snackBar.open('更新失敗', '關閉', { duration: 3000 });
+          this.formError.set('更新失敗');
+          this.errorTarget.set('');
         },
       });
     } else {
@@ -156,7 +185,8 @@ export class InventoryFormComponent implements OnInit {
         },
         error: () => {
           this.isSaving.set(false);
-          this.snackBar.open('新增失敗', '關閉', { duration: 3000 });
+          this.formError.set('新增失敗');
+          this.errorTarget.set('');
         },
       });
     }

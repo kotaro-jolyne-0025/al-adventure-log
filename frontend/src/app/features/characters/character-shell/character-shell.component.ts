@@ -1,5 +1,6 @@
+import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, Router, RouterOutlet, RouterLink } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
 
 import { MatButtonModule } from '@angular/material/button';
@@ -19,8 +20,10 @@ import { LucideCoins, LucideTent, LucideSparkles, LucidePencil, LucideBookOpen, 
   selector: 'app-character-shell',
   standalone: true,
   imports: [
+    ReadErrorComponent,
     CommonModule,
     RouterOutlet,
+    RouterLink,
     MatTabsModule,
     MatButtonModule,
     MatTooltipModule,
@@ -41,6 +44,8 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
 
   protected character = signal<Character | null>(null);
   protected isLoading = signal(true);
+  protected loadError = signal<string | null>(null);
+  protected retryable = signal(true);
   protected characterId!: string;
 
   private readonly destroy$ = new Subject<void>();
@@ -64,25 +69,31 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private loadCharacterData(): void {
+  protected loadCharacterData(): void {
+    this.loadError.set(null);
     this.isLoading.set(true);
     this.characterService.getById(this.characterId).subscribe({
       next: (character) => {
         this.character.set(character);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.snackBar.open('找不到此角色', '關閉', { duration: 3000 });
-        this.router.navigate(['/characters']);
+      error: (error) => {
+        this.isLoading.set(false);
+        this.retryable.set(![401, 403, 404].includes(error.status));
+        this.loadError.set(readErrorMessage(error, '角色'));
       },
     });
   }
 
   private refreshHud(): void {
+    this.loadError.set(null);
     this.characterService.getById(this.characterId).subscribe({
       next: (character) => {
         this.character.set(character);
         this.isLoading.set(false);
+      },
+      error: (error) => {
+        this.loadError.set('角色資源尚未更新。' + readErrorMessage(error, '角色'));
       },
     });
   }

@@ -1,3 +1,4 @@
+import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -57,6 +58,7 @@ const RARITY_WEIGHT: Record<string, number> = {
   selector: 'app-inventory-list',
   standalone: true,
   imports: [
+    ReadErrorComponent,
     RouterLink,
     CommonModule,
     MatTabsModule,
@@ -95,6 +97,8 @@ export class InventoryListComponent implements OnInit {
 
   protected allItems = signal<InventoryItem[]>([]);
   protected isLoading = signal(true);
+  protected loadError = signal<string | null>(null);
+  protected hasLoaded = signal(false);
   protected activeTab = signal(0); // 0=PERMANENT, 1=CONSUMABLE
   protected characterId!: string;
 
@@ -296,19 +300,21 @@ export class InventoryListComponent implements OnInit {
     });
   }
 
-  private loadItems(silent: boolean = false): void {
+  protected loadItems(silent: boolean = false): void {
+    this.loadError.set(null);
     if (!silent) {
       this.isLoading.set(true);
     }
-    this.inventoryService.getAllByCharacter(this.characterId).subscribe({
+    this.inventoryService.getAllByCharacter(this.characterId, silent).subscribe({
       next: (items) => {
         this.allItems.set(items);
+        this.hasLoaded.set(true);
         if (!silent) {
           this.isLoading.set(false);
         }
       },
-      error: () => {
-        this.snackBar.open('載入倉庫失敗', '關閉', { duration: 3000 });
+      error: (error) => {
+        this.loadError.set(readErrorMessage(error, '倉庫'));
         if (!silent) {
           this.isLoading.set(false);
         }
@@ -332,6 +338,7 @@ export class InventoryListComponent implements OnInit {
     event.stopPropagation();
     const data: ConfirmDialogData = {
       title: '刪除物品',
+      intent: 'destructive',
       message: `確定要刪除「${item.itemName}」嗎？此操作無法復原。`,
     };
     this.dialog.open(ConfirmDialogComponent, { data, width: '360px' })
@@ -345,6 +352,8 @@ export class InventoryListComponent implements OnInit {
             this.snackBar.open(`已刪除「${item.itemName}」`, '關閉', { duration: 2500 });
           },
           error: () => {
+            this.allItems.update(items => items.some(existing => existing.id === item.id)
+              ? items : [...items, item]);
             this.snackBar.open('刪除失敗', '關閉', { duration: 3000 });
             this.loadItems(true);
           },

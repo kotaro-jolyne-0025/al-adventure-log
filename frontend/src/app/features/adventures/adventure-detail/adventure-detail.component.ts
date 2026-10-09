@@ -1,3 +1,4 @@
+import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
@@ -12,7 +13,7 @@ import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
 import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
 import { formatClassLevels } from '../../../core/models/dnd-classes';
-import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { forkJoin, map, of, switchMap } from 'rxjs';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -39,6 +40,7 @@ import {
   selector: 'app-adventure-detail',
   standalone: true,
   imports: [
+    ReadErrorComponent,
     CommonModule,
     DatePipe,
     DecimalPipe,
@@ -77,11 +79,13 @@ export class AdventureDetailComponent implements OnInit {
   protected consumableItems = signal<(AdventureGainedItem | InventoryItem)[]>([]);
   protected storyAwards = signal<StoryAward[]>([]);
   protected isLoading = signal(true);
+  protected loadError = signal<string | null>(null);
+  protected retryable = signal(true);
 
   readonly rarityLabels: Record<string, string> = ITEM_RARITY_LABELS;
   readonly categoryLabels = ITEM_CATEGORY_LABELS;
 
-  private characterId!: string;
+  protected characterId!: string;
   private entryId!: string;
 
   ngOnInit(): void {
@@ -92,11 +96,12 @@ export class AdventureDetailComponent implements OnInit {
     this.loadEntry();
   }
 
-  private loadEntry(): void {
+  protected loadEntry(): void {
+    this.loadError.set(null);
     this.isLoading.set(true);
     forkJoin({
       entry: this.adventureService.getById(this.characterId, this.entryId),
-      gainedItems: this.adventureService.getGainedItems(this.entryId).pipe(catchError(() => of([]))),
+      gainedItems: this.adventureService.getGainedItems(this.entryId),
     }).pipe(
       switchMap(({ entry, gainedItems }) => {
         if (gainedItems.length > 0) {
@@ -104,7 +109,6 @@ export class AdventureDetailComponent implements OnInit {
         }
         // 舊資料沒有快照時，才額外讀取整個倉庫做相容性比對。
         return this.inventoryService.getAllByCharacter(this.characterId).pipe(
-          catchError(() => of([])),
           map(legacyItems => ({ entry, gainedItems, legacyItems }))
         );
       })
@@ -123,9 +127,10 @@ export class AdventureDetailComponent implements OnInit {
 
         this.isLoading.set(false);
       },
-      error: () => {
-        this.snackBar.open('找不到此冒險記錄', '關閉', { duration: 3000 });
-        this.router.navigate(['/characters', this.characterId, 'adventures']);
+      error: (error) => {
+        this.isLoading.set(false);
+        this.retryable.set(![401, 403, 404].includes(error.status));
+        this.loadError.set(readErrorMessage(error, '冒險紀錄'));
       },
     });
   }
@@ -206,6 +211,7 @@ export class AdventureDetailComponent implements OnInit {
   protected onDelete(): void {
     const data: ConfirmDialogData = {
       title: '刪除冒險記錄',
+      intent: 'destructive',
       message: '確定要刪除此冒險記錄嗎？此操作無法復原。',
       confirmText: '確認刪除',
       cancelText: '取消',

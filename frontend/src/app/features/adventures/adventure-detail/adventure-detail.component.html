@@ -1,3 +1,6 @@
+@if (loadError()) {
+  <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters', characterId, 'adventures']" (retry)="loadEntry()" />
+}
 <div class="page-container">
   <!-- Loading -->
   @if (isLoading()) {
@@ -8,7 +11,7 @@
     <!-- Detail Header -->
     <div class="detail-header">
       <div class="header-left">
-        <button mat-icon-button class="btn-back" (click)="onBack()" matTooltip="返回冒險紀錄表">
+        <button mat-icon-button class="btn-back" (click)="onBack()" matTooltip="返回冒險紀錄表" aria-label="返回冒險紀錄表">
           <svg lucideArrowLeft [size]="18"></svg>
         </button>
         <div>
@@ -32,7 +35,7 @@
           <svg lucidePencil [size]="16"></svg>
           <span>編輯</span>
         </button>
-        <button mat-icon-button color="warn" matTooltip="刪除此紀錄" (click)="onDelete()">
+        <button mat-icon-button color="warn" matTooltip="刪除此紀錄" (click)="onDelete()" aria-label="刪除此紀錄">
           <svg lucideTrash2 [size]="18"></svg>
         </button>
       </div>
