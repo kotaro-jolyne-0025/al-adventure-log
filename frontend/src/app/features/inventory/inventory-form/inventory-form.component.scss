@@ -3,10 +3,10 @@
   min-width: 0;
   max-width: 680px;
   margin: 0 auto;
-  padding: 16px 16px 80px;
+  padding: 16px max(16px, var(--page-safe-right)) max(80px, var(--safe-area-bottom)) max(16px, var(--page-safe-left));
 
   @media (max-width: 600px) {
-    padding: 12px max(12px, var(--safe-area-right)) 70px max(12px, var(--safe-area-left));
+    padding: 12px max(12px, var(--page-safe-right)) 70px max(12px, var(--page-safe-left));
   }
 }
 

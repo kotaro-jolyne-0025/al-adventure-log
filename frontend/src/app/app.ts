@@ -15,6 +15,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confi
 import { version } from '../../package.json';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
+import { ViewportService } from './core/services/viewport.service';
 import { EditProfileDialogComponent } from './features/auth/edit-profile-dialog/edit-profile-dialog.component';
 import {
   LucideArrowLeft,
@@ -61,6 +62,7 @@ export class App {
   readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
+  private readonly viewport = inject(ViewportService);
   private lastPath = "";
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);

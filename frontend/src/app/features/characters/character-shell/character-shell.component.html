@@ -15,7 +15,7 @@
     <div class="char-hero-card clean-card">
 
       <!-- Hero Portrait + Identity & Actions -->
-      <div class="char-hero-top">
+      <div class="char-hero-top" data-resize-focus>
         <div class="hero-identity">
           <div class="char-avatar-hero">
             @if (character()!.avatarUrl) {
@@ -109,13 +109,15 @@
 
       </div>
       </ng-template>
-      <div class="full-resource-summary">
+      <div data-resize-focus>
+      <div class="full-resource-summary" tabindex="-1" data-resize-focus-target role="region" aria-label="角色資源">
         <ng-container *ngTemplateOutlet="resourceSummary" />
       </div>
       <details class="compact-resource-summary">
         <summary>角色資源</summary>
         <ng-container *ngTemplateOutlet="resourceSummary" />
       </details>
+      </div>
     </div>
 
     <!-- Tab Nav -->
