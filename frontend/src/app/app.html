@@ -52,6 +52,8 @@
           <span>版權與免責聲明</span>
         </button>
         <mat-divider></mat-divider>
+        <ng-container *ngTemplateOutlet="supportMenuItems"></ng-container>
+        <mat-divider></mat-divider>
         <ng-container *ngTemplateOutlet="updateMenuItems"></ng-container>
         <mat-divider></mat-divider>
         <button mat-menu-item (click)="logout()" class="logout-menu-item">
@@ -71,11 +73,27 @@
         <svg lucideEllipsisVertical [size]="20"></svg>
       </button>
       <mat-menu #guestMenu="matMenu" xPosition="before" class="app-user-menu">
+        <ng-container *ngTemplateOutlet="supportMenuItems"></ng-container>
+        <mat-divider></mat-divider>
         <ng-container *ngTemplateOutlet="updateMenuItems"></ng-container>
       </mat-menu>
     }
   </mat-toolbar>
 </header>
+
+<ng-template #supportMenuItems>
+  <button mat-menu-item type="button" (click)="openContactDialog()">
+    <svg lucideMail [size]="20" aria-hidden="true"></svg>
+    <span>聯絡我</span>
+  </button>
+  @if (siteLinks.sponsorshipUrl; as sponsorshipUrl) {
+    <a mat-menu-item [href]="sponsorshipUrl" target="_blank" rel="noopener noreferrer"
+      aria-label="贊助支持（外部網站，新分頁開啟）">
+      <svg lucideHeart [size]="20" aria-hidden="true"></svg>
+      <span>贊助支持 ↗</span>
+    </a>
+  }
+</ng-template>
 
 <ng-template #updateMenuItems>
   <div class="menu-version">目前版本 v{{ version }}</div>
