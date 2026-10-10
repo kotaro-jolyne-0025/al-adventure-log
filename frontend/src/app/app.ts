@@ -12,6 +12,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AppUpdateService } from './core/services/app-update.service';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
+import { ContactDialogComponent } from './shared/components/contact-dialog/contact-dialog.component';
+import { siteLinks } from './core/config/site-links';
 import { version } from '../../package.json';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
@@ -28,6 +30,8 @@ import {
   LucideGavel,
   LucideLogOut,
   LucideEllipsisVertical,
+  LucideMail,
+  LucideHeart,
 } from '@lucide/angular';
 
 @Component({
@@ -53,11 +57,14 @@ import {
     LucideGavel,
     LucideLogOut,
     LucideEllipsisVertical,
+    LucideMail,
+    LucideHeart,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
 export class App {
+  readonly siteLinks = siteLinks;
   readonly authService = inject(AuthService);
   readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
@@ -144,6 +151,15 @@ export class App {
 
   goBack(): void {
     this.router.navigate(['/characters']);
+  }
+
+  openContactDialog(): void {
+    const trigger = document.querySelector<HTMLButtonElement>(
+      this.authService.isAuthenticated() ? '.user-pill-btn' : '.more-menu-btn',
+    );
+    this.dialog.open(ContactDialogComponent, {
+      width: '480px', maxWidth: '92vw', restoreFocus: false, ariaLabel: '聯絡我',
+    }).afterClosed().pipe(take(1)).subscribe(() => trigger?.focus());
   }
 
   openEditProfileDialog(): void {
