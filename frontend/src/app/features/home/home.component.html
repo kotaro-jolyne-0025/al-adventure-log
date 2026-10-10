@@ -58,6 +58,17 @@
         <a routerLink="/legal" class="legal-link-btn">
           版權與免責聲明
         </a>
+        <button mat-button type="button" (click)="openContactDialog()">
+          <svg lucideMail [size]="18" aria-hidden="true"></svg>
+          <span>聯絡我</span>
+        </button>
+        @if (siteLinks.sponsorshipUrl; as sponsorshipUrl) {
+          <a mat-button [href]="sponsorshipUrl" target="_blank" rel="noopener noreferrer"
+            aria-label="贊助支持（外部網站，新分頁開啟）">
+            <svg lucideHeart [size]="18" aria-hidden="true"></svg>
+            <span>贊助支持 ↗</span>
+          </a>
+        }
       </div>
     </footer>
   </div>

@@ -166,6 +166,11 @@
 
 /* ── 頁尾聲明 ── */
 .landing-footer {
+  .footer-links > button, .footer-links > a[mat-button] {
+    min-height: 44px;
+    height: auto;
+    white-space: normal;
+  }
   text-align: center;
   display: flex;
   flex-direction: column;

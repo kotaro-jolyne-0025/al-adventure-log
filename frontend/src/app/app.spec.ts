@@ -8,6 +8,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { App } from './app';
 import { version } from '../../package.json';
+import { siteLinks } from './core/config/site-links';
 
 describe('App', () => {
   let snackAction: Subject<void>;
@@ -33,6 +34,30 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
+  });
+
+  it.each([false, true])('provides public support links and restores menu focus (logged in: %s)', async loggedIn => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    if (loggedIn) {
+      app.authService.currentUser.set({ id: 'test-user', displayName: '測試玩家', email: 'player@example.invalid' });
+      app.authService.token.set('test-token');
+    }
+    fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector(loggedIn ? '.user-pill-btn' : '.more-menu-btn') as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const link = document.querySelector('.mat-mdc-menu-panel a[target="_blank"]') as HTMLAnchorElement;
+    expect(link.href).toBe(siteLinks.sponsorshipUrl);
+    expect(link.rel).toBe('noopener noreferrer');
+    const contact = Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel button')).find(button => button.textContent?.trim() === '聯絡我')!;
+    const closed = new Subject<void>();
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => closed } as never);
+    const focus = vi.spyOn(trigger, 'focus');
+    contact.click();
+    closed.next();
+    expect(focus).toHaveBeenCalled();
   });
 
   it('should render the product title', async () => {
