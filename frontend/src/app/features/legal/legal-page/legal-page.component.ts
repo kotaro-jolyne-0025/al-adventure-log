@@ -1,23 +1,13 @@
 import { Component, inject } from '@angular/core';
 
 import { Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatDividerModule } from '@angular/material/divider';
 import { LucideExternalLink, LucideArrowLeft } from '@lucide/angular';
 
 @Component({
   selector: 'app-legal-page',
   standalone: true,
-  imports: [
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatDividerModule,
-    LucideExternalLink,
-    LucideArrowLeft,
-  ],
+  imports: [MatButtonModule, LucideExternalLink, LucideArrowLeft],
   templateUrl: './legal-page.component.html',
   styleUrl: './legal-page.component.scss',
 })

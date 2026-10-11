@@ -103,16 +103,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-
-    @media (max-width: 480px) {
-      font-size: 1.05rem;
-    }
   }
 
-  @media (max-width: 420px) {
-    // 讓品牌區使用扣除右側按鈕後的剩餘空間，文字只在真正不足時省略。
-    flex: 1 1 auto;
+  @media (max-width: 600px) {
+    flex: 0 0 44px;
+    min-height: 44px;
     max-width: none;
+    justify-content: center;
+
+    .brand-title {
+      display: none;
+    }
   }
 }
 
@@ -296,10 +297,6 @@
 }
 
 @media (max-width: 420px) {
-  .spacer {
-    flex: 0 0 4px;
-  }
-
   .auth-actions {
     gap: 2px;
 
