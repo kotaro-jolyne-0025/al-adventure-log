@@ -53,11 +53,7 @@
       <p class="wotc-disclaimer">
         本站為非官方同好工具，遵循威世智 (Wizards of the Coast) 之同好內容政策 (Fan Content Policy)。
       </p>
-      <div class="footer-links">
-        <span>&copy; 2026 Kiran (可嵐) · v{{ version }} · </span>
-        <a routerLink="/legal" class="legal-link-btn">
-          版權與免責聲明
-        </a>
+      <div class="footer-actions">
         <button mat-button type="button" (click)="openContactDialog()">
           <svg lucideMail [size]="18" aria-hidden="true"></svg>
           <span>聯絡我</span>
@@ -69,6 +65,12 @@
             <span>贊助支持 ↗</span>
           </a>
         }
+      </div>
+      <div class="footer-meta">
+        <span>&copy; 2026 Kiran (可嵐) · v{{ version }}</span>
+        <a routerLink="/legal" class="legal-link-btn">
+          版權與免責聲明
+        </a>
       </div>
     </footer>
   </div>
