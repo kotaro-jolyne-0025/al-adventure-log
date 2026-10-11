@@ -166,16 +166,11 @@
 
 /* ── 頁尾聲明 ── */
 .landing-footer {
-  .footer-links > button, .footer-links > a[mat-button] {
-    min-height: 44px;
-    height: auto;
-    white-space: normal;
-  }
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   padding-top: 0.5rem;
 
   .wotc-disclaimer {
@@ -185,18 +180,41 @@
     line-height: 1.5;
   }
 
-  .footer-links {
+  .footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+
+    > button, > a {
+      min-height: 44px;
+      height: auto;
+      padding: 0.625rem 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      white-space: normal;
+    }
+  }
+
+  .footer-meta {
     font-size: 0.8rem;
     color: var(--text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    line-height: 1.5;
 
     .legal-link-btn {
       background: none;
       border: none;
-      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 0.25rem;
       color: var(--text-secondary);
       text-decoration: underline;
       font-size: 0.8rem;
@@ -206,6 +224,12 @@
 
       &:hover {
         color: var(--color-primary);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
       }
     }
   }

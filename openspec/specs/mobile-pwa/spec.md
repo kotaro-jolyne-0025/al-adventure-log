@@ -6,6 +6,17 @@
 
 ## Requirements
 
+### Requirement: Compact toolbar brand
+視窗寬度不超過 600 CSS 像素時，頂部品牌 SHALL 僅顯示 LOGO，品牌連結 SHALL 保留至少 44×44 CSS 像素點擊區域、完整可及名稱及既有導覽目的地；較寬視窗 SHALL 顯示品牌文字。
+
+#### Scenario: 窄視窗品牌
+- **WHEN** 使用者在 320、360 或 600 CSS 像素寬的視窗查看頂部工具列
+- **THEN** 品牌只顯示 LOGO，仍可聚焦及開啟原有目的頁
+
+#### Scenario: 展開視窗
+- **WHEN** 視窗寬度由 600 增加至 601 CSS 像素或桌面寬度
+- **THEN** 品牌文字恢復顯示，路由及登入狀態保持不變
+
 ### Requirement: Installable standalone application
 在支援 PWA 安裝的瀏覽器中，系統 SHALL 提供可安裝的應用程式資訊；安裝後 SHALL 能由裝置入口啟動為獨立視窗。
 
