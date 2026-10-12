@@ -15,9 +15,10 @@ import { MatButtonModule } from '@angular/material/button';
     }
   `,
   styles: `
-    .form-feedback { margin-block: 1rem; padding: .75rem;
-      border-inline-start: 3px solid var(--color-negative); background: var(--color-negative-bg); }
-    p { margin: 0; color: var(--color-negative); overflow-wrap: anywhere; }
+    .form-feedback { margin-block: .5rem; padding: .75rem;
+      border-inline-start: 3px solid var(--mat-sys-error); background: var(--mat-sys-error-container); }
+    p { margin: 0; font-size: var(--type-label); color: var(--mat-sys-on-error-container); overflow-wrap: anywhere; }
+    button { height: auto; min-height: 44px; max-width: 100%; padding-block: .5rem; white-space: normal; }
   `,
 })
 export class FormFeedbackComponent {

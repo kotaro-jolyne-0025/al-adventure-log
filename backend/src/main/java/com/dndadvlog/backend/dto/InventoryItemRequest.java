@@ -20,6 +20,7 @@ public class InventoryItemRequest {
     private InventoryItem.Rarity rarity;
     private InventoryItem.ItemCategory itemCategory;
     private Boolean requiresAttunement;
+    private Boolean isSoulCoin;
     @Positive(message = "物品數量必須大於 0")
     private Integer quantity;
     private String source;

@@ -1,3 +1,8 @@
+import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
+import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
+import { LocalStore } from '../../../core/services/local-store.service';
+import { DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -58,6 +63,7 @@ const RARITY_WEIGHT: Record<string, number> = {
   selector: 'app-inventory-list',
   standalone: true,
   imports: [
+    CacheNoticeComponent,
     ReadErrorComponent,
     RouterLink,
     CommonModule,
@@ -86,6 +92,14 @@ const RARITY_WEIGHT: Record<string, number> = {
   styleUrl: './inventory-list.component.scss',
 })
 export class InventoryListComponent implements OnInit {
+  private readonly local = inject(LocalStore);
+  private readonly reads = inject(LocalReadCache);
+  private readonly destroy = inject(DestroyRef);
+  protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
+  protected readonly fetchedAt = signal<number | null>(null);
+  protected readonly readOnly = computed(() => this.readSource() !== 'cloud' || !this.local.freshCharacters().has(this.characterId));
+  private readonly refreshWatcher = watchReadPage(() => this.loadItems());
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly inventoryService = inject(InventoryService);
@@ -301,12 +315,15 @@ export class InventoryListComponent implements OnInit {
   }
 
   protected loadItems(silent: boolean = false): void {
+    this.readSource.set(null);
     this.loadError.set(null);
     if (!silent) {
       this.isLoading.set(true);
     }
-    this.inventoryService.getAllByCharacter(this.characterId, silent).subscribe({
-      next: (items) => {
+    this.reads.read(this.characterId, 'inventory', () => this.inventoryService.getAllByCharacter(this.characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (result) => {
+        const items = result.data;
+        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
         this.allItems.set(items);
         this.hasLoaded.set(true);
         if (!silent) {
@@ -314,6 +331,7 @@ export class InventoryListComponent implements OnInit {
         }
       },
       error: (error) => {
+        if (!silent) { this.allItems.set([]); this.hasLoaded.set(false); }
         this.loadError.set(readErrorMessage(error, '倉庫'));
         if (!silent) {
           this.isLoading.set(false);
@@ -323,6 +341,7 @@ export class InventoryListComponent implements OnInit {
   }
 
   protected onAddItem(): void {
+    if (this.readOnly()) return;
     const type: ItemType = this.activeTab() === 0 ? 'PERMANENT' : 'CONSUMABLE';
     this.router.navigate(['/characters', this.characterId, 'inventory', 'new'], {
       queryParams: { type },
@@ -330,11 +349,13 @@ export class InventoryListComponent implements OnInit {
   }
 
   protected onEditItem(event: Event, itemId: string): void {
+    if (this.readOnly()) return;
     event.stopPropagation();
     this.router.navigate(['/characters', this.characterId, 'inventory', itemId, 'edit']);
   }
 
   protected onDeleteItem(event: Event, item: InventoryItem): void {
+    if (this.readOnly()) return;
     event.stopPropagation();
     const data: ConfirmDialogData = {
       title: '刪除物品',
@@ -344,7 +365,7 @@ export class InventoryListComponent implements OnInit {
     this.dialog.open(ConfirmDialogComponent, { data, width: '360px' })
       .afterClosed()
       .subscribe((confirmed) => {
-        if (!confirmed) return;
+        if (!confirmed || this.readOnly()) return;
         // 樂觀更新：立即從本地移除
         this.allItems.update((items) => items.filter((i) => i.id !== item.id));
         this.inventoryService.delete(this.characterId, item.id).subscribe({

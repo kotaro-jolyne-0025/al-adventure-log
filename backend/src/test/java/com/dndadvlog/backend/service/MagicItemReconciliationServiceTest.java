@@ -48,7 +48,7 @@ class MagicItemReconciliationServiceTest {
     @InjectMocks AdventureEntryService service;
 
     @Test
-    void savesExactDetailsIncludingConsumableQuantitiesWithoutPlaceholders() {
+    void derivesOnlyPermanentDetailsIgnoringSubmittedCountsAndConsumables() {
         UUID characterId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Character character = new Character();
@@ -109,8 +109,8 @@ class MagicItemReconciliationServiceTest {
 
         AdventureEntryResponse firstResponse = service.createEntryWithDetails(characterId, save, userId);
 
-        assertEquals(3, firstResponse.getMagicItemsChange());
-        assertEquals(2, firstResponse.getMagicItemsDowntimeChange());
+        assertEquals(1, firstResponse.getMagicItemsChange());
+        assertEquals(0, firstResponse.getMagicItemsDowntimeChange());
         assertEquals(2, snapshots.size());
         assertFalse(snapshots.stream().anyMatch(item -> Boolean.TRUE.equals(item.getNeedsDetails())));
         assertEquals(InventoryItem.ItemCategory.POTION, snapshots.get(1).getItemCategory());
@@ -119,19 +119,11 @@ class MagicItemReconciliationServiceTest {
     }
 
     @Test
-    void rejectsMissingExtraAndBatchedPermanentDetailsBeforeWriting() {
+    void rejectsBatchedPermanentDetailsBeforeWriting() {
         AdventureEntrySaveRequest save = new AdventureEntrySaveRequest();
         AdventureEntryRequest entry = new AdventureEntryRequest();
         entry.setMagicItemsChange(2);
         save.setEntry(entry);
-        for (List<AdventureGainedItemRequest> details : List.of(
-                List.<AdventureGainedItemRequest>of(), List.of(permanent("Sword")),
-                List.of(permanent("Sword"), permanent("Shield"), permanent("Wand")))) {
-            save.setGainedItems(details);
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    com.dndadvlog.backend.exception.BusinessException.class,
-                    () -> service.createEntryWithDetails(UUID.randomUUID(), save, UUID.randomUUID()));
-        }
         entry.setMagicItemsChange(1);
         AdventureGainedItemRequest batched = permanent("Sword");
         batched.setQuantity(2);

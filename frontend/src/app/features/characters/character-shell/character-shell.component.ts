@@ -1,5 +1,9 @@
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
+import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
+import { LocalStore } from '../../../core/services/local-store.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterOutlet, RouterLink } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
 
@@ -14,12 +18,13 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { CommonModule } from '@angular/common';
 
-import { LucideCoins, LucideTent, LucideSparkles, LucidePencil, LucideBookOpen, LucideBox, LucideGhost } from '@lucide/angular';
+import { LucideCoins, LucideTent, LucideSparkles, LucideGhost, LucidePencil, LucideBookOpen, LucideBox } from '@lucide/angular';
 
 @Component({
   selector: 'app-character-shell',
   standalone: true,
   imports: [
+    CacheNoticeComponent,
     ReadErrorComponent,
     CommonModule,
     RouterOutlet,
@@ -31,12 +36,20 @@ import { LucideCoins, LucideTent, LucideSparkles, LucidePencil, LucideBookOpen, 
     LucideCoins,
     LucideTent,
     LucideSparkles,
-    LucidePencil, LucideBookOpen, LucideBox, LucideGhost
+    LucideGhost,
+    LucidePencil, LucideBookOpen, LucideBox
   ],
   templateUrl: './character-shell.component.html',
   styleUrl: './character-shell.component.scss',
 })
 export class CharacterShellComponent implements OnInit, OnDestroy {
+  private readonly local = inject(LocalStore);
+  private readonly reads = inject(LocalReadCache);
+  private readonly destroy = inject(DestroyRef);
+  protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
+  protected readonly fetchedAt = signal<number | null>(null);
+  protected readonly readOnly = computed(() => this.readSource() !== 'cloud');
+  private readonly refreshWatcher = watchReadPage(() => this.loadCharacterData());
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly characterService = inject(CharacterService);
@@ -70,11 +83,17 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   }
 
   protected loadCharacterData(): void {
+    this.local.markFresh(this.characterId, false);
+    this.readSource.set(null);
+    this.character.set(null);
     this.loadError.set(null);
     this.isLoading.set(true);
-    this.characterService.getById(this.characterId).subscribe({
-      next: (character) => {
-        this.character.set(character);
+    this.reads.read(this.characterId, 'character', () => this.characterService.getById(this.characterId, true))
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (result) => {
+        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
+        this.local.markFresh(this.characterId, result.source === 'cloud');
+        this.character.set(result.data);
         this.isLoading.set(false);
       },
       error: (error) => {
@@ -86,16 +105,7 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   }
 
   private refreshHud(): void {
-    this.loadError.set(null);
-    this.characterService.getById(this.characterId).subscribe({
-      next: (character) => {
-        this.character.set(character);
-        this.isLoading.set(false);
-      },
-      error: (error) => {
-        this.loadError.set('角色資源尚未更新。' + readErrorMessage(error, '角色'));
-      },
-    });
+    this.loadCharacterData();
   }
 
   protected formatClasses(character: Character): string {
@@ -142,6 +152,7 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   }
 
   protected onEdit(): void {
+    if (this.readOnly()) return;
     this.router.navigate(['/characters', this.characterId, 'edit']);
   }
 }

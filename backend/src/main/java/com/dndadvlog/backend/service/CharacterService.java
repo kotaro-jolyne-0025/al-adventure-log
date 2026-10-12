@@ -9,6 +9,7 @@ import com.dndadvlog.backend.entity.Character;
 import com.dndadvlog.backend.exception.ResourceNotFoundException;
 import com.dndadvlog.backend.mapper.AdventureEntryMapper;
 import com.dndadvlog.backend.mapper.CharacterMapper;
+import com.dndadvlog.backend.mapper.InventoryItemMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class CharacterService {
 
     private final CharacterMapper characterMapper;
     private final AdventureEntryMapper adventureEntryMapper;
+    private final InventoryItemMapper inventoryItemMapper;
 
     public List<CharacterResponse> getAllCharacters(UUID userId) {
         return characterMapper.findByUserId(userId)
@@ -37,6 +39,7 @@ public class CharacterService {
 
     @Transactional
     public CharacterResponse createCharacter(CharacterRequest request, UUID userId) {
+        rejectSoulCoinInput(request);
         Character character = new Character();
         character.setId(UUID.randomUUID());
         character.setUserId(userId);
@@ -56,7 +59,7 @@ public class CharacterService {
         character.setCurrentGold(character.getInitialGold());
         character.setCurrentDowntime(character.getInitialDowntime());
         character.setCurrentMagicItems(0);
-        character.setSoulCoins(request.getSoulCoins() != null ? request.getSoulCoins() : 0);
+        character.setSoulCoins(0);
         characterMapper.insert(character);
         log.info("角色建立成功: ID={}, UserID={}, 名稱={}", character.getId(), userId, character.getCharacterName());
         return toResponse(findCharacter(character.getId(), userId), false);
@@ -64,6 +67,7 @@ public class CharacterService {
 
     @Transactional
     public CharacterResponse updateCharacter(UUID id, CharacterRequest request, UUID userId) {
+        rejectSoulCoinInput(request);
         Character character = findCharacter(id, userId);
         character.setCharacterName(request.getCharacterName());
         character.setPlayerName(request.getPlayerName());
@@ -83,9 +87,6 @@ public class CharacterService {
         character.setInitialGold(initialGold);
         character.setInitialDowntime(initialDowntime);
         applyOpeningBaseline(character, initialClasses, initialGold, initialDowntime);
-        if (request.getSoulCoins() != null) {
-            character.setSoulCoins(request.getSoulCoins());
-        }
         characterMapper.update(character);
         Character updated = findCharacter(id, userId);
         log.info("角色基本資料更新成功: ID={}, UserID={}, 名稱={}", updated.getId(), userId, updated.getCharacterName());
@@ -160,13 +161,19 @@ public class CharacterService {
         response.setCurrentGold(character.getCurrentGold());
         response.setCurrentDowntime(character.getCurrentDowntime());
         response.setCurrentMagicItems(character.getCurrentMagicItems());
-        response.setSoulCoins(character.getSoulCoins());
+        response.setSoulCoins(inventoryItemMapper.sumSoulCoinQuantityByCharacterId(character.getId()));
         response.setHasAdventureEntries(includeAdventurePresence && adventureEntryMapper.existsByCharacterId(character.getId()));
         return response;
     }
 
     private BigDecimal orZero(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private void rejectSoulCoinInput(CharacterRequest request) {
+        if (request.getSoulCoins() != null) {
+            throw new com.dndadvlog.backend.exception.BusinessException("靈魂幣已整合至倉庫，請從消耗品管理數量");
+        }
     }
 
     private int orZero(Integer value) {

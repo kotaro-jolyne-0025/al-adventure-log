@@ -13,7 +13,6 @@
         [returnTo]="['/characters', characterId, 'inventory']" (retry)="retryLoad()" />
     }
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
-    <app-form-feedback [message]="formError()" [target]="errorTarget()" />
     <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
 
       <mat-form-field appearance="outline" class="full-width">
@@ -51,7 +50,7 @@
         <mat-label>類別</mat-label>
         <mat-select formControlName="itemCategory">
           <mat-option value="">— 未指定 —</mat-option>
-          @for (category of categories; track category) {
+          @for (category of availableCategories(); track category) {
             <mat-option [value]="category">{{ categoryOptionLabels[category] }}</mat-option>
           }
         </mat-select>
@@ -62,6 +61,12 @@
           <mat-checkbox formControlName="requiresAttunement" color="primary">
             需同調 (Requires Attunement)
           </mat-checkbox>
+        </div>
+      }
+
+      @if (form.get('itemType')?.value === 'CONSUMABLE') {
+        <div class="checkbox-row">
+          <mat-checkbox formControlName="isSoulCoin" color="primary">靈魂幣</mat-checkbox>
         </div>
       }
 
@@ -83,6 +88,7 @@
       </mat-form-field>
 
       <div class="form-actions">
+          <app-form-feedback [message]="formError()" [target]="errorTarget()" />
         <button type="button" mat-stroked-button (click)="onBack()">取消</button>
         <button type="submit" mat-flat-button color="primary" [disabled]="isSaving() || isLoading() || (isEditMode() && !itemLoaded())">
           @if (isSaving()) {

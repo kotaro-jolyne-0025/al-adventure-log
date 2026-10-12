@@ -84,7 +84,6 @@ export class CharacterFormComponent implements OnInit {
     race: ['', Validators.required],
     subclass: [''],
     faction: [''],
-    soulCoins: [0, [Validators.min(0), Validators.pattern('^[0-9]*$')]],
     initialGold: [0, [Validators.min(0), Validators.pattern('^\\d+(\\.\\d{1,2})?$')]],
     initialDowntime: [0, [Validators.min(0), Validators.pattern('^[0-9]*$')]],
   });
@@ -144,7 +143,6 @@ export class CharacterFormComponent implements OnInit {
           race: character.race,
           subclass: character.subclass ?? '',
           faction: character.faction ?? '',
-          soulCoins: character.soulCoins ?? 0,
         });
         this.avatarUrl.set(character.avatarUrl ?? null);
         this.loadedCharacter = character;
@@ -249,7 +247,6 @@ export class CharacterFormComponent implements OnInit {
       initialClassesString: this.buildClassesString(),
       initialGold: raw.initialGold ?? 0,
       initialDowntime: raw.initialDowntime ?? 0,
-      soulCoins: raw.soulCoins ?? 0,
     };
 
     if (this.isEditMode() && this.characterId) {
@@ -281,9 +278,9 @@ export class CharacterFormComponent implements OnInit {
           this.snackBar.open(`角色「${created.characterName}」已建立！`, '關閉', { duration: 2500 });
           this.router.navigate(['/characters', created.id, 'adventures']);
         },
-        error: () => {
+        error: (error) => {
           this.isSaving.set(false);
-          this.formError.set('建立失敗，請稍後再試');
+          this.formError.set(error.error?.message || '建立失敗，請稍後再試');
           this.errorTarget.set('');
         },
       });
@@ -334,9 +331,9 @@ export class CharacterFormComponent implements OnInit {
           this.snackBar.open('角色資料已更新', '關閉', { duration: 3000 });
           this.router.navigate(['/characters', updated.id, 'adventures']);
         },
-        error: () => {
+        error: (error) => {
           this.isSaving.set(false);
-          this.formError.set('更新失敗，請稍後再試');
+          this.formError.set(error.error?.message || '更新失敗，請稍後再試');
           this.errorTarget.set('');
         },
       });

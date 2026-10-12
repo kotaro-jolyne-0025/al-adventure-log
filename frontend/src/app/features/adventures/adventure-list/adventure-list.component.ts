@@ -1,3 +1,8 @@
+import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
+import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
+import { LocalStore } from '../../../core/services/local-store.service';
+import { DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -33,6 +38,7 @@ export type AdventureSortField = 'playDate' | 'createdAt';
   selector: 'app-adventure-list',
   standalone: true,
   imports: [
+    CacheNoticeComponent,
     ReadErrorComponent,
     RouterLink,
     CommonModule,
@@ -61,6 +67,14 @@ export type AdventureSortField = 'playDate' | 'createdAt';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdventureListComponent implements OnInit {
+  private readonly local = inject(LocalStore);
+  private readonly reads = inject(LocalReadCache);
+  private readonly destroy = inject(DestroyRef);
+  protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
+  protected readonly fetchedAt = signal<number | null>(null);
+  protected readonly readOnly = computed(() => this.readSource() !== 'cloud' || !this.local.freshCharacters().has(this.characterId));
+  private readonly refreshWatcher = watchReadPage(() => this.loadEntries());
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly adventureService = inject(AdventureService);
@@ -178,15 +192,19 @@ export class AdventureListComponent implements OnInit {
   }
 
   protected loadEntries(): void {
+    this.readSource.set(null);
     this.loadError.set(null);
     this.isLoading.set(true);
-    this.adventureService.getAllByCharacter(this.characterId).subscribe({
-      next: (list) => {
+    this.reads.read(this.characterId, 'adventures', () => this.adventureService.getAllByCharacter(this.characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (result) => {
+        const list = result.data;
+        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
         this.rawEntries.set(list);
         this.hasLoaded.set(true);
         this.isLoading.set(false);
       },
       error: (error) => {
+        this.rawEntries.set([]); this.hasLoaded.set(false);
         this.loadError.set(readErrorMessage(error, '冒險紀錄'));
         this.isLoading.set(false);
       },
@@ -217,6 +235,7 @@ export class AdventureListComponent implements OnInit {
   }
 
   protected onAddEntry(): void {
+    if (this.readOnly()) return;
     this.router.navigate(['/characters', this.characterId, 'adventures', 'new']);
   }
 

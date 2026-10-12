@@ -1,5 +1,9 @@
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
+import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
+import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
+import { LocalStore } from '../../../core/services/local-store.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -11,7 +15,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
-import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
+import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS, soulCoinQuantity } from '../../../core/models/inventory.model';
 import { formatClassLevels } from '../../../core/models/dnd-classes';
 import { forkJoin, map, of, switchMap } from 'rxjs';
 import {
@@ -40,6 +44,7 @@ import {
   selector: 'app-adventure-detail',
   standalone: true,
   imports: [
+    CacheNoticeComponent,
     ReadErrorComponent,
     CommonModule,
     DatePipe,
@@ -67,6 +72,13 @@ import {
   styleUrl: './adventure-detail.component.scss',
 })
 export class AdventureDetailComponent implements OnInit {
+  private readonly local = inject(LocalStore);
+  private readonly reads = inject(LocalReadCache);
+  private readonly destroy = inject(DestroyRef);
+  protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
+  protected readonly fetchedAt = signal<number | null>(null);
+  protected readonly readOnly = computed(() => this.readSource() !== 'cloud' || !this.local.freshCharacters().has(this.characterId));
+  private readonly refreshWatcher = watchReadPage(() => this.loadEntry());
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly adventureService = inject(AdventureService);
@@ -77,6 +89,7 @@ export class AdventureDetailComponent implements OnInit {
   protected entry = signal<AdventureEntry | null>(null);
   protected magicItems = signal<(AdventureGainedItem | InventoryItem)[]>([]);
   protected consumableItems = signal<(AdventureGainedItem | InventoryItem)[]>([]);
+  protected readonly soulCoinTotal = computed(() => soulCoinQuantity(this.consumableItems()));
   protected storyAwards = signal<StoryAward[]>([]);
   protected isLoading = signal(true);
   protected loadError = signal<string | null>(null);
@@ -97,23 +110,27 @@ export class AdventureDetailComponent implements OnInit {
   }
 
   protected loadEntry(): void {
+    this.readSource.set(null);
     this.loadError.set(null);
     this.isLoading.set(true);
-    forkJoin({
+    this.reads.read(this.characterId, `adventure:${this.entryId}`, () => forkJoin({
       entry: this.adventureService.getById(this.characterId, this.entryId),
       gainedItems: this.adventureService.getGainedItems(this.entryId),
+      storyAwards: this.adventureService.getStoryAwards(this.entryId),
     }).pipe(
-      switchMap(({ entry, gainedItems }) => {
+      switchMap(({ entry, gainedItems, storyAwards }) => {
         if (gainedItems.length > 0) {
-          return of({ entry, gainedItems, legacyItems: [] as InventoryItem[] });
+          return of({ entry, gainedItems, storyAwards, legacyItems: [] as InventoryItem[] });
         }
         // 舊資料沒有快照時，才額外讀取整個倉庫做相容性比對。
-        return this.inventoryService.getAllByCharacter(this.characterId).pipe(
-          map(legacyItems => ({ entry, gainedItems, legacyItems }))
+        return this.inventoryService.getAllByCharacter(this.characterId, true).pipe(
+          map(legacyItems => ({ entry, gainedItems, storyAwards, legacyItems }))
         );
       })
-    ).subscribe({
-      next: ({ entry, gainedItems, legacyItems }) => {
+    )).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (result) => {
+        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
+        const { entry, gainedItems, storyAwards, legacyItems } = result.data;
         this.entry.set(entry);
         if (gainedItems && gainedItems.length > 0) {
           this.magicItems.set(gainedItems.filter(i => i.itemType === 'PERMANENT'));
@@ -123,11 +140,12 @@ export class AdventureDetailComponent implements OnInit {
           this.processGainedItems(entry, legacyItems);
         }
 
-        this.storyAwards.set(entry.storyAwards ?? []);
+        this.storyAwards.set(storyAwards);
 
         this.isLoading.set(false);
       },
       error: (error) => {
+        this.entry.set(null); this.magicItems.set([]); this.consumableItems.set([]); this.storyAwards.set([]);
         this.isLoading.set(false);
         this.retryable.set(![401, 403, 404].includes(error.status));
         this.loadError.set(readErrorMessage(error, '冒險紀錄'));
@@ -180,8 +198,8 @@ export class AdventureDetailComponent implements OnInit {
   protected magicItemsReduction(): number {
     const entry = this.entry();
     if (!entry) return 0;
-    return Math.abs(Math.min(0, entry.magicItemsChange ?? 0))
-      + Math.abs(Math.min(0, entry.magicItemsDowntimeChange ?? 0));
+    return (entry.magicItemsLost ?? Math.abs(Math.min(0, entry.magicItemsChange ?? 0)))
+      + (entry.magicItemsDowntimeLost ?? Math.abs(Math.min(0, entry.magicItemsDowntimeChange ?? 0)));
   }
 
   protected acquisitionSourceLabel(source?: 'ADVENTURE' | 'DOWNTIME' | null): string {
@@ -203,12 +221,14 @@ export class AdventureDetailComponent implements OnInit {
   }
 
   protected onEdit(): void {
+    if (this.readOnly()) return;
     this.router.navigate([
       '/characters', this.characterId, 'adventures', this.entryId, 'edit',
     ]);
   }
 
   protected onDelete(): void {
+    if (this.readOnly()) return;
     const data: ConfirmDialogData = {
       title: '刪除冒險記錄',
       intent: 'destructive',
@@ -219,7 +239,7 @@ export class AdventureDetailComponent implements OnInit {
     this.dialog.open(ConfirmDialogComponent, { data, width: '360px' })
       .afterClosed()
       .subscribe((confirmed) => {
-        if (!confirmed) return;
+        if (!confirmed || this.readOnly()) return;
         this.adventureService.delete(this.characterId, this.entryId).subscribe({
           next: () => {
             this.snackBar.open('冒險記錄已刪除', '關閉', { duration: 2500 });

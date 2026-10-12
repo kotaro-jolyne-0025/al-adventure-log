@@ -11,7 +11,7 @@ describe('CharacterShellComponent', () => {
     const character = {
       id: 'c', characterName: 'Hero', race: 'Human',
       currentClassesString: '戰士 (Fighter)2/法師 (Wizard)1',
-      currentGold: 12.5, currentDowntime: 3, currentMagicItems: 4,
+      currentGold: 12.5, currentDowntime: 3, currentMagicItems: 4, soulCoins: 3,
     };
     const getById = vi.fn(() => of(character));
     TestBed.configureTestingModule({ providers: [
@@ -26,8 +26,11 @@ describe('CharacterShellComponent', () => {
 
     expect(component['character']()).toEqual(character);
     expect(component['parseTotalLevel']()).toBe(3);
+    expect(component['character']()?.soulCoins).toBe(3);
+    getById.mockReturnValue(of({ ...character, soulCoins: 2 }));
     changed.next('c');
     expect(getById).toHaveBeenCalledTimes(2);
+    expect(component['character']()?.soulCoins).toBe(2);
     component.ngOnDestroy();
   });
 });

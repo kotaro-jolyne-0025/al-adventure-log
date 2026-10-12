@@ -6,6 +6,7 @@ import { of, throwError } from 'rxjs';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { InventoryItem } from '../../../core/models/inventory.model';
 import { InventoryListComponent } from './inventory-list.component';
+import { LocalStore } from '../../../core/services/local-store.service';
 
 describe('Inventory delete recovery', () => {
   it('restores the item when deletion and refresh both fail, retaining search and filters', () => {
@@ -21,6 +22,7 @@ describe('Inventory delete recovery', () => {
     ]});
     const component=TestBed.runInInjectionContext(()=>new InventoryListComponent());
     component.ngOnInit();
+    TestBed.inject(LocalStore).markFresh('c', true);
     component['searchQuery'].set('test');
     component['selectedRarities'].set(new Set(['RARE']));
     component['onDeleteItem'](new Event('click'),item);

@@ -1,6 +1,12 @@
 import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
+import { DraftNoticeComponent } from '../../../shared/components/draft-notice/draft-notice.component';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, Injector, OnDestroy, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { AdventureDraftSession } from '../../../core/services/adventure-draft-session';
+import { adventureBaseline, AdventureDraftInput, draftFormValues, draftText } from '../../../core/models/adventure-draft';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   FormBuilder,
@@ -24,9 +30,9 @@ import { TextFieldModule } from '@angular/cdk/text-field';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntryRequest, AdventureEntrySaveRequest, AdventureGainedItem } from '../../../core/models/adventure.model';
-import { ItemCategory, ItemRarity, ITEM_CATEGORIES, ITEM_CATEGORY_LABELS, ITEM_CATEGORY_OPTION_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
+import { ItemCategory, ItemRarity, ITEM_CATEGORIES, PERMANENT_ITEM_CATEGORIES, ITEM_CATEGORY_LABELS, ITEM_CATEGORY_OPTION_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
 import { DND_CLASSES, parseClassLevels } from '../../../core/models/dnd-classes';
-import { of, catchError, forkJoin, map, switchMap } from 'rxjs';
+import { of, forkJoin, map, switchMap, takeUntil } from 'rxjs';
 
 import {
   LucideCoins,
@@ -65,7 +71,9 @@ type MobileOptionalSection = 'magic-items' | 'consumables' | 'story-awards' | 'd
 @Component({
   selector: 'app-adventure-form',
   standalone: true,
+  providers: [AdventureDraftSession],
   imports: [
+    DraftNoticeComponent,
     FormFeedbackComponent,
     CommonModule,
     DecimalPipe,
@@ -100,13 +108,30 @@ type MobileOptionalSection = 'magic-items' | 'consumables' | 'story-awards' | 'd
   templateUrl: './adventure-form.component.html',
   styleUrl: './adventure-form.component.scss',
 })
-export class AdventureFormComponent implements OnInit {
+export class AdventureFormComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly adventureService = inject(AdventureService);
   private readonly inventoryService = inject(InventoryService);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly draft = inject(AdventureDraftSession);
+  private readonly dialog = inject(MatDialog);
+  private readonly destroy = inject(DestroyRef);
+  private readonly formRevision = signal(0);
+  private readonly host = inject(ElementRef);
+  private readonly injector = inject(Injector);
+  protected readonly dateText = signal('');
+  private restoredDraft = false;
+  private cloudSaved = false;
+  protected readonly recoveredText = signal('');
+
+  constructor() {
+    effect(() => {
+      this.formRevision();
+      this.draft.capture(this.captureInput());
+    });
+  }
 
   protected isEditMode = signal(false);
   protected isSaving = signal(false);
@@ -163,8 +188,12 @@ export class AdventureFormComponent implements OnInit {
   private readonly _downtimeChange = signal<number | null>(null);
   private readonly _downtimeDowntimeChange = signal<number | null>(null);
   private readonly _startingMagicItems = signal<number | null>(null);
-  private readonly _magicItemsChange = signal<number | null>(null);
-  private readonly _magicItemsDowntimeChange = signal<number | null>(null);
+  private readonly _magicItemsLost = signal(0);
+  private readonly _magicItemsDowntimeLost = signal(0);
+  protected readonly adventureMagicGained = computed(() => this.gainedMagicItems().filter(item => item.acquisitionSource !== 'DOWNTIME').length);
+  protected readonly downtimeMagicGained = computed(() => this.gainedMagicItems().filter(item => item.acquisitionSource === 'DOWNTIME').length);
+  protected readonly _magicItemsChange = computed(() => this.adventureMagicGained() - this._magicItemsLost());
+  protected readonly _magicItemsDowntimeChange = computed(() => this.downtimeMagicGained() - this._magicItemsDowntimeLost());
 
   protected readonly goldNetChange = computed(() =>
     Math.round(((this._goldChange() ?? 0) + (this._goldDowntimeChange() ?? 0)) * 100) / 100
@@ -232,6 +261,7 @@ export class AdventureFormComponent implements OnInit {
   readonly rarities: (ItemRarity | '')[] = ['', 'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'];
   readonly rarityLabels = ITEM_RARITY_LABELS;
   readonly categories = ITEM_CATEGORIES;
+  readonly permanentCategories = PERMANENT_ITEM_CATEGORIES;
   readonly categoryLabels = ITEM_CATEGORY_LABELS;
   readonly categoryOptionLabels = ITEM_CATEGORY_OPTION_LABELS;
 
@@ -250,6 +280,7 @@ export class AdventureFormComponent implements OnInit {
     id?: string;
     itemName: string;
     quantity: number;
+    isSoulCoin?: boolean;
     rarity: ItemRarity | '';
     itemCategory: ItemCategory | '';
     notes: string;
@@ -263,15 +294,9 @@ export class AdventureFormComponent implements OnInit {
 
   private readonly collapsedSections = signal(new Set<MobileOptionalSection>());
   private readonly itemDetailsChecked = signal(false);
-  private readonly expectedMagicItems = computed(() =>
-    Math.max(0, this._magicItemsChange() || 0) + Math.max(0, this._magicItemsDowntimeChange() || 0)
-  );
-  private readonly detailedMagicItems = computed(() => this.gainedMagicItems().length
-    + this.gainedConsumableItems().reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0)
-  );
-  protected readonly hasItemDetailsError = computed(() =>
-    this.itemDetailsChecked() && this.expectedMagicItems() !== this.detailedMagicItems()
-  );
+  protected readonly hasItemDetailsError = computed(() => this.itemDetailsChecked() &&
+    [...this.gainedMagicItems(), ...this.gainedConsumableItems()].some(item => !item.itemName.trim()));
+  protected readonly legacyMagicWarning = signal(false);
 
   protected isSectionExpanded(section: MobileOptionalSection, count: number): boolean {
     return (count > 0 && !this.collapsedSections().has(section))
@@ -306,8 +331,8 @@ export class AdventureFormComponent implements OnInit {
     downtimeChange: [null],
     downtimeDowntimeChange: [null],
     startingMagicItems: [null, [Validators.min(0)]],
-    magicItemsChange: [null],
-    magicItemsDowntimeChange: [null],
+    magicItemsLost: [0, [Validators.min(0), Validators.pattern(/^[0-9]+$/)]],
+    magicItemsDowntimeLost: [0, [Validators.min(0), Validators.pattern(/^[0-9]+$/)]],
     adventureNotes: [''],
     soulCoinChargesUsed: [''],
   });
@@ -317,6 +342,8 @@ export class AdventureFormComponent implements OnInit {
       this.route.parent?.snapshot.paramMap.get('id') ??
       this.route.snapshot.paramMap.get('characterId') ?? '';
     const entryIdParam = this.route.snapshot.paramMap.get('entryId');
+    void this.draft.start(this.characterId, entryIdParam ? `adventure:${entryIdParam}` : 'adventure:new');
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.formRevision.update(value => value + 1));
 
     this.form.get('startingGold')!.valueChanges.subscribe(v => this._startingGold.set(v != null && v !== '' ? Number(v) : null));
     this.form.get('goldChange')!.valueChanges.subscribe(v => this._goldChange.set(v != null && v !== '' ? Number(v) : null));
@@ -325,8 +352,8 @@ export class AdventureFormComponent implements OnInit {
     this.form.get('downtimeChange')!.valueChanges.subscribe(v => this._downtimeChange.set(v != null && v !== '' ? Number(v) : null));
     this.form.get('downtimeDowntimeChange')!.valueChanges.subscribe(v => this._downtimeDowntimeChange.set(v != null && v !== '' ? Number(v) : null));
     this.form.get('startingMagicItems')!.valueChanges.subscribe(v => this._startingMagicItems.set(v != null && v !== '' ? Number(v) : null));
-    this.form.get('magicItemsChange')!.valueChanges.subscribe(v => this._magicItemsChange.set(v != null && v !== '' ? Number(v) : null));
-    this.form.get('magicItemsDowntimeChange')!.valueChanges.subscribe(v => this._magicItemsDowntimeChange.set(v != null && v !== '' ? Number(v) : null));
+    this.form.get('magicItemsLost')!.valueChanges.subscribe(v => this._magicItemsLost.set(Number(v) || 0));
+    this.form.get('magicItemsDowntimeLost')!.valueChanges.subscribe(v => this._magicItemsDowntimeLost.set(Number(v) || 0));
 
     if (entryIdParam) {
       this.isEditMode.set(true);
@@ -354,10 +381,12 @@ export class AdventureFormComponent implements OnInit {
   }
 
   private loadDefaults(): void {
+    this.isLoading.set(true);
+    this.loadFailed.set(false);
     forkJoin({
-      d: this.adventureService.getDefaults(this.characterId),
-      inventory: this.inventoryService.getAllByCharacter(this.characterId).pipe(catchError(() => of([]))),
-    }).subscribe({
+      d: this.adventureService.getDefaults(this.characterId, true),
+      inventory: this.inventoryService.getAllByCharacter(this.characterId, true),
+    }).pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
       next: ({ d, inventory }) => {
         if (d.startingLevel != null) {
           this._startingLevel.set(d.startingLevel);
@@ -378,8 +407,10 @@ export class AdventureFormComponent implements OnInit {
           startingDowntime: d.startingDowntime ?? 0,
           startingMagicItems: warehouseMagicCount,
         });
+        this.isLoading.set(false);
+        this.draft.cloudLoaded(null, this.captureInput());
       },
-      error: () => { /* 靜默略過 */ },
+      error: () => { this.isLoading.set(false); this.loadFailed.set(true); },
     });
   }
 
@@ -407,7 +438,7 @@ export class AdventureFormComponent implements OnInit {
           }))
         );
       })
-    ).subscribe({
+    ).pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
       next: ({ entry, gainedItems, storyAwards }) => {
         this._startingLevel.set(entry.startingLevel ?? 1);
         this._startingClassesString.set(entry.startingClassesString ?? null);
@@ -475,30 +506,91 @@ export class AdventureFormComponent implements OnInit {
           downtimeChange: entry.downtimeChange ?? null,
           downtimeDowntimeChange: entry.downtimeDowntimeChange ?? null,
           startingMagicItems: entry.startingMagicItems ?? null,
-          magicItemsChange: entry.magicItemsChange ?? null,
-          magicItemsDowntimeChange: entry.magicItemsDowntimeChange ?? null,
           adventureNotes: entry.adventureNotes ?? '',
           soulCoinChargesUsed: entry.soulCoinChargesUsed ?? '',
         });
 
         this.applyGainedItems(gainedItems);
+        this.form.patchValue({
+          magicItemsLost: entry.magicItemsLost ?? Math.max(0, this.adventureMagicGained() - (entry.magicItemsChange ?? 0)),
+          magicItemsDowntimeLost: entry.magicItemsDowntimeLost ?? Math.max(0, this.downtimeMagicGained() - (entry.magicItemsDowntimeChange ?? 0)),
+        });
+        this.legacyMagicWarning.set(this._magicItemsChange() !== (entry.magicItemsChange ?? 0) || this._magicItemsDowntimeChange() !== (entry.magicItemsDowntimeChange ?? 0));
         this.storyAwards.set(storyAwards.map(a => ({
           id: a.id, awardName: a.awardName, description: a.description || '',
         })));
         this.detailsLoaded = true;
         this.isLoading.set(false);
+        this.draft.cloudLoaded(adventureBaseline({ entry, gainedItems, storyAwards }), this.captureInput());
       },
       error: () => {
         this.isLoading.set(false);
         this.loadFailed.set(true);
-        this.snackBar.open('資料尚未完整載入，請重試後再儲存', '關閉', { duration: 4000 });
       },
     });
   }
 
   protected retryLoad(): void {
-    if (this.entryId && !this.isLoading()) this.loadEntry(this.entryId);
+    if (this.isLoading()) return;
+    if (this.entryId) this.loadEntry(this.entryId);
+    else this.loadDefaults();
   }
+
+  private captureInput(): AdventureDraftInput {
+    const form = draftFormValues(this.form.getRawValue());
+    if (!form['playDate'] && this.dateText()) form['playDateText'] = this.dateText();
+    return structuredClone({ form,
+      levelUp: this.levelUp(), catchup: this.catchup(), catchupCount: this.catchupCount(), classes: this.classEntries(),
+      magicItems: this.gainedMagicItems(), consumables: this.gainedConsumableItems(),
+      awards: this.storyAwards(), activities: this.downtimeActivities() });
+  }
+
+  protected restoreDraft(): void {
+    const input = this.draft.accept();
+    if (!input) return;
+    const { startingGold, startingDowntime, startingMagicItems, ...editable } = input.form;
+    this.form.patchValue({ ...editable, playDate: this.parseLocalDate(editable['playDate'] as string | null) });
+    this.dateText.set((editable['playDateText'] as string) ?? '');
+    if (!editable['playDate'] && this.dateText()) queueMicrotask(() => {
+      const dateInput = this.host.nativeElement.querySelector('input[formcontrolname="playDate"]') as HTMLInputElement | null;
+      if (dateInput) dateInput.value = this.dateText();
+    });
+    this.levelUp.set(input.levelUp); this.catchup.set(input.catchup); this.catchupCount.set(input.catchupCount);
+    this.classEntries.set(input.classes);
+    this.gainedMagicItems.set(input.magicItems as ReturnType<typeof this.gainedMagicItems>);
+    this.gainedConsumableItems.set(input.consumables as ReturnType<typeof this.gainedConsumableItems>);
+    this.storyAwards.set(input.awards); this.downtimeActivities.set(input.activities);
+    this.restoredDraft = this.isEditMode();
+    this.form.markAsDirty();
+  }
+
+  protected discardDraft(): void {
+    this.dialog.open(ConfirmDialogComponent, { width: '360px', data: {
+      title: '捨棄本機草稿', intent: 'destructive', message: '確定要移除此裝置上的草稿嗎？雲端正式紀錄不會被刪除。',
+      confirmText: '捨棄草稿', cancelText: '保留草稿' } }).afterClosed().subscribe(confirmed => {
+      if (confirmed) { void this.draft.discard(); this.recoveredText.set(''); }
+    });
+  }
+
+  protected recoverDraftText(): void {
+    const input = this.draft.offered() ? this.draft.record()?.data?.input ?? this.draft.record()?.data : this.captureInput();
+    this.recoveredText.set(draftText(input));
+    afterNextRender(() => this.host.nativeElement.querySelector('app-draft-notice textarea')?.focus(), { injector: this.injector });
+  }
+
+  protected retryDraftSave(): void { this.draft.capture(this.captureInput()); void this.draft.flush(); }
+
+  @HostListener('document:visibilitychange')
+  protected saveOnBackground(): void {
+    if (document.visibilityState === 'hidden') this.flushDraft();
+  }
+
+  private flushDraft(): void {
+    if (this.cloudSaved) return;
+    this.draft.capture(this.captureInput()); void this.draft.flush();
+  }
+
+  ngOnDestroy(): void { this.flushDraft(); }
 
   private isSourceMatch(
     itemSource: string | null | undefined,
@@ -532,6 +624,7 @@ export class AdventureFormComponent implements OnInit {
         id: item.id,
         itemName: item.itemName,
         quantity: item.quantity ?? 1,
+        isSoulCoin: Boolean(item.isSoulCoin),
         rarity: (item.rarity ?? '') as ItemRarity | '',
         itemCategory: (item.itemCategory ?? '') as ItemCategory | '',
         notes: item.notes ?? '',
@@ -667,10 +760,8 @@ export class AdventureFormComponent implements OnInit {
     const list = this.downtimeActivities();
     let totalGold = 0;
     let totalDowntime = 0;
-    let totalMagicItems = 0;
     let hasGold = false;
     let hasDowntime = false;
-    let hasMagicItems = false;
 
     for (const item of list) {
       if (item.gold != null && !isNaN(item.gold)) {
@@ -681,16 +772,12 @@ export class AdventureFormComponent implements OnInit {
         totalDowntime += item.downtime;
         hasDowntime = true;
       }
-      if (item.magicItems != null && !isNaN(item.magicItems)) {
-        totalMagicItems += item.magicItems;
-        hasMagicItems = true;
-      }
     }
 
     this.form.patchValue({
       goldDowntimeChange: hasGold ? Math.round(totalGold * 100) / 100 : (list.length > 0 ? 0 : null),
       downtimeDowntimeChange: hasDowntime ? totalDowntime : (list.length > 0 ? 0 : null),
-      magicItemsDowntimeChange: hasMagicItems ? totalMagicItems : (list.length > 0 ? 0 : null),
+
     });
   }
 
@@ -716,17 +803,17 @@ export class AdventureFormComponent implements OnInit {
       ...list,
       { itemName: '', rarity: '', itemCategory: '', requiresAttunement: false, notes: '' },
     ]);
-    const current = Number(this.form.get('magicItemsChange')?.value) || 0;
-    this.form.patchValue({ magicItemsChange: current + 1 });
+
   }
 
   protected removeGainedItem(index: number): void {
     const removed = this.gainedMagicItems()[index];
     this.gainedMagicItems.update(list => list.filter((_, i) => i !== index));
-    const controlName = removed?.acquisitionSource === 'DOWNTIME'
-      ? 'magicItemsDowntimeChange' : 'magicItemsChange';
-    const current = Number(this.form.get(controlName)?.value) || 0;
-    this.form.patchValue({ [controlName]: Math.max(0, current - 1) });
+
+  }
+
+  protected updateGainedItemSource(index: number, acquisitionSource: 'ADVENTURE' | 'DOWNTIME'): void {
+    this.gainedMagicItems.update(items => items.map((item, i) => i === index ? { ...item, acquisitionSource } : item));
   }
 
   protected updateGainedItemName(index: number, name: string): void {
@@ -762,7 +849,7 @@ export class AdventureFormComponent implements OnInit {
     this.expandSection('consumables');
     this.gainedConsumableItems.update(list => [
       ...list,
-      { itemName: '', quantity: 1, rarity: '', itemCategory: '', notes: '' },
+      { itemName: '', quantity: 1, isSoulCoin: false, rarity: '', itemCategory: '', notes: '' },
     ]);
   }
 
@@ -791,6 +878,10 @@ export class AdventureFormComponent implements OnInit {
 
   protected updateGainedConsumableItemCategory(index: number, itemCategory: ItemCategory | ''): void {
     this.gainedConsumableItems.update(list => list.map((item, i) => i === index ? { ...item, itemCategory } : item));
+  }
+
+  protected updateGainedConsumableItemSoulCoin(index: number, isSoulCoin: boolean): void {
+    this.gainedConsumableItems.update(list => list.map((item, i) => i === index ? { ...item, isSoulCoin } : item));
   }
 
   protected updateGainedConsumableItemNotes(index: number, notes: string): void {
@@ -870,8 +961,10 @@ export class AdventureFormComponent implements OnInit {
       goldDowntimeChange: toDecimal(raw.goldDowntimeChange),
       downtimeChange: toInt(raw.downtimeChange),
       downtimeDowntimeChange: toInt(raw.downtimeDowntimeChange),
-      magicItemsChange: toInt(raw.magicItemsChange),
-      magicItemsDowntimeChange: toInt(raw.magicItemsDowntimeChange),
+      magicItemsChange: this._magicItemsChange(),
+      magicItemsLost: toInt(raw.magicItemsLost),
+      magicItemsDowntimeChange: this._magicItemsDowntimeChange(),
+      magicItemsDowntimeLost: toInt(raw.magicItemsDowntimeLost),
       adventureNotes: raw.adventureNotes?.trim() || null,
       soulCoinChargesUsed: raw.soulCoinChargesUsed?.trim() || null,
     };
@@ -889,6 +982,7 @@ export class AdventureFormComponent implements OnInit {
           id: item.id,
           itemName: item.itemName.trim(),
           itemType: 'PERMANENT' as const,
+          acquisitionSource: item.acquisitionSource ?? 'ADVENTURE',
           rarity: item.rarity || null,
           itemCategory: item.itemCategory || null,
           requiresAttunement: Boolean(item.requiresAttunement),
@@ -899,6 +993,7 @@ export class AdventureFormComponent implements OnInit {
           itemName: item.itemName.trim(),
           itemType: 'CONSUMABLE' as const,
           quantity: item.quantity,
+          isSoulCoin: Boolean(item.isSoulCoin),
           rarity: item.rarity || null,
           itemCategory: item.itemCategory || null,
           notes: item.notes.trim() || null,
@@ -917,7 +1012,7 @@ export class AdventureFormComponent implements OnInit {
 
   protected onSubmit(): void {
     this.formError.set(null);
-    if (this.isSaving() || this.isLoading() || this.loadFailed() ||
+    if (this.isSaving() || this.isLoading() || this.loadFailed() || this.draft.offered() ||
         (this.isEditMode() && !this.detailsLoaded)) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -942,6 +1037,7 @@ export class AdventureFormComponent implements OnInit {
     }
 
     // 防呆驗證：若有卡片未填寫名稱或描述，提示使用者填寫或移除
+    this.itemDetailsChecked.set(true);
     const hasEmptyMagic = this.gainedMagicItems().some(item => !item.itemName.trim());
     if (hasEmptyMagic) {
       this.expandSection('magic-items');
@@ -954,16 +1050,6 @@ export class AdventureFormComponent implements OnInit {
       this.expandSection('consumables');
       this.formError.set('消耗品名稱不得為空白，請填寫或刪除該卡片');
       this.errorTarget.set('#consumables-content');
-      return;
-    }
-    const expectedMagicItems = this.expectedMagicItems();
-    const detailedMagicItems = this.detailedMagicItems();
-    if (detailedMagicItems !== expectedMagicItems) {
-      this.expandSection('magic-items');
-      this.expandSection('consumables');
-      this.itemDetailsChecked.set(true);
-      this.formError.set(`魔法物品數量變動為 ${expectedMagicItems} 件，請填寫相同數量的永久物品與消耗品明細（目前 ${detailedMagicItems} 件）`);
-      this.errorTarget.set('#magic-items-content, #consumables-content');
       return;
     }
     const hasEmptyActivity = this.downtimeActivities().some(act => !act.description.trim());
@@ -982,30 +1068,37 @@ export class AdventureFormComponent implements OnInit {
     }
 
     this.isSaving.set(true);
+    this.flushDraft();
+    this.draft.pause();
     const req = this.buildRequest();
     const saveRequest = this.buildSaveRequest(req);
 
     if (this.isEditMode() && this.entryId) {
-      this.adventureService.updateWithDetails(this.characterId, this.entryId, saveRequest).subscribe({
+      const submit = this.restoredDraft ? this.readCloudBaseline().pipe(switchMap(baseline => {
+        if (!this.draft.baselineMatches(baseline)) throw new Error('雲端紀錄已更新，請先取回草稿文字並重新載入，避免覆蓋電腦整理的內容。');
+        return this.adventureService.updateWithDetails(this.characterId, this.entryId!, saveRequest);
+      })) : this.adventureService.updateWithDetails(this.characterId, this.entryId, saveRequest);
+      submit.pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
         next: (updated) => {
-          this.snackBar.open('記錄已更新', '關閉', { duration: 2500 });
-          this.router.navigate(['/characters', this.characterId, 'adventures', updated.id]);
+          void this.completeSave(updated.id, '記錄已更新');
         },
-        error: () => {
+        error: (error) => {
           this.isSaving.set(false);
-          this.formError.set('更新失敗，請稍後再試');
+          this.formError.set(error.error?.message || error.message || '更新失敗，請稍後再試');
+          if (error.status === 0 || error.status >= 500) this.formError.set('儲存結果尚未確認，草稿會保留。請先查看雲端紀錄，再決定是否重新儲存。');
           this.errorTarget.set('');
         },
       });
     } else {
-      this.adventureService.createWithDetails(this.characterId, saveRequest).subscribe({
+      this.adventureService.createWithDetails(this.characterId, saveRequest)
+        .pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
         next: (created) => {
-          this.snackBar.open('冒險記錄已新增', '關閉', { duration: 2500 });
-          this.router.navigate(['/characters', this.characterId, 'adventures', created.id]);
+          void this.completeSave(created.id, '冒險記錄已新增');
         },
-        error: () => {
+        error: (error) => {
           this.isSaving.set(false);
-          this.formError.set('新增失敗，請稍後再試');
+          this.formError.set(error.error?.message || '新增失敗，請稍後再試');
+          if (error.status === 0 || error.status >= 500) this.formError.set('儲存結果尚未確認，草稿會保留。請先查看雲端紀錄，再決定是否重新儲存。');
           this.errorTarget.set('');
         },
       });
@@ -1013,10 +1106,30 @@ export class AdventureFormComponent implements OnInit {
   }
 
   protected onBack(): void {
+    this.flushDraft();
     if (this.isEditMode() && this.entryId) {
       this.router.navigate(['/characters', this.characterId, 'adventures', this.entryId]);
     } else {
       this.router.navigate(['/characters', this.characterId, 'adventures']);
     }
+  }
+
+  private async completeSave(id: string, message: string): Promise<void> {
+    if (!this.draft.isCurrentOwner()) return;
+    this.cloudSaved = true;
+    const cleared = await this.draft.savedToCloud(id);
+    if (!this.draft.isCurrentOwner()) return;
+    this.snackBar.open(cleared ? message : '雲端已儲存，本機草稿尚未清除，請先查看雲端紀錄。', '關閉', { duration: cleared ? 2500 : 8000 });
+    void this.router.navigate(['/characters', this.characterId, 'adventures', id]);
+  }
+
+  private readCloudBaseline() {
+    return forkJoin({ entry: this.adventureService.getById(this.characterId, this.entryId!),
+      gainedItems: this.adventureService.getGainedItems(this.entryId!), storyAwards: this.adventureService.getStoryAwards(this.entryId!)
+    }).pipe(switchMap(result => result.gainedItems.length ? of(result)
+      : this.inventoryService.getAllByCharacter(this.characterId, true).pipe(map(items => ({ ...result,
+        gainedItems: items.filter(item => !item.adventureGainedItemId && (item.adventureEntryId === this.entryId ||
+          (!item.adventureEntryId && this.isSourceMatch(item.source, result.entry.adventureName, result.entry.adventureCode))))
+          .map(item => ({ ...item, adventureEntryId: this.entryId! })) })))), map(adventureBaseline));
   }
 }

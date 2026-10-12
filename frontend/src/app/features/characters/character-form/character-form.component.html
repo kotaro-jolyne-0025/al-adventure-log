@@ -9,7 +9,6 @@
   <mat-card class="form-card">
     <mat-card-content>
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
-    <app-form-feedback [message]="formError()" [target]="errorTarget()" />
     <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
 
         <!-- 基本資料區 -->
@@ -79,13 +78,7 @@
             <input matInput formControlName="faction" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>靈魂幣 (Soul Coins)</mat-label>
-            <input matInput type="number" formControlName="soulCoins" min="0" step="1" />
-            @if (form.get('soulCoins')?.hasError('min') || form.get('soulCoins')?.hasError('pattern')) {
-            <mat-error>請輸入大於等於 0 的整數</mat-error>
-            }
-          </mat-form-field>
+
 
           <div class="section-header" style="margin-top: 8px;">
             <h3 class="section-title" style="font-size:0.9rem; margin:0;">開卡職業與等級</h3>
@@ -152,6 +145,7 @@
 
         <!-- 操作按鈕 -->
         <div class="form-actions">
+          <app-form-feedback [message]="formError()" [target]="errorTarget()" />
           <button type="button" mat-stroked-button (click)="onBack()">取消</button>
           <button type="submit" mat-flat-button color="primary" [disabled]="isSaving()">
             @if (isSaving()) {

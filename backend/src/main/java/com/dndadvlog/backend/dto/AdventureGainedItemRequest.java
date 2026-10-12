@@ -1,6 +1,7 @@
 package com.dndadvlog.backend.dto;
 
 import com.dndadvlog.backend.entity.InventoryItem;
+import com.dndadvlog.backend.entity.AcquisitionSource;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -22,7 +23,9 @@ public class AdventureGainedItemRequest {
     private String rarity;
     private InventoryItem.ItemCategory itemCategory;
     private Boolean requiresAttunement;
+    private Boolean isSoulCoin;
     @Positive(message = "物品數量必須大於零")
     private Integer quantity;
     private String notes;
+    private AcquisitionSource acquisitionSource;
 }
