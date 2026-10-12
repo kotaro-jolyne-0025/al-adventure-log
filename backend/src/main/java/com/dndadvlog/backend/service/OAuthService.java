@@ -134,42 +134,47 @@ public class OAuthService {
     }
 
     private OAuthUserInfo verifyGoogleToken(String tokenOrCode) {
+        if (googleClientId == null || googleClientId.isBlank()) {
+            throw new BusinessException("Google 登入尚未完成設定，請聯絡管理者");
+        }
         try {
             // Google ID Token tokeninfo 端點
-            String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + tokenOrCode;
             String responseBody = restClient.get()
-                    .uri(url)
+                    .uri("https://oauth2.googleapis.com/tokeninfo?id_token={token}", tokenOrCode)
                     .retrieve()
                     .body(String.class);
 
             JsonNode root = objectMapper.readTree(responseBody);
             if (root.has("error_description")) {
-                throw new BusinessException("Google Token 驗證失敗: " + root.path("error_description").asText());
+                throw new BusinessException("Google 登入憑證無效，請重新登入");
             }
+            validateGoogleClaims(root);
 
             String sub = root.path("sub").asText();
             String email = root.path("email").asText(null);
             String name = root.path("name").asText(root.path("given_name").asText("Google 玩家"));
             String picture = root.path("picture").asText(null);
 
-            String aud = root.path("aud").asText();
-            if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(aud)) {
-                log.warn("Google Token aud mismatch: expected={}, received={}", googleClientId, aud);
-                throw new BusinessException("無效的 Google Token 來源 (Audience 不符)");
-            }
-
-            boolean emailVerified = !root.has("email_verified")
-                    || "true".equalsIgnoreCase(root.path("email_verified").asText());
-            if (!emailVerified) {
-                throw new BusinessException("Google Email 尚未通過驗證");
-            }
-
             return new OAuthUserInfo("GOOGLE", sub, email, name, picture);
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientException | JsonProcessingException e) {
-            log.error("Google OAuth 驗證失敗: {}", e.getMessage());
-            throw new BusinessException("Google 登入驗證失敗: " + e.getMessage());
+            // HTTP exceptions may contain the token-bearing request URI.
+            log.warn("Google OAuth 憑證驗證請求失敗");
+            throw new BusinessException("Google 登入驗證失敗，請重新登入或稍後再試");
+        }
+    }
+
+    void validateGoogleClaims(JsonNode root) {
+        String issuer = root.path("iss").asText();
+        if (googleClientId == null || googleClientId.isBlank()
+                || !googleClientId.equals(root.path("aud").asText())
+                || !("accounts.google.com".equals(issuer) || "https://accounts.google.com".equals(issuer))
+                || root.path("exp").asLong(0) <= java.time.Instant.now().getEpochSecond()
+                || root.path("sub").asText().isBlank()
+                || root.path("email").asText().isBlank()
+                || !"true".equalsIgnoreCase(root.path("email_verified").asText())) {
+            throw new BusinessException("Google 登入憑證無效或已過期，請重新登入");
         }
     }
 
