@@ -19,6 +19,7 @@ public interface InventoryItemMapper {
     int sumQuantityByCharacterIdAndItemType(@Param("characterId") UUID characterId, @Param("itemType") String itemType);
 
     int sumUnlinkedPermanentQuantityByCharacterId(@Param("characterId") UUID characterId);
+    int sumSoulCoinQuantityByCharacterId(@Param("characterId") UUID characterId);
 
     InventoryItem findById(@Param("id") UUID id);
 

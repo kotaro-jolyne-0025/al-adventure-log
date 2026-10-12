@@ -247,14 +247,17 @@
 /* Actions */
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 12px;
   padding-top: 8px;
 
   @media (max-width: 600px) {
-    button {
-      flex: 1;
-      height: 44px;
+    > button {
+      flex: 1 1 6rem;
+      height: auto;
+      min-height: 44px;
+      padding-block: 10px;
       justify-content: center;
     }
   }
@@ -265,3 +268,5 @@
   margin-right: 4px;
 }
 
+
+.form-actions app-form-feedback { flex-basis: 100%; width: 100%; }

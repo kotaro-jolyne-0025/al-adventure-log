@@ -18,6 +18,7 @@ import {
   ItemRarity,
   ItemCategory,
   ITEM_CATEGORIES,
+  PERMANENT_ITEM_CATEGORIES,
   ITEM_CATEGORY_LABELS,
   ITEM_CATEGORY_OPTION_LABELS,
   ITEM_TYPE_LABELS,
@@ -65,7 +66,7 @@ export class InventoryFormComponent implements OnInit {
   readonly rarities: (ItemRarity | '')[] = ['', 'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'];
   readonly typeLabels = ITEM_TYPE_LABELS;
   readonly rarityLabels = ITEM_RARITY_LABELS;
-  readonly categories = ITEM_CATEGORIES;
+  protected availableCategories(): ItemCategory[] { return this.form.get('itemType')?.value === 'CONSUMABLE' ? ITEM_CATEGORIES : PERMANENT_ITEM_CATEGORIES; }
   readonly categoryLabels = ITEM_CATEGORY_LABELS;
   readonly categoryOptionLabels = ITEM_CATEGORY_OPTION_LABELS;
 
@@ -75,12 +76,19 @@ export class InventoryFormComponent implements OnInit {
     rarity: [''],
     itemCategory: [''],
     requiresAttunement: [false],
-    quantity: [1],
+    isSoulCoin: [false],
+    quantity: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
     source: [''],
     notes: [''],
   });
 
   ngOnInit(): void {
+    this.form.get('itemType')!.valueChanges.subscribe(type => {
+      if (type === 'PERMANENT' && this.form.get('isSoulCoin')!.value) {
+        this.form.patchValue({ isSoulCoin: false });
+        this.snackBar.open('靈魂幣只能標記於消耗品，已取消勾選', '關閉', { duration: 4000 });
+      }
+    });
     this.characterId =
       this.route.parent?.snapshot.paramMap.get('id') ??
       this.route.snapshot.paramMap.get('characterId') ?? '';
@@ -123,6 +131,7 @@ export class InventoryFormComponent implements OnInit {
           rarity: item.rarity ?? '',
           itemCategory: item.itemCategory ?? '',
           requiresAttunement: Boolean(item.requiresAttunement),
+          isSoulCoin: Boolean(item.isSoulCoin),
           quantity: item.quantity,
           source: item.source ?? '',
           notes: item.notes ?? '',
@@ -147,8 +156,13 @@ export class InventoryFormComponent implements OnInit {
     if (this.isSaving() || this.isLoading() || (this.isEditMode() && !this.itemLoaded())) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-        this.formError.set('請修正必填欄位、職業或數值後再儲存。');
+        this.formError.set('請填寫物品名稱，數量須為大於零的整數。');
         this.errorTarget.set('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid, .form-section mat-select');
+      return;
+    }
+    if (!this.form.controls['itemName'].value?.trim()) {
+      this.formError.set('物品名稱不得為空白。');
+      this.errorTarget.set('input[formControlName="itemName"]');
       return;
     }
     this.isSaving.set(true);
@@ -160,6 +174,7 @@ export class InventoryFormComponent implements OnInit {
       rarity: raw.rarity || null,
       itemCategory: (raw.itemCategory || null) as ItemCategory | null,
       requiresAttunement: isPermanent ? Boolean(raw.requiresAttunement) : false,
+      isSoulCoin: !isPermanent && Boolean(raw.isSoulCoin),
       quantity: raw.quantity ? Number(raw.quantity) : 1,
       source: raw.source?.trim() || null,
       notes: raw.notes?.trim() || null,
@@ -171,9 +186,9 @@ export class InventoryFormComponent implements OnInit {
           this.snackBar.open('物品已更新', '關閉', { duration: 2500 });
           this.router.navigate(['/characters', this.characterId, 'inventory']);
         },
-        error: () => {
+        error: (error) => {
           this.isSaving.set(false);
-          this.formError.set('更新失敗');
+          this.formError.set(error.error?.message || '更新失敗');
           this.errorTarget.set('');
         },
       });
@@ -183,9 +198,9 @@ export class InventoryFormComponent implements OnInit {
           this.snackBar.open('物品已新增', '關閉', { duration: 2500 });
           this.router.navigate(['/characters', this.characterId, 'inventory']);
         },
-        error: () => {
+        error: (error) => {
           this.isSaving.set(false);
-          this.formError.set('新增失敗');
+          this.formError.set(error.error?.message || '新增失敗');
           this.errorTarget.set('');
         },
       });

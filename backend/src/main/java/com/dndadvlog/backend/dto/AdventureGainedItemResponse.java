@@ -16,6 +16,7 @@ public class AdventureGainedItemResponse {
     private String rarity;
     private InventoryItem.ItemCategory itemCategory;
     private Boolean requiresAttunement;
+    private Boolean isSoulCoin;
     private Integer quantity;
     private AcquisitionSource acquisitionSource;
     private Boolean needsDetails;

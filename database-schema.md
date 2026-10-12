@@ -522,3 +522,22 @@ users
 ## Migration 25（倉庫與冒險物品選填分類）
 
 正式 migration 以 [V25__add_item_category.sql](backend/src/main/resources/db/migration/V25__add_item_category.sql) 為準。`inventory_item` 與 `adventure_gained_item` 均增加 nullable `item_category VARCHAR(32)`，CHECK 限制為 `ARMOR`、`POTION`、`RING`、`ROD`、`SCROLL`、`STAFF`、`WAND`、`WEAPON`、`WONDROUS_ITEM`。舊資料及未分類項目維持 NULL；不依物品名稱回填分類。
+
+## Migration 26（永久物品獲得推導與靈魂硬幣整合）
+
+正式 migration 以 [V26__unify_soul_coins_and_permanent_item_counts.sql](backend/src/main/resources/db/migration/V26__unify_soul_coins_and_permanent_item_counts.sql) 為準。
+
+- 兩張物品表的 `item_category` CHECK 增加 `SOUL_COIN`，並限制只能搭配 `CONSUMABLE`；保留原九類與 NULL。
+- `character.soul_coins_transferred BOOLEAN NOT NULL DEFAULT FALSE` 是一次轉移標記。正數 `soul_coins` 轉為未綁冒險的消耗品，成功交易才清零並標記；已用完或刪除後重跑不再入庫。舊欄位僅為 migration 相容保留，角色 API 禁止直接寫入。
+- 角色相容回應 `soulCoins` 來自 `SUM(inventory_item.quantity)`，僅含 `CONSUMABLE`／`SOUL_COIN`。同冒險與不同來源可有多筆，不新增類別唯一限制。
+- `adventure_entry.magic_items_lost`、`magic_items_downtime_lost` 為非負整數，預設 0。舊值依永久快照筆數減去歷史淨值保守回填，不修改原淨值或合計。新儲存由各來源永久明細筆數減去減少數計算淨值。
+- 此 migration 隨 Flyway 在後端啟動時套用；本次僅在隔離 PostgreSQL 驗證，未執行正式資料庫轉移。
+
+## Migration 27（靈魂幣改為消耗品獨立標記）
+
+正式 migration 以 [V27__replace_soul_coin_category_with_flag.sql](backend/src/main/resources/db/migration/V27__replace_soul_coin_category_with_flag.sql) 為準，不修改 V25／V26。
+
+- inventory_item 與 adventure_gained_item 新增 is_soul_coin BOOLEAN NOT NULL DEFAULT FALSE；DTO 使用 isSoulCoin。標記只允許 CONSUMABLE，資料庫 CHECK 及服務均拒絕永久物品標記。
+- 舊 SOUL_COIN 分類轉成 true，分類清為 NULL，九種一般分類與 NULL 保持可用；新分類欄位不接受 SOUL_COIN。只將已標記項目的制式名稱「靈魂硬幣」統一為「靈魂幣」，自訂名稱、稀有度、數量、來源、備註、日期及關聯不變。
+- 目前靈魂幣總量改為同角色 CONSUMABLE 且 is_soul_coin 為 true 的 quantity 加總；冒險歷史以快照標記加總。標記不受名稱、分類或稀有度影響，取消勾選不刪除物品，庫存操作不回寫歷史。
+- migration 可重跑，不重複入庫、不復原已取消的標記；未操作正式資料庫。表單勾選不自動填其他欄位，充能不納入資料模型。
