@@ -4,6 +4,7 @@ import {
   inject,
   signal,
   NgZone,
+  DestroyRef,
 } from '@angular/core';
 
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -51,6 +52,7 @@ export class LoginComponent implements AfterViewInit {
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
   private readonly ngZone = inject(NgZone);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly hidePassword = signal(true);
   readonly isLoading = signal(false);
@@ -62,7 +64,9 @@ export class LoginComponent implements AfterViewInit {
   });
 
   private get returnUrl(): string {
-    return this.route.snapshot.queryParams['returnUrl'] || '/characters';
+    const target = this.route.snapshot.queryParams['returnUrl'];
+    return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//') && !target.includes('\\')
+      ? target : '/characters';
   }
 
   ngAfterViewInit(): void {
@@ -74,8 +78,11 @@ export class LoginComponent implements AfterViewInit {
 
     let retryCount = 0;
     const maxRetries = 30;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    this.destroyRef.onDestroy(() => clearTimeout(retryTimer));
 
     const tryInit = () => {
+      if (this.destroyRef.destroyed) return;
       if (typeof google !== 'undefined' && google?.accounts?.id) {
         google.accounts.id.initialize({
           client_id: environment.googleClientId,
@@ -86,6 +93,7 @@ export class LoginComponent implements AfterViewInit {
           },
           auto_select: false,
           cancel_on_tap_outside: true,
+          ux_mode: 'popup',
         });
 
         const container = document.getElementById('google-btn-container');
@@ -98,12 +106,14 @@ export class LoginComponent implements AfterViewInit {
             shape: 'rectangular',
             text: 'signin_with',
             logo_alignment: 'center',
-            width: containerWidth,
+            width: Math.min(400, containerWidth),
           });
         }
       } else if (retryCount < maxRetries) {
         retryCount++;
-        setTimeout(tryInit, 150);
+        retryTimer = setTimeout(tryInit, 150);
+      } else {
+        this.ngZone.run(() => this.errorMessage.set('Google 登入元件未能載入，請重新整理或改用電子郵件登入'));
       }
     };
 
@@ -111,6 +121,7 @@ export class LoginComponent implements AfterViewInit {
   }
 
   private handleGoogleCredentialResponse(response: { credential: string }): void {
+    if (this.destroyRef.destroyed || this.isLoading()) return;
     if (!response?.credential) {
       this.errorMessage.set('Google 登入憑證無效');
       return;
@@ -123,7 +134,6 @@ export class LoginComponent implements AfterViewInit {
       .loginOAuth({
         provider: 'GOOGLE',
         tokenOrCode: response.credential,
-        redirectUri: window.location.origin,
       })
       .subscribe({
         next: (res) => {
