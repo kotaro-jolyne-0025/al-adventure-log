@@ -52,16 +52,6 @@
   color: var(--color-primary);
 }
 
-.count-pill {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  background: var(--bg-surface-elevated);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-subtle);
-}
-
 .header-actions {
   display: flex;
   align-items: center;
@@ -363,12 +353,6 @@
     color: var(--color-negative);
     border-color: var(--color-negative);
   }
-}
-
-.count-filtered {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: 0.72rem;
 }
 
 .link-btn {

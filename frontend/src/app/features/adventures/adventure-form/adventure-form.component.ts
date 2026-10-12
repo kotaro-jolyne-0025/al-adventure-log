@@ -3,8 +3,9 @@ import { DraftNoticeComponent } from '../../../shared/components/draft-notice/dr
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, Injector, OnDestroy, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { DraftExitDialogComponent } from '../../../shared/components/draft-exit-dialog/draft-exit-dialog.component';
 import { AdventureDraftSession } from '../../../core/services/adventure-draft-session';
 import { adventureBaseline, AdventureDraftInput, draftFormValues, draftText } from '../../../core/models/adventure-draft';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -32,7 +33,7 @@ import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntryRequest, AdventureEntrySaveRequest, AdventureGainedItem } from '../../../core/models/adventure.model';
 import { ItemCategory, ItemRarity, ITEM_CATEGORIES, PERMANENT_ITEM_CATEGORIES, ITEM_CATEGORY_LABELS, ITEM_CATEGORY_OPTION_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
 import { DND_CLASSES, parseClassLevels } from '../../../core/models/dnd-classes';
-import { of, forkJoin, map, switchMap, takeUntil } from 'rxjs';
+import { firstValueFrom, of, forkJoin, map, switchMap, takeUntil } from 'rxjs';
 
 import {
   LucideCoins,
@@ -124,9 +125,13 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   protected readonly dateText = signal('');
   private restoredDraft = false;
   private cloudSaved = false;
+  protected readonly leaveFailed = signal(false);
   protected readonly recoveredText = signal('');
+  private leavePrompt?: Promise<boolean>;
+  private leaveDialog?: MatDialogRef<DraftExitDialogComponent>;
 
   constructor() {
+    this.draft.retired.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.leaveDialog?.close());
     effect(() => {
       this.formRevision();
       this.draft.capture(this.captureInput());
@@ -548,6 +553,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   protected restoreDraft(): void {
     const input = this.draft.accept();
     if (!input) return;
+    this.recoveredText.set('');
     const { startingGold, startingDowntime, startingMagicItems, ...editable } = input.form;
     this.form.patchValue({ ...editable, playDate: this.parseLocalDate(editable['playDate'] as string | null) });
     this.dateText.set((editable['playDateText'] as string) ?? '');
@@ -566,9 +572,9 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
 
   protected discardDraft(): void {
     this.dialog.open(ConfirmDialogComponent, { width: '360px', data: {
-      title: '捨棄本機草稿', intent: 'destructive', message: '確定要移除此裝置上的草稿嗎？雲端正式紀錄不會被刪除。',
+      title: '捨棄草稿', intent: 'destructive', message: '確定要刪除這台裝置上的草稿嗎？已儲存的冒險紀錄會保留。',
       confirmText: '捨棄草稿', cancelText: '保留草稿' } }).afterClosed().subscribe(confirmed => {
-      if (confirmed) { void this.draft.discard(); this.recoveredText.set(''); }
+      if (confirmed) void this.draft.discard();
     });
   }
 
@@ -578,7 +584,40 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     afterNextRender(() => this.host.nativeElement.querySelector('app-draft-notice textarea')?.focus(), { injector: this.injector });
   }
 
-  protected retryDraftSave(): void { this.draft.capture(this.captureInput()); void this.draft.flush(); }
+  protected async retryDraftSave(): Promise<void> {
+    this.draft.capture(this.captureInput());
+    await this.draft.flush();
+    if (!this.draft.error()) this.leaveFailed.set(false);
+  }
+
+  canLeave(): boolean | Promise<boolean> {
+    if (this.cloudSaved || !this.draft.isCurrentOwner()) return true;
+    if (this.isSaving()) return false;
+    if (!this.draft.hasChanges(this.captureInput())) return true;
+    if (this.leavePrompt) return this.leavePrompt;
+    this.leaveDialog = this.dialog.open(DraftExitDialogComponent, {
+      width: '380px', maxWidth: 'calc(100vw - 32px)',
+    });
+    this.leavePrompt = firstValueFrom(this.leaveDialog.afterClosed()).then(async choice => {
+      if (!this.draft.isCurrentOwner()) return true;
+      if (choice !== 'keep' && choice !== 'discard') return false;
+      const input = this.captureInput();
+      let ready: boolean;
+      if (choice === 'discard') ready = await this.draft.discard(true);
+      else {
+        this.draft.capture(input);
+        await this.draft.flush();
+        ready = this.draft.isSaved(input);
+      }
+      if (!this.draft.isCurrentOwner()) return true;
+      if (!ready) {
+        this.leaveFailed.set(true);
+        this.recoverDraftText();
+      }
+      return ready;
+    }).finally(() => { this.leavePrompt = undefined; this.leaveDialog = undefined; });
+    return this.leavePrompt;
+  }
 
   @HostListener('document:visibilitychange')
   protected saveOnBackground(): void {
@@ -590,7 +629,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     this.draft.capture(this.captureInput()); void this.draft.flush();
   }
 
-  ngOnDestroy(): void { this.flushDraft(); }
+  ngOnDestroy(): void { this.leaveDialog?.close(); this.flushDraft(); }
 
   private isSourceMatch(
     itemSource: string | null | undefined,
@@ -1075,7 +1114,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
 
     if (this.isEditMode() && this.entryId) {
       const submit = this.restoredDraft ? this.readCloudBaseline().pipe(switchMap(baseline => {
-        if (!this.draft.baselineMatches(baseline)) throw new Error('雲端紀錄已更新，請先取回草稿文字並重新載入，避免覆蓋電腦整理的內容。');
+        if (!this.draft.baselineMatches(baseline)) throw new Error('這份紀錄有更新。請先複製目前內容，再重新開啟紀錄。');
         return this.adventureService.updateWithDetails(this.characterId, this.entryId!, saveRequest);
       })) : this.adventureService.updateWithDetails(this.characterId, this.entryId, saveRequest);
       submit.pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
@@ -1085,7 +1124,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.isSaving.set(false);
           this.formError.set(error.error?.message || error.message || '更新失敗，請稍後再試');
-          if (error.status === 0 || error.status >= 500) this.formError.set('儲存結果尚未確認，草稿會保留。請先查看雲端紀錄，再決定是否重新儲存。');
+          if (error.status === 0 || error.status >= 500) this.formError.set('目前無法確認是否儲存成功。草稿仍保留，請先查看紀錄列表。');
           this.errorTarget.set('');
         },
       });
@@ -1098,7 +1137,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.isSaving.set(false);
           this.formError.set(error.error?.message || '新增失敗，請稍後再試');
-          if (error.status === 0 || error.status >= 500) this.formError.set('儲存結果尚未確認，草稿會保留。請先查看雲端紀錄，再決定是否重新儲存。');
+          if (error.status === 0 || error.status >= 500) this.formError.set('目前無法確認是否儲存成功。草稿仍保留，請先查看紀錄列表。');
           this.errorTarget.set('');
         },
       });
@@ -1106,7 +1145,6 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   }
 
   protected onBack(): void {
-    this.flushDraft();
     if (this.isEditMode() && this.entryId) {
       this.router.navigate(['/characters', this.characterId, 'adventures', this.entryId]);
     } else {
@@ -1118,8 +1156,8 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     if (!this.draft.isCurrentOwner()) return;
     this.cloudSaved = true;
     const cleared = await this.draft.savedToCloud(id);
-    if (!this.draft.isCurrentOwner()) return;
-    this.snackBar.open(cleared ? message : '雲端已儲存，本機草稿尚未清除，請先查看雲端紀錄。', '關閉', { duration: cleared ? 2500 : 8000 });
+    if (this.destroy.destroyed || !this.draft.isCurrentOwner()) return;
+    this.snackBar.open(cleared ? message : '紀錄已儲存成功，但這台裝置上的草稿尚未刪除。請先查看紀錄。', '關閉', { duration: cleared ? 2500 : 8000 });
     void this.router.navigate(['/characters', this.characterId, 'adventures', id]);
   }
 

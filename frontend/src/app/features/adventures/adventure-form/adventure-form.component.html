@@ -5,13 +5,14 @@
   </div>
 
   <app-draft-notice [offered]="draft.offered()" [savedAt]="draft.record()?.savedAt ?? null"
-    [completed]="!!draft.record()?.data?.cloudSavedId" [error]="loadFailed() ? draft.error() : null"
+    [error]="loadFailed() || leaveFailed() ? draft.error() : null"
+    [retryable]="draft.retryable() && !loadFailed()"
     [canRestore]="draft.canRestore()" [text]="recoveredText()"
-    (restore)="restoreDraft()" (discard)="discardDraft()" (recover)="recoverDraftText()" />
-  @if (isLoading() || !draft.isReady()) { <p role="status">正在取得完整資料，完成後即可填寫。</p> }
+    (restore)="restoreDraft()" (discard)="discardDraft()" (recover)="recoverDraftText()" (retry)="retryDraftSave()" />
+  @if (isLoading() || !draft.isReady()) { <p role="status">正在準備表單，請稍候。</p> }
   @if (loadFailed()) {
-    <p role="alert">資料未完整載入，暫時無法編輯或儲存。已保存的草稿可從上方取回。
-      <button type="button" mat-button (click)="retryLoad()">重新取得資料</button>
+    <p role="alert">暫時無法開啟表單，請確認連線後再試一次。上方仍可查看已保存的草稿。
+      <button type="button" mat-button (click)="retryLoad()">重試</button>
     </p>
   }
   @if (!isLoading() && !loadFailed() && draft.isReady() && !draft.offered()) {
@@ -639,7 +640,8 @@
     </mat-card>
 
     <!-- Actions -->
-    <app-draft-notice [status]="draft.status()" [error]="draft.error()" [savedAt]="draft.record()?.savedAt ?? null"
+    <app-draft-notice [status]="draft.status()" [error]="leaveFailed() ? null : draft.error()"
+      [savedAt]="draft.record()?.savedAt ?? null" [retryable]="draft.retryable()"
       (retry)="retryDraftSave()" (recover)="recoverDraftText()" />
     @if (isLoading()) {
     <p role="status">正在載入完整記錄，完成後即可儲存。</p>
