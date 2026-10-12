@@ -12,6 +12,7 @@ export class AdventureDraftSession {
   readonly record = signal<LocalRecord<AdventureDraft> | undefined>(undefined);
   readonly status = signal('');
   readonly error = signal<string | null>(null);
+  readonly retryable = signal(true);
   readonly offered = signal(false);
   readonly compatible = signal(true);
   readonly cloudReady = signal(false);
@@ -25,6 +26,8 @@ export class AdventureDraftSession {
   private latest?: AdventureDraftInput;
   private readonly loaded = signal(false);
   private stopped = false;
+  private pausing = false;
+  private discardedForExit = false;
   private sessionRetired = false;
   private revision = 0;
   private timer?: ReturnType<typeof setTimeout>;
@@ -61,10 +64,9 @@ export class AdventureDraftSession {
         !record || (record.schemaVersion === 1 && isDraftInput(record.data?.input)),
       );
       this.offered.set(!!record);
-      if (record?.data?.cloudSavedId)
-        this.status.set('此草稿已儲存至雲端，請先查看紀錄，再捨棄本機草稿。');
     } catch {
-      this.error.set('無法讀取本機草稿。目前輸入仍可儲存至雲端。');
+      this.error.set('草稿目前無法讀取，連線後仍可填寫並儲存紀錄。');
+      this.retryable.set(false);
     } finally {
       this.loaded.set(true);
     }
@@ -95,17 +97,16 @@ export class AdventureDraftSession {
     this.lastSaved = JSON.stringify(input);
     this.latest = input;
     this.offered.set(false);
-    this.status.set('草稿已恢復，尚未儲存至雲端。');
     return structuredClone(input);
   }
 
   capture(input: AdventureDraftInput): void {
-    if (this.stopped || !this.loaded() || !this.cloudReady() || this.offered() || !this.owner)
+    if (this.stopped || this.pausing || !this.loaded() || !this.cloudReady() || this.offered() || !this.owner)
       return;
     this.latest = input;
     clearTimeout(this.timer);
     if (JSON.stringify(input) === this.lastSaved) return;
-    this.status.set('正在保存本機草稿…');
+    this.status.set('正在保存草稿…');
     this.timer = setTimeout(() => {
       void this.flush();
     }, 1000);
@@ -114,7 +115,7 @@ export class AdventureDraftSession {
   flush(): Promise<void> {
     clearTimeout(this.timer);
     const input = this.latest;
-    if (!input || this.stopped || this.offered() || !this.cloudReady() || !this.owner)
+    if (!input || this.stopped || this.pausing || this.offered() || !this.cloudReady() || !this.owner)
       return this.writes;
     const serial = JSON.stringify(input);
     this.writes = this.writes.then(async () => {
@@ -131,25 +132,32 @@ export class AdventureDraftSession {
         this.record.set(record);
         this.lastSaved = serial;
         this.error.set(null);
-        this.status.set('草稿已保存在此裝置，尚未儲存至雲端。');
+        this.retryable.set(true);
+        this.status.set('');
       } catch (error) {
         if (this.stopped) return;
-        if (error instanceof DraftConflict) this.stopped = true;
+        if (error instanceof DraftConflict) {
+          this.stopped = true;
+          this.retryable.set(false);
+        } else {
+          this.retryable.set(true);
+        }
         this.error.set(
           error instanceof DraftConflict
-            ? '另一分頁已更新草稿，本頁輸入未覆寫它。請取回文字或重新載入。'
-            : '本機草稿未保存，請重試或取回文字；仍可線上儲存至雲端。',
+            ? '內容已更新。請先複製再重新開啟紀錄。'
+            : '草稿保存失敗。請再試一次。',
         );
       }
     });
     return this.writes;
   }
 
-  async discard(): Promise<void> {
+  async discard(forExit = false): Promise<boolean> {
+    this.pausing = true;
     clearTimeout(this.timer);
-    await this.writes;
-    if (!this.isCurrentOwner()) return;
     try {
+      await this.writes;
+      if (!this.isCurrentOwner()) return false;
       await this.local.deleteDraft(this.characterId, this.target, this.revision);
       this.local.clearCloudSaved(this.characterId, this.target);
       this.record.set(undefined);
@@ -157,21 +165,32 @@ export class AdventureDraftSession {
       this.offered.set(false);
       this.lastSaved = this.latest ? JSON.stringify(this.latest) : this.initial;
       this.error.set(null);
-      this.status.set('本機草稿已捨棄。');
+      this.retryable.set(false);
+      this.status.set('');
+      if (forExit) {
+        this.stopped = true;
+        this.discardedForExit = true;
+      }
+      return true;
     } catch {
-      this.error.set('草稿未能清除，可能已被另一分頁更新。請重試或重新載入。');
+      this.retryable.set(false);
+      this.error.set('刪除失敗。');
+      return false;
+    } finally {
+      this.pausing = false;
     }
   }
 
   async savedToCloud(id: string): Promise<boolean> {
-    this.stopped = true;
+    this.pausing = true;
     clearTimeout(this.timer);
-    if (!this.owner) return true;
-    if (!this.isCurrentOwner()) return false;
-    this.local.markCloudSaved(this.characterId, this.target, id, this.revision);
-    await this.writes;
-    if (!this.isCurrentOwner()) return false;
     try {
+      if (!this.owner) { this.stopped = true; return true; }
+      if (!this.isCurrentOwner()) { this.stopped = true; return false; }
+      await this.writes;
+      this.stopped = true;
+      if (!this.isCurrentOwner()) return false;
+      this.local.markCloudSaved(this.characterId, this.target, id, this.revision);
       // Persist completion before deletion, so a failed delete cannot offer resubmission.
       if (this.record()) {
         const done = await this.local.putDraft(
@@ -188,8 +207,11 @@ export class AdventureDraftSession {
       this.record.set(undefined);
       return true;
     } catch {
-      this.error.set('雲端已儲存，本機草稿尚未清除。請先查看雲端紀錄。');
+      this.retryable.set(false);
+      this.error.set('紀錄已儲存成功，草稿仍保留在這台裝置。');
       return false;
+    } finally {
+      this.pausing = false;
     }
   }
 
@@ -201,6 +223,14 @@ export class AdventureDraftSession {
   }
   isCurrentOwner(): boolean {
     return !this.sessionRetired && this.owner === this.local.owner();
+  }
+  hasChanges(input: AdventureDraftInput): boolean {
+    return !this.discardedForExit && !!this.owner && this.isCurrentOwner() && this.loaded() && this.cloudReady() &&
+      !this.offered() && !this.record()?.data.cloudSavedId &&
+      (JSON.stringify(input) !== this.initial || !!this.record());
+  }
+  isSaved(input: AdventureDraftInput): boolean {
+    return !!this.record() && !this.error() && JSON.stringify(input) === this.lastSaved;
   }
   pause(): void {
     clearTimeout(this.timer);

@@ -7,13 +7,6 @@
         <svg lucidePackage [size]="22" class="title-icon"></svg>
         倉庫
       </h2>
-      <span class="count-pill">
-        {{ activeTab() === 0 ? permanentItems().length : consumableItems().length }}
-        @if (hasActiveFilters()) {
-        <span class="count-filtered">/ {{ activeTab() === 0 ? rawPermanentCount() : rawConsumableCount() }}</span>
-        }
-        件物品
-      </span>
     </div>
     <div class="header-actions">
       <!-- 🌟 一體化膠囊排序工具列 -->
@@ -48,7 +41,7 @@
       <button mat-flat-button color="primary" class="btn-add-item" (click)="onAddItem()" [disabled]="readOnly()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
         <span class="desktop-add-label">新增物品</span>
-        <span class="mobile-add-label">新增</span>
+        <span class="mobile-add-label">新增物品</span>
       </button>
     </div>
   </div>

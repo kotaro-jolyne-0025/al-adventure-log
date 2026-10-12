@@ -1,4 +1,5 @@
 import { ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS } from './inventory.model';
+import { DND_CLASSES } from './dnd-classes';
 
 /** Raw editable values, including incomplete rows. No Angular objects or totals. */
 export interface AdventureDraftInput {
@@ -119,13 +120,12 @@ export function draftText(input: unknown): string {
     adventureNotes: '備註',
   };
   const rows = [
-    '冒險草稿（尚未儲存至雲端）',
     ...Object.entries(labels)
       .filter(([key]) => key in input.form)
       .map(([key, label]) => `${label}：${value(input.form[key])}`),
     `本次升級：${input.levelUp ? '是' : '否'}`,
     `迎頭趕上：${input.catchup ? input.catchupCount : '否'}`,
-    `職業：${input.classes.map((item) => `${item.className} ${value(item.level)}`).join('／')}`,
+    `職業：${input.classes.map((item) => `${DND_CLASSES.find(({ id }) => id === item.className)?.label ?? item.className} ${value(item.level)}`).join('／')}`,
   ];
   const rarity = ITEM_RARITY_LABELS as Record<string, string>;
   const category = ITEM_CATEGORY_LABELS as Record<string, string>;

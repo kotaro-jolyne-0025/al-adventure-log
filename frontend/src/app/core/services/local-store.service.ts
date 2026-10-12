@@ -21,6 +21,7 @@ export class LocalStore {
   readonly freshCharacters = signal<ReadonlySet<string>>(new Set());
   private db?: Promise<IDBDatabase>;
   private generation = 0;
+  private identityGeneration = 0;
   private readonly transactions = new Set<IDBTransaction>();
   private copiesBlocked = false;
   private readonly EPOCH_KEY = 'dnd_read_epochs';
@@ -28,7 +29,7 @@ export class LocalStore {
   constructor() {
     window.addEventListener('storage', (event) => {
       if (event.key === this.EPOCH_KEY) {
-        this.cancelWrites();
+        this.cancelWrites(true);
         this.freshCharacters.set(new Set());
         this.changes.next(undefined);
       }
@@ -46,9 +47,11 @@ export class LocalStore {
     return this.generation;
   }
 
-  private cancelWrites(): void {
+  private cancelWrites(copiesOnly = false): void {
     this.generation++;
+    if (!copiesOnly) this.identityGeneration++;
     for (const tx of this.transactions) {
+      if (copiesOnly && tx.objectStoreNames.contains('drafts')) continue;
       try {
         tx.abort();
       } catch {
@@ -77,7 +80,7 @@ export class LocalStore {
 
   /** Synchronous tombstone precedes asynchronous deletion and HUD refresh. */
   invalidate(characterId?: string, owner = this.owner(), notify = true): void {
-    this.cancelWrites();
+    this.cancelWrites(true);
     if (characterId) this.markFresh(characterId, false);
     else this.freshCharacters.set(new Set());
     if (owner) {
@@ -166,9 +169,12 @@ export class LocalStore {
     work: (store: IDBObjectStore, result: (value: T) => void, fail: (error: Error) => void) => void,
     enforceGeneration = true,
   ): Promise<T> {
-    const generation = this.generation;
+    // Data refresh retires copies, but a current account's draft must finish
+    // so cloud-save cleanup can delete its final revision safely.
+    const currentGeneration = () => name === 'drafts' ? this.identityGeneration : this.generation;
+    const generation = currentGeneration();
     const db = await this.open();
-    if (enforceGeneration && generation !== this.generation) throw new Error('帳號或資料已變更');
+    if (enforceGeneration && generation !== currentGeneration()) throw new Error('帳號或資料已變更');
     return new Promise<T>((resolve, reject) => {
       const tx = db.transaction(name, write ? 'readwrite' : 'readonly');
       if (write && enforceGeneration) this.transactions.add(tx);
@@ -176,7 +182,7 @@ export class LocalStore {
       let reason: Error | undefined;
       tx.oncomplete = () => {
         this.transactions.delete(tx);
-        !enforceGeneration || generation === this.generation
+        !enforceGeneration || generation === currentGeneration()
           ? resolve(value)
           : reject(new Error('帳號或資料已變更'));
       };
