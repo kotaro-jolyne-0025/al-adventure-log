@@ -1,4 +1,5 @@
 <div class="page-container">
+  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" (refresh)="loadItems()" />
   <!-- Header -->
   <div class="inventory-header">
     <div class="header-titles">
@@ -44,9 +45,10 @@
         </button>
       </div>
 
-      <button mat-flat-button color="primary" class="btn-add-item" (click)="onAddItem()">
+      <button mat-flat-button color="primary" class="btn-add-item" (click)="onAddItem()" [disabled]="readOnly()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
-        <span>新增物品</span>
+        <span class="desktop-add-label">新增物品</span>
+        <span class="mobile-add-label">新增</span>
       </button>
     </div>
   </div>
@@ -72,7 +74,7 @@
     </div>
     <h3 class="empty-title">尚無永久性魔法物品</h3>
     <p class="empty-desc">在冒險紀錄表記錄戰利品，或點擊下方新增！</p>
-    <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
+    <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn" [disabled]="readOnly()">
       <svg lucidePlus [size]="18" class="btn-icon"></svg>
       <span>新增物品</span>
     </button>
@@ -93,7 +95,7 @@
       <div class="row-left-main">
         <div class="name-block">
           <h4 class="item-title"><a class="card-navigation-link"
-            [routerLink]="['/characters', characterId, 'inventory', item.id, 'edit']"
+            [routerLink]="readOnly() ? null : ['/characters', characterId, 'inventory', item.id, 'edit']" [attr.aria-disabled]="readOnly()"
             [attr.aria-label]="'編輯物品：' + item.itemName">{{ item.itemName }}</a></h4>
           @if (item.source) {
           <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
@@ -134,11 +136,11 @@
         }
         <div class="crud-btns">
           <button mat-icon-button class="action-btn" matTooltip="編輯物品"
-            [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)">
+            [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)" [disabled]="readOnly()">
             <svg lucidePencil [size]="16"></svg>
           </button>
           <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品"
-            [attr.aria-label]="'刪除物品：' + item.itemName" (click)="onDeleteItem($event, item)">
+            [attr.aria-label]="'刪除物品：' + item.itemName" (click)="onDeleteItem($event, item)" [disabled]="readOnly()">
             <svg lucideTrash2 [size]="16"></svg>
           </button>
         </div>
@@ -169,7 +171,7 @@
     </div>
     <h3 class="empty-title">尚無消耗品</h3>
     <p class="empty-desc">記錄您冒險所獲得的治療藥水、法術卷軸等消耗物資！</p>
-    <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn">
+    <button mat-flat-button color="primary" (click)="onAddItem()" class="empty-btn" [disabled]="readOnly()">
       <svg lucidePlus [size]="18" class="btn-icon"></svg>
       <span>新增物品</span>
     </button>
@@ -190,7 +192,7 @@
       <div class="row-left-main">
         <div class="name-block">
           <h4 class="item-title"><a class="card-navigation-link"
-            [routerLink]="['/characters', characterId, 'inventory', item.id, 'edit']"
+            [routerLink]="readOnly() ? null : ['/characters', characterId, 'inventory', item.id, 'edit']" [attr.aria-disabled]="readOnly()"
             [attr.aria-label]="'編輯物品：' + item.itemName">{{ item.itemName }}</a></h4>
           @if (item.source) {
           <div class="sub-info-line" [matTooltip]="'來源：' + item.source">
@@ -217,7 +219,8 @@
           {{ rarityLabels[item.rarity] }}
         </span>
         }
-        @if (item.itemCategory) {
+        @if (item.isSoulCoin) { <span class="category-pill">靈魂幣</span> }
+                @if (item.itemCategory) {
         <span class="category-pill">{{ categoryLabels[item.itemCategory] }}</span>
         }
       </div>
@@ -233,11 +236,11 @@
 
         <div class="crud-btns">
           <button mat-icon-button class="action-btn" matTooltip="編輯物品"
-            [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)">
+            [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)" [disabled]="readOnly()">
             <svg lucidePencil [size]="16"></svg>
           </button>
           <button mat-icon-button class="action-btn delete-btn" matTooltip="刪除物品"
-            [attr.aria-label]="'刪除物品：' + item.itemName" (click)="onDeleteItem($event, item)">
+            [attr.aria-label]="'刪除物品：' + item.itemName" (click)="onDeleteItem($event, item)" [disabled]="readOnly()">
             <svg lucideTrash2 [size]="16"></svg>
           </button>
         </div>

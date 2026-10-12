@@ -8,6 +8,7 @@ export const authGuard: CanActivateFn = (route, state) => {
 
   // 每次路由切換都即時檢查：有登入狀態 且 token 尚未過期
   if (authService.isAuthenticated() && !authService.isTokenExpired()) {
+    authService.checkSessionIfNeeded();
     return true;
   }
 
