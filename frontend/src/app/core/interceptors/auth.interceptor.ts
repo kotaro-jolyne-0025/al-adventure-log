@@ -31,7 +31,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((err: unknown) => {
       if (err instanceof HttpErrorResponse && err.status === 401) {
         // Token 失效或未授權，自動觸發登出（排除登入與第三方認證請求）
-        if (!isAuthRequest) {
+        if (isApiRequest && !isAuthRequest && token && token === authService.token()) {
           authService.logout(true);
         }
       }

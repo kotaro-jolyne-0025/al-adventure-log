@@ -30,7 +30,6 @@ export interface CharacterRequest {
   initialClassesString?: string | null;
   initialGold?: number | null;
   initialDowntime?: number | null;
-  soulCoins?: number | null;
 }
 
 export interface CharacterBaselineRequest {

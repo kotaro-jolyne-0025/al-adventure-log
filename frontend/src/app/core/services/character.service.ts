@@ -2,12 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject, tap } from 'rxjs';
 import { RequestCache } from './request-cache';
+import { LocalStore } from './local-store.service';
 import { environment } from '../../../environments/environment';
 import { Character, CharacterRequest, CharacterBaselineRequest, CharacterBaselinePreview } from '../models/character.model';
 
 @Injectable({ providedIn: 'root' })
 export class CharacterService {
   private readonly http = inject(HttpClient);
+  private readonly local = inject(LocalStore);
   private readonly base = `${environment.apiUrl}/characters`;
 
   private readonly _characterChanged$ = new Subject<string>();
@@ -19,10 +21,12 @@ export class CharacterService {
   private readonly itemCache = new RequestCache<Character>();
 
   notifyCharacterChanged(characterId?: string): void {
+    this.local.invalidate(characterId, this.local.owner(), false);
     this.itemCache.clear(characterId);
     this.listCache.clear();
     // Invalidate every related cache before HUD subscribers start new requests.
     this._cacheInvalidated$.next(characterId);
+    this.local.changes.next(characterId);
     this._characterChanged$.next(characterId ?? '');
   }
 

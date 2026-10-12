@@ -126,6 +126,7 @@ public class AdventureEntryService {
         if (positiveMagicItemChanges(request) > 0) {
             throw new BusinessException("正數魔法物品變動必須透過完整儲存提供物品明細");
         }
+        deriveMagicChanges(request, List.of(), null);
         return createEntryInternal(characterId, request, userId);
     }
 
@@ -165,14 +166,8 @@ public class AdventureEntryService {
             UUID entryId, AdventureEntryRequest request, UUID userId, boolean validateExistingDetails) {
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         if (validateExistingDetails && hasLedgerInput(request)) {
-            int actual = gainedItemMapper.findByAdventureEntryId(entryId).stream()
-                    .filter(item -> !Boolean.TRUE.equals(item.getNeedsDetails()))
-                    .mapToInt(item -> "CONSUMABLE".equalsIgnoreCase(item.getItemType())
-                            ? (item.getQuantity() != null ? item.getQuantity() : 1) : 1)
-                    .sum();
-            if (actual != positiveMagicItemChanges(request)) {
-                throw new BusinessException("魔法物品變動數量必須與物品明細相同，請使用完整儲存提供明細");
-            }
+            deriveMagicChanges(request, gainedItemMapper.findByAdventureEntryId(entryId).stream()
+                    .map(this::snapshotRequest).toList(), entry);
         }
         AdventureContribution oldContribution = contributionOf(entry);
         Character character = characterService.findCharacter(entry.getCharacterId(), userId);
@@ -199,7 +194,7 @@ public class AdventureEntryService {
     @Transactional
     public AdventureEntryResponse createEntryWithDetails(
             UUID characterId, AdventureEntrySaveRequest request, UUID userId) {
-        validateMagicItemDetails(request, positiveMagicItemChanges(request.getEntry()));
+        deriveMagicChanges(request.getEntry(), request.getGainedItems(), null);
         AdventureEntryResponse created = createEntryInternal(characterId, request.getEntry(), userId);
         syncEntryDetails(created.getId(), request, userId);
         AdventureEntry entry = findOwnedEntry(created.getId(), userId);
@@ -212,22 +207,30 @@ public class AdventureEntryService {
     public AdventureEntryResponse updateEntryWithDetails(
             UUID entryId, AdventureEntrySaveRequest request, UUID userId) {
         AdventureEntry original = findOwnedEntry(entryId, userId);
-        validateMagicItemDetails(request, hasLedgerInput(request.getEntry())
-                ? positiveMagicItemChanges(request.getEntry())
-                : Math.max(0, orZero(original.getMagicItemsChange()))
-                        + Math.max(0, orZero(original.getMagicItemsDowntimeChange())));
+        boolean ledgerInput = hasLedgerInput(request.getEntry());
+        deriveMagicChanges(request.getEntry(), request.getGainedItems(), original);
         // Resolve unlinked legacy provenance against the original title/code before
         // the main record is renamed. These writes share the outer transaction.
-        findOwnedEntry(entryId, userId);
         Set<UUID> existingIds = gainedItemMapper.findByAdventureEntryId(entryId).stream()
                 .map(AdventureGainedItem::getId).collect(Collectors.toSet());
         for (AdventureGainedItemRequest item : request.getGainedItems()) {
             if (item.getId() != null && !existingIds.contains(item.getId())) {
-                updateGainedItem(entryId, item.getId(), item, userId);
+                updateGainedItemInternal(entryId, item.getId(), item, userId, false);
                 existingIds.add(item.getId());
             }
         }
-        updateEntryInternal(entryId, request.getEntry(), userId, false);
+        if (ledgerInput) {
+            updateEntryInternal(entryId, request.getEntry(), userId, false);
+        } else {
+            mapDescriptiveFields(request.getEntry(), original);
+            original.setMagicItemsChange(request.getEntry().getMagicItemsChange());
+            original.setMagicItemsDowntimeChange(request.getEntry().getMagicItemsDowntimeChange());
+            original.setMagicItemsLost(request.getEntry().getMagicItemsLost());
+            original.setMagicItemsDowntimeLost(request.getEntry().getMagicItemsDowntimeLost());
+            original.setMagicItemsTotal(orZero(original.getStartingMagicItems()) + original.getMagicItemsChange() + original.getMagicItemsDowntimeChange());
+            if (original.getMagicItemsTotal() < 0) throw new BusinessException("魔法物品合計不得為負數");
+            entryMapper.update(original);
+        }
         syncEntryDetails(entryId, request, userId);
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         if (hasLedgerInput(request.getEntry())) {
@@ -293,11 +296,17 @@ public class AdventureEntryService {
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         UUID itemId = createGainedItemWithWarehouse(entry, request, AcquisitionSource.ADVENTURE, false);
         refreshCurrentMagicItems(entry.getCharacterId());
+        refreshMagicSnapshot(entry);
         return toGainedItemResponse(gainedItemMapper.findById(itemId));
     }
 
     @Transactional
     public AdventureGainedItemResponse updateGainedItem(UUID entryId, UUID itemId, AdventureGainedItemRequest request, UUID userId) {
+        return updateGainedItemInternal(entryId, itemId, request, userId, true);
+    }
+
+    private AdventureGainedItemResponse updateGainedItemInternal(UUID entryId, UUID itemId, AdventureGainedItemRequest request, UUID userId, boolean refreshSnapshot) {
+        validateGainedItem(request);
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         AdventureGainedItem snapshot = gainedItemMapper.findById(itemId);
 
@@ -316,9 +325,10 @@ public class AdventureEntryService {
                 snapshot.setItemType(request.getItemType());
                 snapshot.setRarity(request.getRarity());
                 snapshot.setItemCategory(request.getItemCategory());
+                snapshot.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
                 snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
                 snapshot.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
-                snapshot.setAcquisitionSource(AcquisitionSource.ADVENTURE);
+                snapshot.setAcquisitionSource(request.getAcquisitionSource() != null ? request.getAcquisitionSource() : AcquisitionSource.ADVENTURE);
                 snapshot.setNeedsDetails(false);
                 snapshot.setNotes(request.getNotes());
                 gainedItemMapper.insert(snapshot);
@@ -326,10 +336,12 @@ public class AdventureEntryService {
                 existingWarehouse.setAdventureGainedItemId(itemId);
                 existingWarehouse.setAdventureEntryId(entryId);
                 existingWarehouse.setItemName(request.getItemName());
+                existingWarehouse.setItemType(parseItemType(request.getItemType()));
                 existingWarehouse.setRarity(parseRarity(request.getRarity()));
                 existingWarehouse.setItemCategory(request.getItemCategory());
+                existingWarehouse.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
                 existingWarehouse.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
-                existingWarehouse.setAcquisitionSource(AcquisitionSource.ADVENTURE);
+                existingWarehouse.setAcquisitionSource(snapshot.getAcquisitionSource());
                 existingWarehouse.setNeedsDetails(false);
                 existingWarehouse.setNotes(request.getNotes());
                 if (request.getQuantity() != null) {
@@ -338,6 +350,7 @@ public class AdventureEntryService {
                 inventoryItemMapper.update(existingWarehouse);
                 refreshCurrentMagicItems(entry.getCharacterId());
                 log.info("為歷史道具補建快照並同步倉庫: 道具={}, EntryID={}", request.getItemName(), entryId);
+                if (refreshSnapshot) refreshMagicSnapshot(entry);
                 return toGainedItemResponse(snapshot);
             } else {
                 throw new ResourceNotFoundException("找不到獲得物品快照 ID: " + itemId);
@@ -354,11 +367,11 @@ public class AdventureEntryService {
         snapshot.setItemType(request.getItemType());
         snapshot.setRarity(request.getRarity());
         snapshot.setItemCategory(request.getItemCategory());
+        snapshot.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
         snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
         snapshot.setQuantity(newQty);
-        if (snapshot.getAcquisitionSource() == null) {
-            snapshot.setAcquisitionSource(AcquisitionSource.ADVENTURE);
-        }
+        if (request.getAcquisitionSource() != null) snapshot.setAcquisitionSource(request.getAcquisitionSource());
+        if (snapshot.getAcquisitionSource() == null) snapshot.setAcquisitionSource(AcquisitionSource.ADVENTURE);
         if (Boolean.TRUE.equals(snapshot.getNeedsDetails())
                 && !"未命名魔法物品".equals(request.getItemName().trim())) {
             snapshot.setNeedsDetails(false);
@@ -386,8 +399,10 @@ public class AdventureEntryService {
         if (warehouseItem != null) {
             // 即時同步名稱、稀有度、同調、備註
             warehouseItem.setItemName(request.getItemName());
+            warehouseItem.setItemType(parseItemType(request.getItemType()));
             warehouseItem.setRarity(parseRarity(request.getRarity()));
             warehouseItem.setItemCategory(request.getItemCategory());
+            warehouseItem.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
             warehouseItem.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
             warehouseItem.setAcquisitionSource(snapshot.getAcquisitionSource());
             warehouseItem.setNeedsDetails(snapshot.getNeedsDetails());
@@ -412,6 +427,7 @@ public class AdventureEntryService {
             newItem.setItemType(parseItemType(request.getItemType()));
             newItem.setRarity(parseRarity(request.getRarity()));
             newItem.setItemCategory(request.getItemCategory());
+            newItem.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
             newItem.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
             newItem.setQuantity(delta);
             newItem.setAcquisitionSource(snapshot.getAcquisitionSource());
@@ -423,11 +439,16 @@ public class AdventureEntryService {
         }
 
         refreshCurrentMagicItems(entry.getCharacterId());
+        if (refreshSnapshot) refreshMagicSnapshot(entry);
         return toGainedItemResponse(gainedItemMapper.findById(itemId));
     }
 
     @Transactional
     public void deleteGainedItem(UUID itemId, UUID userId) {
+        deleteGainedItemInternal(itemId, userId, true);
+    }
+
+    private void deleteGainedItemInternal(UUID itemId, UUID userId, boolean refreshSnapshot) {
         AdventureGainedItem snapshot = findGainedItemAndVerifyOwner(itemId, userId);
         AdventureEntry entry = findOwnedEntry(snapshot.getAdventureEntryId(), userId);
         InventoryItem warehouseItem = inventoryItemMapper.findByAdventureGainedItemId(itemId);
@@ -436,6 +457,7 @@ public class AdventureEntryService {
         }
         gainedItemMapper.deleteById(itemId);
         refreshCurrentMagicItems(entry.getCharacterId());
+        if (refreshSnapshot) refreshMagicSnapshot(entry);
     }
 
     private InventoryItem.ItemType parseItemType(String itemTypeStr) {
@@ -553,13 +575,13 @@ public class AdventureEntryService {
 
         existingById.keySet().stream()
                 .filter(id -> !submittedIds.contains(id))
-                .forEach(id -> deleteGainedItem(id, userId));
+                .forEach(id -> deleteGainedItemInternal(id, userId, false));
 
         for (AdventureGainedItemRequest childRequest : requests) {
             if (childRequest.getId() == null) {
                 createGainedItemWithWarehouse(entry, childRequest, AcquisitionSource.ADVENTURE, false);
             } else {
-                updateGainedItem(entryId, childRequest.getId(), childRequest, userId);
+                updateGainedItemInternal(entryId, childRequest.getId(), childRequest, userId, false);
             }
         }
     }
@@ -569,6 +591,8 @@ public class AdventureEntryService {
             AdventureGainedItemRequest request,
             AcquisitionSource acquisitionSource,
             boolean needsDetails) {
+        validateGainedItem(request);
+        if (request.getAcquisitionSource() != null) acquisitionSource = request.getAcquisitionSource();
         AdventureGainedItem snapshot = new AdventureGainedItem();
         snapshot.setId(UUID.randomUUID());
         snapshot.setAdventureEntryId(entry.getId());
@@ -576,6 +600,7 @@ public class AdventureEntryService {
         snapshot.setItemType(request.getItemType());
         snapshot.setRarity(request.getRarity());
         snapshot.setItemCategory(request.getItemCategory());
+        snapshot.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
         snapshot.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
         snapshot.setQuantity(request.getQuantity() != null ? request.getQuantity() : 1);
         snapshot.setAcquisitionSource(acquisitionSource);
@@ -592,6 +617,7 @@ public class AdventureEntryService {
         warehouseItem.setItemType(parseItemType(snapshot.getItemType()));
         warehouseItem.setRarity(parseRarity(snapshot.getRarity()));
         warehouseItem.setItemCategory(snapshot.getItemCategory());
+        warehouseItem.setIsSoulCoin(Boolean.TRUE.equals(snapshot.getIsSoulCoin()));
         warehouseItem.setRequiresAttunement(snapshot.getRequiresAttunement());
         warehouseItem.setQuantity(snapshot.getQuantity());
         warehouseItem.setAcquisitionSource(acquisitionSource);
@@ -608,23 +634,68 @@ public class AdventureEntryService {
         refreshCurrentMagicItems(entry.getCharacterId());
     }
 
-    private void validateMagicItemDetails(AdventureEntrySaveRequest request, int expected) {
-        if (request.getGainedItems().stream().anyMatch(item ->
-                "PERMANENT".equalsIgnoreCase(item.getItemType())
-                        && item.getQuantity() != null && item.getQuantity() != 1)) {
-            throw new BusinessException("永久性魔法物品必須每件分別填寫明細");
+    private void validateGainedItem(AdventureGainedItemRequest item) {
+        if (!"PERMANENT".equals(item.getItemType()) && !"CONSUMABLE".equals(item.getItemType())) {
+            throw new BusinessException("無效的物品類型");
         }
-        int actual = request.getGainedItems().stream()
-                .filter(item -> "PERMANENT".equalsIgnoreCase(item.getItemType()))
-                .mapToInt(item -> 1)
-                .sum()
-                + request.getGainedItems().stream()
-                .filter(item -> "CONSUMABLE".equalsIgnoreCase(item.getItemType()))
-                .mapToInt(item -> item.getQuantity() == null ? 1 : item.getQuantity())
-                .sum();
-        if (actual != expected) {
-            throw new BusinessException("魔法物品數量變動為 " + expected + " 件，物品明細數量必須相同（目前 " + actual + " 件）");
+        InventoryItem.validateSoulCoin(parseItemType(item.getItemType()), item.getIsSoulCoin());
+        if (item.getItemName() == null || item.getItemName().isBlank()) throw new BusinessException("物品名稱不得為空白");
+        if (item.getQuantity() != null && (item.getQuantity() < 1 ||
+                ("PERMANENT".equals(item.getItemType()) && item.getQuantity() != 1))) {
+            throw new BusinessException("永久性魔法物品必須每件分別填寫明細，消耗品數量必須大於零");
         }
+    }
+
+    private AdventureGainedItemRequest snapshotRequest(AdventureGainedItem item) {
+        AdventureGainedItemRequest request = new AdventureGainedItemRequest();
+        request.setItemName(item.getItemName()); request.setItemType(item.getItemType());
+        request.setQuantity(item.getQuantity()); request.setItemCategory(item.getItemCategory());
+        request.setAcquisitionSource(item.getAcquisitionSource());
+        request.setIsSoulCoin(item.getIsSoulCoin());
+        return request;
+    }
+
+    private void deriveMagicChanges(AdventureEntryRequest request, List<AdventureGainedItemRequest> items, AdventureEntry original) {
+        int adventure = 0, downtime = 0;
+        Set<UUID> ids = new java.util.HashSet<>();
+        for (AdventureGainedItemRequest item : items) {
+            if (item.getId() != null && !ids.add(item.getId())) throw new BusinessException("同一獲得物品明細不得重複提交");
+            if (item.getAcquisitionSource() == null && item.getId() != null && original != null) {
+                AdventureGainedItem existing = gainedItemMapper.findById(item.getId());
+                if (existing != null && original.getId().equals(existing.getAdventureEntryId())) {
+                    item.setAcquisitionSource(existing.getAcquisitionSource());
+                }
+            }
+            validateGainedItem(item);
+            if ("PERMANENT".equals(item.getItemType())) {
+                if (item.getAcquisitionSource() == AcquisitionSource.DOWNTIME) downtime++;
+                else adventure++;
+            }
+        }
+        int lost = request.getMagicItemsLost() != null ? request.getMagicItemsLost()
+                : request.getMagicItemsChange() != null && request.getMagicItemsChange() < 0 ? Math.abs(request.getMagicItemsChange())
+                : original != null && original.getMagicItemsLost() != null ? original.getMagicItemsLost()
+                : Math.abs(Math.min(0, orZero(request.getMagicItemsChange())));
+        int downtimeLost = request.getMagicItemsDowntimeLost() != null ? request.getMagicItemsDowntimeLost()
+                : request.getMagicItemsDowntimeChange() != null && request.getMagicItemsDowntimeChange() < 0 ? Math.abs(request.getMagicItemsDowntimeChange())
+                : original != null && original.getMagicItemsDowntimeLost() != null ? original.getMagicItemsDowntimeLost()
+                : Math.abs(Math.min(0, orZero(request.getMagicItemsDowntimeChange())));
+        if (lost < 0 || downtimeLost < 0) throw new BusinessException("永久物品減少數不得為負數");
+        request.setMagicItemsLost(lost); request.setMagicItemsDowntimeLost(downtimeLost);
+        request.setMagicItemsChange(adventure - lost); request.setMagicItemsDowntimeChange(downtime - downtimeLost);
+    }
+
+    private void refreshMagicSnapshot(AdventureEntry entry) {
+        AdventureEntryRequest request = new AdventureEntryRequest();
+        deriveMagicChanges(request, gainedItemMapper.findByAdventureEntryId(entry.getId()).stream()
+                .map(this::snapshotRequest).toList(), entry);
+        entry.setMagicItemsChange(request.getMagicItemsChange());
+        entry.setMagicItemsDowntimeChange(request.getMagicItemsDowntimeChange());
+        entry.setMagicItemsLost(request.getMagicItemsLost());
+        entry.setMagicItemsDowntimeLost(request.getMagicItemsDowntimeLost());
+        entry.setMagicItemsTotal(orZero(entry.getStartingMagicItems()) + entry.getMagicItemsChange() + entry.getMagicItemsDowntimeChange());
+        if (entry.getMagicItemsTotal() < 0) throw new BusinessException("魔法物品合計不得為負數");
+        entryMapper.update(entry);
     }
 
     private int positiveMagicItemChanges(AdventureEntryRequest request) {
@@ -683,7 +754,8 @@ public class AdventureEntryService {
                 || request.getDowntimeChange() != null
                 || request.getDowntimeDowntimeChange() != null
                 || request.getMagicItemsChange() != null
-                || request.getMagicItemsDowntimeChange() != null;
+                || request.getMagicItemsDowntimeChange() != null
+                || request.getMagicItemsLost() != null || request.getMagicItemsDowntimeLost() != null;
     }
 
     private void calculateSnapshot(
@@ -739,6 +811,8 @@ public class AdventureEntryService {
 
         entry.setStartingMagicItems(previous != null ? orZero(previous.getMagicItemsTotal())
                 : inventoryItemMapper.sumUnlinkedPermanentQuantityByCharacterId(character.getId()));
+        entry.setMagicItemsLost(request.getMagicItemsLost() != null ? request.getMagicItemsLost() : Math.abs(Math.min(0, orZero(request.getMagicItemsChange()))));
+        entry.setMagicItemsDowntimeLost(request.getMagicItemsDowntimeLost() != null ? request.getMagicItemsDowntimeLost() : Math.abs(Math.min(0, orZero(request.getMagicItemsDowntimeChange()))));
         entry.setMagicItemsChange(orZero(request.getMagicItemsChange()));
         entry.setMagicItemsDowntimeChange(orZero(request.getMagicItemsDowntimeChange()));
         entry.setMagicItemsTotal(entry.getStartingMagicItems()
@@ -823,8 +897,7 @@ public class AdventureEntryService {
     private AdventureEntryResponse toResponseWithContinuityWarning(AdventureEntry entry) {
         AdventureEntryResponse response = toResponse(entry);
         List<String> warnings = new ArrayList<>();
-        int reducedMagicItems = Math.min(0, orZero(entry.getMagicItemsChange()))
-                + Math.min(0, orZero(entry.getMagicItemsDowntimeChange()));
+        int reducedMagicItems = -(orZero(entry.getMagicItemsLost()) + orZero(entry.getMagicItemsDowntimeLost()));
         if (reducedMagicItems < 0) {
             warnings.add("本次魔法物品減少 " + Math.abs(reducedMagicItems) + " 件，請至倉庫刪除對應物品");
         }
@@ -985,6 +1058,8 @@ public class AdventureEntryService {
         response.setMagicItemsChange(entry.getMagicItemsChange());
         response.setMagicItemsDowntimeChange(entry.getMagicItemsDowntimeChange());
         response.setMagicItemsTotal(entry.getMagicItemsTotal());
+        response.setMagicItemsLost(entry.getMagicItemsLost());
+        response.setMagicItemsDowntimeLost(entry.getMagicItemsDowntimeLost());
         
         response.setStartingClassesString(entry.getStartingClassesString());
         response.setEndingClassesString(entry.getEndingClassesString());
@@ -1022,6 +1097,7 @@ public class AdventureEntryService {
         response.setItemType(item.getItemType());
         response.setRarity(item.getRarity());
         response.setItemCategory(item.getItemCategory());
+        response.setIsSoulCoin(Boolean.TRUE.equals(item.getIsSoulCoin()));
         response.setRequiresAttunement(item.getRequiresAttunement());
         response.setQuantity(item.getQuantity());
         response.setAcquisitionSource(item.getAcquisitionSource());

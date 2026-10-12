@@ -29,6 +29,7 @@ export interface AdventureGainedItem {
   rarity?: ItemRarity | null;
   itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
+  isSoulCoin?: boolean;
   quantity?: number;
   acquisitionSource?: AcquisitionSource | null;
   needsDetails?: boolean;
@@ -38,12 +39,14 @@ export interface AdventureGainedItem {
 }
 
 export interface AdventureGainedItemRequest {
+  acquisitionSource?: AcquisitionSource | null;
   id?: string;
   itemName: string;
   itemType: 'PERMANENT' | 'CONSUMABLE';
   rarity?: ItemRarity | null;
   itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
+  isSoulCoin?: boolean;
   quantity?: number;
   notes?: string | null;
 }
@@ -89,6 +92,8 @@ export interface AdventureEntry {
   startingMagicItems?: number;
   magicItemsChange?: number;
   magicItemsDowntimeChange?: number;
+  magicItemsLost?: number;
+  magicItemsDowntimeLost?: number;
   magicItemsTotal?: number;
   adventureNotes?: string;
   soulCoinChargesUsed?: string;
@@ -113,6 +118,8 @@ export interface AdventureEntryRequest {
   downtimeDowntimeChange?: number | null;
   magicItemsChange?: number | null;
   magicItemsDowntimeChange?: number | null;
+  magicItemsLost?: number | null;
+  magicItemsDowntimeLost?: number | null;
   adventureNotes?: string | null;
   soulCoinChargesUsed?: string | null;
 }

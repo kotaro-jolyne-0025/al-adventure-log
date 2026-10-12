@@ -36,6 +36,7 @@ public class CharacterRequest {
     @Min(value = 0, message = "開卡休整期不可小於 0")
     private Integer initialDowntime;
 
+    @jakarta.validation.constraints.Null(message = "靈魂幣已整合至倉庫，請從消耗品管理數量")
     private Integer soulCoins;
 
 }

@@ -1,6 +1,7 @@
 package com.dndadvlog.backend.service;
 
 import com.dndadvlog.backend.dto.CharacterRequest;
+import com.dndadvlog.backend.exception.BusinessException;
 import com.dndadvlog.backend.dto.CharacterResponse;
 import com.dndadvlog.backend.dto.CharacterBaselineRequest;
 import com.dndadvlog.backend.entity.AdventureEntry;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
@@ -27,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CharacterServiceTest {
+    @Mock com.dndadvlog.backend.mapper.InventoryItemMapper inventoryItemMapper;
 
     @Mock
     private CharacterMapper characterMapper;
@@ -35,6 +38,14 @@ class CharacterServiceTest {
 
     @InjectMocks
     private CharacterService service;
+
+    @Test
+    void rejectsIndependentSoulCoinWrites() {
+        CharacterRequest request = request(null);
+        request.setSoulCoins(2);
+        assertThrows(BusinessException.class, () -> service.createCharacter(request, UUID.randomUUID()));
+        org.mockito.Mockito.verifyNoInteractions(characterMapper);
+    }
 
     @Test
     void createInitializesBaselineAndMaterializedResources() {
