@@ -451,11 +451,6 @@ a.navigation-card {
 @media (max-width: 768px) {
   app-adventure-form {
     .page-container .form-actions {
-      position: sticky;
-      bottom: 0;
-      z-index: 5;
-      background: var(--bg-canvas);
-      border-top: 1px solid var(--border-medium);
       padding-bottom: max(16px, var(--safe-area-bottom));
       flex-wrap: wrap;
 
@@ -467,14 +462,8 @@ a.navigation-card {
     }
 
     :is(input, textarea, mat-select) {
-      scroll-margin-block: 80px 120px;
+      scroll-margin-block: 80px 16px;
     }
-  }
-}
-
-@media (max-width: 768px) and (max-height: 600px) {
-  app-adventure-form .page-container .form-actions {
-    position: static;
   }
 }
 
@@ -543,10 +532,6 @@ a.navigation-card {
 
   .mat-mdc-dialog-content { min-height: 0; }
   .mat-mdc-dialog-actions { flex-shrink: 0; flex-wrap: wrap; }
-}
-
-.app-short-viewport app-adventure-form .page-container .form-actions {
-  position: static;
 }
 
 .full-resource-summary:focus-visible {
@@ -821,10 +806,6 @@ app-inventory-list .filter-search-row {
 
 @media (max-width: 600px) {
   app-inventory-list {
-    .filter-panel {
-      padding-top: 16px;
-    }
-
     .filter-search-row {
       display: flex;
       align-items: center;
