@@ -1,4 +1,5 @@
 <div class="page-container">
+  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" (refresh)="loadEntries()" />
   <!-- Header Actions -->
   <div class="list-header">
     <div class="header-titles">
@@ -42,7 +43,7 @@
         </button>
       </div>
 
-      <button mat-flat-button color="primary" class="btn-add-adv" (click)="onAddEntry()">
+      <button mat-flat-button color="primary" class="btn-add-adv" (click)="onAddEntry()" [disabled]="readOnly()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
         <span class="desktop-add-label">新增冒險紀錄</span>
         <span class="mobile-add-label">新增紀錄</span>
@@ -91,7 +92,7 @@
     </div>
     <h3 class="empty-title">尚無冒險紀錄</h3>
     <p class="empty-desc">點擊下方按鈕開始建立第一筆冒險紀錄！</p>
-    <button mat-flat-button color="primary" (click)="onAddEntry()" class="empty-btn">
+    <button mat-flat-button color="primary" (click)="onAddEntry()" class="empty-btn" [disabled]="readOnly()">
       <svg lucidePlus [size]="18" class="btn-icon"></svg>
       <span>新增冒險紀錄</span>
     </button>

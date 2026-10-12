@@ -2,6 +2,7 @@
   <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters', characterId, 'adventures']" (retry)="loadEntry()" />
 }
 <div class="page-container">
+  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" (refresh)="loadEntry()" />
   <!-- Loading -->
   @if (isLoading()) {
     <div class="loading-wrapper"><mat-spinner diameter="40"></mat-spinner><p role="status">正在載入冒險資料…</p></div>
@@ -31,11 +32,11 @@
       </div>
 
       <div class="header-actions">
-        <button mat-flat-button color="primary" class="btn-edit" (click)="onEdit()">
+        <button mat-flat-button [disabled]="readOnly()" color="primary" class="btn-edit" (click)="onEdit()">
           <svg lucidePencil [size]="16"></svg>
           <span>編輯</span>
         </button>
-        <button mat-icon-button color="warn" matTooltip="刪除此紀錄" (click)="onDelete()" aria-label="刪除此紀錄">
+        <button mat-icon-button [disabled]="readOnly()" color="warn" matTooltip="刪除此紀錄" (click)="onDelete()" aria-label="刪除此紀錄">
           <svg lucideTrash2 [size]="18"></svg>
         </button>
       </div>
@@ -248,6 +249,7 @@
           <svg lucideFlaskConical [size]="18" class="section-icon" style="color: var(--color-positive);"></svg>
           <h2 class="section-title">獲得消耗品</h2>
         </div>
+        <p class="items-summary">本次獲得靈魂幣總量：{{ soulCoinTotal() }}</p>
 
         <div class="items-list-grid">
           @for (item of consumableItems(); track item.id) {
@@ -263,6 +265,7 @@
                     {{ rarityLabels[item.rarity] }}
                   </span>
                 }
+                @if (item.isSoulCoin) { <span class="category-pill">靈魂幣</span> }
                 @if (item.itemCategory) {
                   <span class="category-pill">{{ categoryLabels[item.itemCategory] }}</span>
                 }

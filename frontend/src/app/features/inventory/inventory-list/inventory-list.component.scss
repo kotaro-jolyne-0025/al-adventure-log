@@ -229,7 +229,9 @@
 .filter-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  // Leave room inside each tab; the tab group's margin is outside its contents.
+  padding-top: 16px;
+  gap: 12px;
   margin-bottom: 18px;
 
   @media (max-width: 600px) {

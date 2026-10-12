@@ -1,18 +1,20 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { defer, EMPTY, Observable, Subject, takeUntil, tap } from 'rxjs';
 import { AuthResponse, LoginCredentials, OAuthLoginRequest, RegisterCredentials, User } from '../models/auth.model';
 import { environment } from '../../../environments/environment';
 import { CharacterService } from './character.service';
 import { AdventureService } from './adventure.service';
 import { InventoryService } from './inventory.service';
+import { LocalStore } from './local-store.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly local = inject(LocalStore);
   private readonly router = inject(Router);
   private readonly characterService = inject(CharacterService);
   private readonly adventureService = inject(AdventureService);
@@ -21,6 +23,9 @@ export class AuthService {
 
   private readonly TOKEN_KEY = 'dnd_auth_token';
   private readonly USER_KEY = 'dnd_auth_user';
+  private readonly CHECK_KEY = 'dnd_auth_check';
+  private readonly CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+  private readonly sessionChanged = new Subject<void>();
 
   // Signals
   readonly token = signal<string | null>(this.getStoredToken());
@@ -55,17 +60,51 @@ export class AuthService {
   }
 
   constructor() {
-    // 啟動時驗證 token
-    if (this.token()) {
-      this.fetchCurrentUser().subscribe({
-        error: (err) => {
-          // 只有明確回傳 401 (Token 失效或未授權) 時才清空登入狀態，避免因網路短暫不穩或伺服器啟動中誤登出
-          if (err?.status === 401) {
-            this.logout(false);
-          }
-        },
-      });
+    this.local.setOwner(this.currentUser()?.id ?? null);
+    window.addEventListener('storage', event => {
+      if (event.key !== this.TOKEN_KEY && event.key !== this.USER_KEY) return;
+      this.sessionChanged.next();
+      this.token.set(this.getStoredToken());
+      this.currentUser.set(this.getStoredUser());
+      this.local.setOwner(this.currentUser()?.id ?? null);
+      this.clearAllCaches();
+    });
+    // 等服務建構完成，避免 HTTP interceptor 注入 AuthService 時產生循環。
+    queueMicrotask(() => this.checkSessionIfNeeded());
+  }
+
+  checkSessionIfNeeded(): void {
+    if (!this.token()) return;
+    if (this.isTokenExpired()) {
+      this.logout(false);
+      return;
     }
+
+    const user = this.currentUser();
+    if (user && this.hasRecentCheck(user.id)) return;
+
+    // 記錄嘗試，避免網路暫時失敗後每次重開都重送；沒有帳號資料仍可重試恢復。
+    if (user) this.recordCheck(user.id);
+    this.fetchCurrentUser().subscribe({
+      error: (err) => {
+        if (err?.status === 401) this.logout(false);
+      },
+    });
+  }
+
+  private hasRecentCheck(userId: string): boolean {
+    try {
+      const check = JSON.parse(localStorage.getItem(this.CHECK_KEY) ?? 'null');
+      const age = Date.now() - check?.checkedAt;
+      return check?.userId === userId && Number.isFinite(check.checkedAt)
+        && age >= 0 && age < this.CHECK_INTERVAL_MS;
+    } catch {
+      return false;
+    }
+  }
+
+  private recordCheck(userId: string): void {
+    localStorage.setItem(this.CHECK_KEY, JSON.stringify({ userId, checkedAt: Date.now() }));
   }
 
   register(credentials: RegisterCredentials): Observable<AuthResponse> {
@@ -101,16 +140,28 @@ export class AuthService {
   }
 
   fetchCurrentUser(): Observable<User> {
-    return this.http.get<User>(`${this.API_URL}/me`).pipe(
+    const token = this.token();
+    return defer(() => token && token === this.token()
+      ? this.http.get<User>(`${this.API_URL}/me`) : EMPTY).pipe(
+      takeUntil(this.sessionChanged),
       tap((user) => {
+        if (this.local.owner() !== user.id) {
+          const previous = this.local.owner();
+          if (previous) this.local.invalidate(undefined, previous, false);
+          this.local.setOwner(user.id);
+        }
         this.currentUser.set(user);
         localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+        this.recordCheck(user.id);
       })
     );
   }
 
   updateProfile(displayName: string, avatarUrl?: string | null): Observable<User> {
-    return this.http.put<User>(`${this.API_URL}/me`, { displayName, avatarUrl }).pipe(
+    const token = this.token();
+    return defer(() => token && token === this.token()
+      ? this.http.put<User>(`${this.API_URL}/me`, { displayName, avatarUrl }) : EMPTY).pipe(
+      takeUntil(this.sessionChanged),
       tap((user) => {
         this.currentUser.set(user);
         localStorage.setItem(this.USER_KEY, JSON.stringify(user));
@@ -119,8 +170,12 @@ export class AuthService {
   }
 
   logout(redirect = true): void {
+    this.local.invalidate(undefined, this.currentUser()?.id ?? null, false);
+    this.local.setOwner(null);
+    this.sessionChanged.next();
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+    localStorage.removeItem(this.CHECK_KEY);
     this.token.set(null);
     this.currentUser.set(null);
     this.clearAllCaches();
@@ -131,10 +186,15 @@ export class AuthService {
   }
 
   private handleAuthSuccess(res: AuthResponse): void {
+    const oldOwner = this.currentUser()?.id;
+    if (oldOwner && oldOwner !== res.user.id) this.local.invalidate(undefined, oldOwner, false);
+    this.local.setOwner(res.user.id);
+    this.sessionChanged.next();
     localStorage.setItem(this.TOKEN_KEY, res.token);
     localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
     this.token.set(res.token);
     this.currentUser.set(res.user);
+    this.recordCheck(res.user.id);
     this.clearAllCaches();
   }
 

@@ -8,8 +8,9 @@
   </div>
 }
 
-@if (!isLoading() && character()) {
   <div class="shell-container">
+    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" [compact]="true" [showRefresh]="readSource() === 'copy'" (refresh)="loadCharacterData()" />
+    @if (character()) {
     
     <!-- Character Header Card & Navigation -->
     <div class="char-hero-card clean-card">
@@ -28,7 +29,7 @@
           <div class="char-identity-text">
             <div class="name-line">
               <h1 class="char-name" [matTooltip]="character()!.characterName">{{ character()!.characterName }}</h1>
-              <button mat-icon-button (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色" aria-label="編輯角色">
+              <button mat-icon-button [disabled]="readOnly()" (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色" aria-label="編輯角色">
                 <svg lucidePencil [size]="20"></svg>
               </button>
             </div>
@@ -49,7 +50,7 @@
         </div>
 
         <div class="hero-actions">
-          <button mat-stroked-button (click)="onEdit()" class="btn-edit-hero">
+          <button mat-stroked-button [disabled]="readOnly()" (click)="onEdit()" class="btn-edit-hero">
             <svg lucidePencil [size]="20"></svg>
             <span>編輯角色</span>
           </button>
@@ -100,7 +101,7 @@
         <div class="hud-stat-box">
           <div class="hud-stat-header">
             <svg lucideGhost class="hud-icon stat-soul-icon" [size]="16"></svg>
-            <span class="hud-label">靈魂幣</span>
+            <span class="hud-label" matTooltip="Soul Coins">靈魂幣</span>
           </div>
           <span class="hud-value stat-soul">
             <span class="hud-number">{{ character()!.soulCoins ?? 0 }}</span> <small class="unit">枚</small>
@@ -120,6 +121,8 @@
       </div>
     </div>
 
+    }
+    @if (!character() && !isLoading()) { <p>角色摘要暫無可用資料，資源數量尚未確認。</p> }
     <!-- Tab Nav -->
     <nav mat-tab-nav-bar [tabPanel]="characterPanel" class="character-tabs" aria-label="角色內容">
       <a mat-tab-link [routerLink]="['/characters', characterId, 'adventures']" [active]="getActiveTab() === 0">
@@ -134,4 +137,3 @@
     </mat-tab-nav-panel>
 
   </div>
-}

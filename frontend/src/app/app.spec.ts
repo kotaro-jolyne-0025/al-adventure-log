@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { computed, signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
@@ -9,6 +10,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { App } from './app';
 import { version } from '../../package.json';
 import { siteLinks } from './core/config/site-links';
+import { AuthService } from './core/services/auth.service';
+import { User } from './core/models/auth.model';
 
 describe('App', () => {
   let snackAction: Subject<void>;
@@ -16,11 +19,19 @@ describe('App', () => {
   beforeEach(async () => {
     snackAction = new Subject<void>();
     openSnack.mockClear();
+    // Menu tests control login state; token validation is covered by AuthService tests.
+    const token = signal<string | null>(null);
+    const currentUser = signal<User | null>(null);
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
         provideHttpClient(),
         provideRouter([]),
+        { provide: AuthService, useValue: {
+          token, currentUser,
+          isAuthenticated: computed(() => !!token() && !!currentUser()),
+          logout: vi.fn(),
+        } },
         { provide: MatSnackBar, useValue: { open: openSnack } },
         {
           provide: SwUpdate,
