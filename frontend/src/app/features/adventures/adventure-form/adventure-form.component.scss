@@ -238,7 +238,6 @@
 }
 
 .status-icon {
-  font-size: 1.2rem;
   width: 1.2rem;
   height: 1.2rem;
   flex-shrink: 0;
@@ -521,15 +520,12 @@
 }
 
 .value-num {
-  display: inline-block;
   flex: 0 0 auto;
   font-size: clamp(1.25rem, 6vw, 1.65rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   white-space: nowrap;
-  overflow-wrap: normal;
-  word-break: normal;
 }
 
 .value-unit {
@@ -546,7 +542,6 @@
   justify-content: flex-end;
   gap: 4px;
   flex: 0 0 auto;
-  white-space: nowrap;
 }
 
 .f-part {

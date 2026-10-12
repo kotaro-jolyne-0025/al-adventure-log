@@ -1,4 +1,4 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
@@ -9,22 +9,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
   standalone: true,
   imports: [DatePipe, MatButtonModule, MatInputModule, MatFormFieldModule],
   template: ` @if (offered()) {
-      <section class="notice" aria-label="本機草稿">
-        <p>此裝置有未完成草稿，保存時間：{{ savedAt() | date: 'yyyy/MM/dd HH:mm' }}。</p>
-        <p>
-          {{
-            completed()
-              ? '此草稿已儲存至雲端。請先查看雲端紀錄，再捨棄本機草稿。'
-              : canRestore()
-                ? '可恢復草稿並繼續填寫。'
-                : '尚未確認最新雲端資料、內容已變更或格式不相容。可先取回草稿文字，連線重新取得完整資料後再確認。'
-          }}
-        </p>
+      <section class="notice" aria-label="未完成的草稿">
+        <p>這台裝置有一份草稿，上次保存：{{ savedAt() | date: 'yyyy/MM/dd HH:mm' }}。</p>
         <div class="actions">
           <button type="button" mat-flat-button [disabled]="!canRestore()" (click)="restore.emit()">
-            恢復草稿
+            繼續填寫
           </button>
-          <button type="button" mat-button (click)="recover.emit()">取回文字</button>
+          <button type="button" mat-button (click)="recover.emit()">查看草稿</button>
           <button type="button" mat-button (click)="discard.emit()">捨棄草稿</button>
         </div>
       </section>
@@ -41,26 +32,19 @@ import { MatFormFieldModule } from '@angular/material/form-field';
       <div class="error" role="alert">
         <p>{{ error() }}</p>
         <div class="actions">
-          <button type="button" mat-button (click)="retry.emit()">重試保存草稿</button>
-          <button type="button" mat-button (click)="recover.emit()">取回文字</button>
+          @if (retryable()) { <button type="button" mat-button (click)="retry.emit()">再試一次</button> }
+          <button type="button" mat-button (click)="recover.emit()">查看草稿</button>
         </div>
       </div>
     }
     @if (text()) {
-      <mat-form-field appearance="outline" class="text"
-        ><mat-label>草稿文字（可選取複製）</mat-label>
-        <textarea
-          matInput
-          readonly
-          rows="8"
-          [value]="text()"
-          (focus)="selectText($event)"
-        ></textarea>
-      </mat-form-field>
-      <button type="button" mat-button (click)="copy()">複製草稿文字</button>
-      @if (copyStatus()) {
-        <p role="status">{{ copyStatus() }}</p>
-      }
+      <section class="preview" aria-label="冒險草稿內容">
+        <header>
+          <h2>冒險紀錄草稿</h2>
+          <span>尚未送出</span>
+        </header>
+        <pre>{{ text() }}</pre>
+      </section>
     }`,
   styles: [
     `
@@ -87,6 +71,45 @@ import { MatFormFieldModule } from '@angular/material/form-field';
         padding: 1rem;
         border-radius: 12px;
       }
+      .preview {
+        margin-top: 1rem;
+        overflow: hidden;
+        border: 1px solid var(--mat-sys-outline-variant);
+        border-radius: 12px;
+        background: var(--mat-sys-surface-container-low);
+      }
+      .preview header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--mat-sys-outline-variant);
+      }
+      .preview h2 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .preview header span {
+        flex: none;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        color: var(--mat-sys-on-surface-variant);
+        background: var(--mat-sys-surface-container-high);
+        font-size: 0.75rem;
+      }
+      .preview pre {
+        max-height: 22rem;
+        overflow: auto;
+        margin: 0;
+        padding: 1rem;
+        color: var(--mat-sys-on-surface);
+        font: inherit;
+        line-height: 1.65;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
       .actions {
         display: flex;
         flex-wrap: wrap;
@@ -97,14 +120,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
         height: auto;
         white-space: normal;
       }
-      .text {
-        display: block;
-        margin-top: 1rem;
-        width: 100%;
-      }
-      textarea {
-        font-size: 16px;
-      }
     `,
   ],
 })
@@ -112,24 +127,12 @@ export class DraftNoticeComponent {
   offered = input(false);
   savedAt = input<number | null>(null);
   canRestore = input(false);
-  completed = input(false);
   status = input('');
   error = input<string | null>(null);
+  retryable = input(true);
   text = input('');
   restore = output<void>();
   discard = output<void>();
   recover = output<void>();
   retry = output<void>();
-  protected readonly copyStatus = signal('');
-  protected selectText(event: FocusEvent): void {
-    (event.target as HTMLTextAreaElement).select();
-  }
-  protected async copy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.text());
-      this.copyStatus.set('草稿文字已複製。');
-    } catch {
-      this.copyStatus.set('請選取上方文字並使用裝置的複製功能。');
-    }
-  }
 }

@@ -128,9 +128,9 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+  justify-content: space-between;
 
   @media (max-width: 600px) {
-    justify-content: space-between;
     gap: 8px;
   }
 }
@@ -144,39 +144,10 @@
   overflow-wrap: anywhere;
   white-space: normal;
   min-width: 0;
+  flex: 1;
 
   @media (max-width: 600px) {
     font-size: 1.0625rem;
-    flex: 1;
-  }
-}
-
-.btn-edit-mobile {
-  display: none;
-
-  @media (max-width: 600px) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-surface-elevated);
-    color: var(--text-secondary);
-    flex-shrink: 0;
-
-    mat-icon {
-      font-size: 1.05rem;
-      width: 1.05rem;
-      height: 1.05rem;
-    }
-
-    &:hover {
-      color: var(--color-primary);
-      border-color: var(--color-primary);
-    }
   }
 }
 
@@ -207,36 +178,34 @@
   }
 }
 
-.hero-actions {
-  flex-shrink: 0;
+.btn-edit-hero {
+  flex: none;
+  font-weight: 500;
+  height: 38px;
+  border-radius: 9999px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.18);
+  white-space: nowrap;
 
-  @media (max-width: 600px) {
-    display: none;
+  svg { color: var(--color-primary); }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--color-primary);
   }
 
-  .btn-edit-hero {
-    font-weight: 500;
-    height: 38px;
-    border-radius: 9999px;
-    padding: 0 16px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-primary);
-    border-color: rgba(255, 255, 255, 0.18);
-    white-space: nowrap;
+  @media (max-width: 600px) {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 12px;
 
-    mat-icon {
-      font-size: 1.15rem;
-      width: 1.15rem;
-      height: 1.15rem;
-      color: var(--color-primary);
-    }
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--color-primary);
-    }
+    .edit-label { display: none; }
   }
 }
 
