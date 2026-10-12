@@ -21,6 +21,8 @@
         <result property="downtimeTotal"           column="downtime_total"/>
         <result property="startingMagicItems"      column="starting_magic_items"/>
         <result property="magicItemsChange"        column="magic_items_change"/>
+        <result property="magicItemsLost" column="magic_items_lost"/>
+        <result property="magicItemsDowntimeLost" column="magic_items_downtime_lost"/>
         <result property="magicItemsTotal"         column="magic_items_total"/>
         <result property="goldDowntimeChange"      column="gold_downtime_change"/>
         <result property="downtimeDowntimeChange"  column="downtime_downtime_change"/>
@@ -113,7 +115,7 @@
             starting_level, ending_level,
             starting_gold, gold_change, gold_downtime_change, gold_total,
             starting_downtime, downtime_change, downtime_downtime_change, downtime_total,
-            starting_magic_items, magic_items_change, magic_items_downtime_change, magic_items_total,
+            starting_magic_items, magic_items_change, magic_items_downtime_change, magic_items_total, magic_items_lost, magic_items_downtime_lost,
             starting_classes_string, ending_classes_string,
             level_up_class_name, catchup_class_name, catchup_count,
             adventure_notes, soul_coin_charges_used, recording_model_version,
@@ -123,7 +125,7 @@
             #{startingLevel}, #{endingLevel},
             #{startingGold}, #{goldChange}, #{goldDowntimeChange}, #{goldTotal},
             #{startingDowntime}, #{downtimeChange}, #{downtimeDowntimeChange}, #{downtimeTotal},
-            #{startingMagicItems}, #{magicItemsChange}, #{magicItemsDowntimeChange}, #{magicItemsTotal},
+            #{startingMagicItems}, #{magicItemsChange}, #{magicItemsDowntimeChange}, #{magicItemsTotal}, COALESCE(#{magicItemsLost}, 0), COALESCE(#{magicItemsDowntimeLost}, 0),
             #{startingClassesString}, #{endingClassesString},
             #{levelUpClassName}, #{catchupClassName}, #{catchupCount},
             #{adventureNotes}, #{soulCoinChargesUsed}, COALESCE(#{recordingModelVersion}, 1),
@@ -151,6 +153,8 @@
             magic_items_change         = #{magicItemsChange},
             magic_items_downtime_change = #{magicItemsDowntimeChange},
             magic_items_total          = #{magicItemsTotal},
+            magic_items_lost = COALESCE(#{magicItemsLost}, 0),
+            magic_items_downtime_lost = COALESCE(#{magicItemsDowntimeLost}, 0),
             starting_classes_string    = #{startingClassesString},
             ending_classes_string      = #{endingClassesString},
             level_up_class_name        = #{levelUpClassName},

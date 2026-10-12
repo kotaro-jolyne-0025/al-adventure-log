@@ -88,10 +88,12 @@ public class InventoryItemService {
     }
 
     private void mapRequestToItem(InventoryItemRequest request, InventoryItem item) {
+        InventoryItem.validateSoulCoin(request.getItemType(), request.getIsSoulCoin());
         item.setItemName(request.getItemName());
         item.setItemType(request.getItemType());
         item.setRarity(request.getRarity());
         item.setItemCategory(request.getItemCategory());
+        item.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
         item.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
         item.setQuantity(request.getQuantity() != null ? request.getQuantity() : Integer.valueOf(1));
         item.setSource(request.getSource());
@@ -137,6 +139,7 @@ public class InventoryItemService {
         response.setItemType(item.getItemType());
         response.setRarity(item.getRarity());
         response.setItemCategory(item.getItemCategory());
+        response.setIsSoulCoin(Boolean.TRUE.equals(item.getIsSoulCoin()));
         response.setRequiresAttunement(item.getRequiresAttunement());
         response.setQuantity(item.getQuantity());
         response.setAcquisitionSource(item.getAcquisitionSource());

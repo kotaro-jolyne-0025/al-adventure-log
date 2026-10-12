@@ -38,6 +38,10 @@ public class AdventureEntryRequest {
     private BigDecimal goldDowntimeChange;
     private Integer downtimeDowntimeChange;
     private Integer magicItemsDowntimeChange;
+    @PositiveOrZero(message = "永久物品減少數不得為負數")
+    private Integer magicItemsLost;
+    @PositiveOrZero(message = "休整期永久物品減少數不得為負數")
+    private Integer magicItemsDowntimeLost;
     private String adventureNotes;
     private String soulCoinChargesUsed;
 

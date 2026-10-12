@@ -4,6 +4,7 @@ export type ItemCategory = 'ARMOR' | 'POTION' | 'RING' | 'ROD' | 'SCROLL' | 'STA
 export type AcquisitionSource = 'ADVENTURE' | 'DOWNTIME';
 
 export const ITEM_CATEGORIES: ItemCategory[] = ['ARMOR', 'POTION', 'RING', 'ROD', 'SCROLL', 'STAFF', 'WAND', 'WEAPON', 'WONDROUS_ITEM'];
+export const PERMANENT_ITEM_CATEGORIES = ITEM_CATEGORIES;
 export const ITEM_CATEGORY_LABELS: Record<ItemCategory, string> = {
   ARMOR: '護甲', POTION: '藥水', RING: '戒指', ROD: '權杖', SCROLL: '捲軸', STAFF: '法杖', WAND: '魔杖', WEAPON: '武器', WONDROUS_ITEM: '奇物',
 };
@@ -46,6 +47,7 @@ export interface InventoryItem {
   rarity?: ItemRarity;
   itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
+  isSoulCoin?: boolean;
   quantity: number;
   acquisitionSource?: AcquisitionSource | null;
   needsDetails?: boolean;
@@ -63,7 +65,12 @@ export interface InventoryItemRequest {
   rarity?: ItemRarity | null;
   itemCategory?: ItemCategory | null;
   requiresAttunement?: boolean;
+  isSoulCoin?: boolean;
   quantity?: number;
   source?: string | null;
   notes?: string | null;
+}
+
+export function soulCoinQuantity(items: readonly { itemType: ItemType; isSoulCoin?: boolean; itemCategory?: ItemCategory | null; itemName?: string; quantity?: number }[]): number {
+  return items.filter(item => item.itemType === 'CONSUMABLE' && item.isSoulCoin === true).reduce((total, item) => total + (item.quantity ?? 1), 0);
 }

@@ -6,6 +6,7 @@ import com.dndadvlog.backend.entity.AdventureGainedItem;
 import com.dndadvlog.backend.entity.Character;
 import com.dndadvlog.backend.entity.InventoryItem;
 import com.dndadvlog.backend.dto.AdventureEntryRequest;
+import com.dndadvlog.backend.dto.AdventureGainedItemRequest;
 import com.dndadvlog.backend.dto.AdventureEntryResponse;
 import com.dndadvlog.backend.dto.AdventureEntrySaveRequest;
 import com.dndadvlog.backend.dto.ClassLevelChangeRequest;
@@ -105,10 +106,286 @@ class LedgerPersistenceIntegrationTest {
     }
 
     @Test
+    void soulCoinTransferPreservesExistingStockAndNeverReplenishesAfterDeletion() throws Exception {
+        try (SqlSession session = sqlSessionFactory.openSession(false)) {
+            Connection connection = session.getConnection();
+            connection.setAutoCommit(false);
+            Character character = newCharacter();
+            character.setSoulCoins(4);
+            session.getMapper(CharacterMapper.class).insert(character);
+            InventoryItem stock = inventoryItem(character.getId(), AcquisitionSource.DOWNTIME, false);
+            stock.setItemType(InventoryItem.ItemType.CONSUMABLE);
+            stock.setIsSoulCoin(true);
+            stock.setQuantity(2);
+            InventoryItemMapper inventory = session.getMapper(InventoryItemMapper.class);
+            inventory.insert(stock);
+            var migration = new org.springframework.core.io.support.EncodedResource(
+                    new ClassPathResource("db/migration/V26__unify_soul_coins_and_permanent_item_counts.sql"), java.nio.charset.StandardCharsets.UTF_8);
+            var flagMigration = new org.springframework.core.io.support.EncodedResource(
+                    new ClassPathResource("db/migration/V27__replace_soul_coin_category_with_flag.sql"), java.nio.charset.StandardCharsets.UTF_8);
+            var checkpoint = connection.setSavepoint();
+            try (var statement = connection.createStatement()) {
+                statement.execute("ALTER TABLE inventory_item ADD CONSTRAINT reject_transfer_for_test CHECK (source IS DISTINCT FROM '角色靈魂幣轉移')");
+            }
+            assertThrows(org.springframework.jdbc.datasource.init.ScriptException.class, () -> ScriptUtils.executeSqlScript(connection, migration));
+            connection.rollback(checkpoint);
+            session.clearCache();
+            assertEquals(4, session.getMapper(CharacterMapper.class).findById(character.getId()).getSoulCoins());
+            assertEquals(2, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            assertFalse(queryBoolean(connection, "SELECT soul_coins_transferred FROM \"character\" WHERE id = ?", character.getId()));
+            ScriptUtils.executeSqlScript(connection, migration);
+            ScriptUtils.executeSqlScript(connection, flagMigration);
+            session.clearCache();
+            assertEquals(6, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            assertEquals(0, session.getMapper(CharacterMapper.class).findById(character.getId()).getSoulCoins());
+            assertTrue(queryBoolean(connection, "SELECT soul_coins_transferred FROM \"character\" WHERE id = ?", character.getId()));
+            ScriptUtils.executeSqlScript(connection, migration);
+            ScriptUtils.executeSqlScript(connection, flagMigration);
+            assertEquals(6, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            try (PreparedStatement delete = connection.prepareStatement("DELETE FROM inventory_item WHERE character_id = ? AND source = '角色靈魂幣轉移'")) {
+                delete.setObject(1, character.getId());
+                delete.executeUpdate();
+            }
+            ScriptUtils.executeSqlScript(connection, migration);
+            ScriptUtils.executeSqlScript(connection, flagMigration);
+            session.clearCache();
+            assertEquals(2, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            connection.rollback();
+        }
+    }
+
+    @Test
+    void permanentCountsPreserveSourcesAndSimultaneousLossesAcrossAllEndpoints() {
+        SqlSessionTemplate template = new SqlSessionTemplate(sqlSessionFactory);
+        CharacterMapper characters = template.getMapper(CharacterMapper.class);
+        AdventureEntryMapper entries = template.getMapper(AdventureEntryMapper.class);
+        InventoryItemMapper inventory = template.getMapper(InventoryItemMapper.class);
+        AdventureGainedItemMapper gained = template.getMapper(AdventureGainedItemMapper.class);
+        AdventureEntryService service = new AdventureEntryService(entries, characters,
+                template.getMapper(DowntimeActivityMapper.class), gained,
+                template.getMapper(StoryAwardMapper.class), new CharacterService(characters, entries, inventory), inventory);
+        new TransactionTemplate(new DataSourceTransactionManager(dataSource)).executeWithoutResult(status -> {
+            Character character = newCharacter();
+            characters.insert(character);
+            InventoryItem starting = inventoryItem(character.getId(), null, false);
+            starting.setQuantity(2);
+            inventory.insert(starting);
+            AdventureEntrySaveRequest request = ledgerRequest("Permanent", 0, 0, "0", 0, null, "Rest", null, "Award");
+            request.getEntry().setClassChanges(List.of());
+            request.getEntry().setMagicItemsLost(1);
+            request.getEntry().setMagicItemsDowntimeLost(1);
+            AdventureGainedItemRequest sword = new AdventureGainedItemRequest();
+            sword.setItemName("Sword"); sword.setItemType("PERMANENT");
+            AdventureGainedItemRequest shield = new AdventureGainedItemRequest();
+            shield.setItemName("Shield"); shield.setItemType("PERMANENT"); shield.setAcquisitionSource(AcquisitionSource.DOWNTIME);
+            request.setGainedItems(List.of(sword, shield));
+            AdventureEntryResponse saved = service.createEntryWithDetails(character.getId(), request, USER_ID);
+            assertEquals(0, saved.getMagicItemsChange());
+            assertEquals(0, saved.getMagicItemsDowntimeChange());
+            assertEquals(2, saved.getMagicItemsTotal());
+            assertEquals(1, saved.getMagicItemsLost());
+            assertEquals(1, saved.getMagicItemsDowntimeLost());
+            assertFalse(saved.getWarnings().isEmpty());
+            List<AdventureGainedItem> snapshots = gained.findByAdventureEntryId(saved.getId());
+            sword.setId(snapshots.stream().filter(i->i.getItemName().equals("Sword")).findFirst().orElseThrow().getId());
+            shield.setId(snapshots.stream().filter(i->i.getItemName().equals("Shield")).findFirst().orElseThrow().getId());
+            assertEquals(2, service.updateEntryWithDetails(saved.getId(), request, USER_ID).getMagicItemsTotal());
+            AdventureEntryRequest basic = new AdventureEntryRequest();
+            basic.setMagicItemsLost(0);
+            assertEquals(1, service.updateEntry(saved.getId(), basic, USER_ID).getMagicItemsChange());
+            sword.setAcquisitionSource(AcquisitionSource.DOWNTIME);
+            service.updateGainedItem(saved.getId(), sword.getId(), sword, USER_ID);
+            assertEquals(0, entries.findById(saved.getId()).getMagicItemsChange());
+            assertEquals(1, entries.findById(saved.getId()).getMagicItemsDowntimeChange());
+            service.deleteGainedItem(sword.getId(), USER_ID);
+            assertEquals(0, entries.findById(saved.getId()).getMagicItemsDowntimeChange());
+            service.createGainedItem(saved.getId(), sword, USER_ID);
+            assertEquals(1, entries.findById(saved.getId()).getMagicItemsDowntimeChange());
+            assertEquals(4, inventory.sumQuantityByCharacterIdAndItemType(character.getId(), "PERMANENT"));
+            status.setRollbackOnly();
+        });
+    }
+
+    @Test
+    void multipleSoulCoinRowsKeepHistoryAfterConsumptionAndResave() {
+        SqlSessionTemplate template = new SqlSessionTemplate(sqlSessionFactory);
+        CharacterMapper characters = template.getMapper(CharacterMapper.class);
+        AdventureEntryMapper entries = template.getMapper(AdventureEntryMapper.class);
+        InventoryItemMapper inventory = template.getMapper(InventoryItemMapper.class);
+        AdventureGainedItemMapper gained = template.getMapper(AdventureGainedItemMapper.class);
+        CharacterService characterService = new CharacterService(characters, entries, inventory);
+        AdventureEntryService service = new AdventureEntryService(entries, characters,
+                template.getMapper(DowntimeActivityMapper.class), gained,
+                template.getMapper(StoryAwardMapper.class), characterService, inventory);
+        TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        transaction.executeWithoutResult(status -> {
+            Character character = newCharacter();
+            characters.insert(character);
+            AdventureEntrySaveRequest request = ledgerRequest("Coins", 0, 0, "0", 0, null, "Rest", null, "Award");
+            request.getEntry().setClassChanges(List.of());
+            AdventureGainedItemRequest one = soulCoins(1);
+            AdventureGainedItemRequest two = soulCoins(2);
+            request.setGainedItems(List.of(one, two));
+            AdventureEntryResponse saved = service.createEntryWithDetails(character.getId(), request, USER_ID);
+            assertEquals(0, saved.getMagicItemsChange());
+            assertEquals(3, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            assertEquals(3, characterService.getCharacter(character.getId(), USER_ID).getSoulCoins());
+            List<AdventureGainedItem> snapshots = gained.findByAdventureEntryId(saved.getId());
+            one.setId(snapshots.stream().filter(i -> i.getQuantity() == 1).findFirst().orElseThrow().getId());
+            two.setId(snapshots.stream().filter(i -> i.getQuantity() == 2).findFirst().orElseThrow().getId());
+            InventoryItem consumed = inventory.findByAdventureGainedItemId(one.getId());
+            inventory.deleteById(consumed.getId());
+            service.updateEntryWithDetails(saved.getId(), request, USER_ID);
+            assertEquals(2, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            assertEquals(3, gained.findByAdventureEntryId(saved.getId()).stream().mapToInt(AdventureGainedItem::getQuantity).sum());
+            two.setQuantity(3);
+            service.updateGainedItem(saved.getId(), two.getId(), two, USER_ID);
+            assertEquals(3, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            assertEquals(0, characters.findById(character.getId()).getCurrentMagicItems());
+            two.setIsSoulCoin(false);
+            service.updateGainedItem(saved.getId(), two.getId(), two, USER_ID);
+            assertEquals(0, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            assertEquals(3, inventory.findByAdventureGainedItemId(two.getId()).getQuantity());
+            two.setIsSoulCoin(true);
+            service.updateGainedItem(saved.getId(), two.getId(), two, USER_ID);
+            assertEquals(3, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
+            var stockService = new com.dndadvlog.backend.service.InventoryItemService(inventory, characterService, entries, gained, characters);
+            var stockRequest = new com.dndadvlog.backend.dto.InventoryItemRequest();
+            stockRequest.setItemName("Player custom name");
+            stockRequest.setItemType(InventoryItem.ItemType.CONSUMABLE);
+            stockRequest.setQuantity(2);
+            stockRequest.setNotes("Player notes");
+            stockRequest.setIsSoulCoin(true);
+            var manual = stockService.createItem(character.getId(), stockRequest, USER_ID);
+            assertTrue(manual.getIsSoulCoin());
+            assertNull(manual.getRarity());
+            assertNull(manual.getItemCategory());
+            assertEquals("Player custom name", manual.getItemName());
+            assertEquals(5, characterService.getCharacter(character.getId(), USER_ID).getSoulCoins());
+            stockRequest.setIsSoulCoin(false);
+            var unmarked = stockService.updateItem(character.getId(), manual.getId(), stockRequest, USER_ID);
+            assertFalse(unmarked.getIsSoulCoin());
+            assertEquals(2, unmarked.getQuantity());
+            assertEquals("Player notes", unmarked.getNotes());
+            assertEquals(3, characterService.getCharacter(character.getId(), USER_ID).getSoulCoins());
+            stockService.deleteItem(character.getId(), manual.getId(), USER_ID);
+            // Unchecking current stock does not rewrite its historical marker or quantities.
+            var linkedStock = inventory.findByAdventureGainedItemId(two.getId());
+            stockRequest.setItemName(linkedStock.getItemName());
+            stockRequest.setQuantity(linkedStock.getQuantity());
+            stockService.updateItem(character.getId(), linkedStock.getId(), stockRequest, USER_ID);
+            assertEquals(0, characterService.getCharacter(character.getId(), USER_ID).getSoulCoins());
+            assertTrue(gained.findById(two.getId()).getIsSoulCoin());
+            assertEquals(3, gained.findById(two.getId()).getQuantity());
+            two.setIsSoulCoin(false);
+            one.setIsSoulCoin(false);
+            service.updateEntryWithDetails(saved.getId(), request, USER_ID);
+            assertNull(inventory.findByAdventureGainedItemId(one.getId()));
+            two.setIsSoulCoin(true);
+            service.updateGainedItem(saved.getId(), two.getId(), two, USER_ID);
+            // Both database tables reject a soul coin classified as permanent.
+            Connection connection = org.springframework.jdbc.datasource.DataSourceUtils.getConnection(dataSource);
+            for (String table : List.of("inventory_item", "adventure_gained_item")) {
+                try {
+                    var checkpoint = connection.setSavepoint();
+                    assertThrows(SQLException.class, () -> {
+                        try (var statement = connection.createStatement()) {
+                            statement.executeUpdate("UPDATE " + table + " SET item_type = 'PERMANENT' WHERE is_soul_coin");
+                        }
+                    });
+                    connection.rollback(checkpoint);
+                } catch (SQLException e) { throw new RuntimeException(e); }
+            }
+            status.setRollbackOnly();
+        });
+    }
+
+    private static AdventureGainedItemRequest soulCoins(int quantity) {
+        AdventureGainedItemRequest item = new AdventureGainedItemRequest();
+        item.setItemName("靈魂幣");
+        item.setItemType("CONSUMABLE");
+        item.setIsSoulCoin(true);
+        item.setQuantity(quantity);
+        return item;
+    }
+
+    @Test
+    void soulCoinFlagMigrationPreservesFieldsAndDoesNotRestoreUncheckedMarkers() throws Exception {
+        try (SqlSession session = sqlSessionFactory.openSession(false)) {
+            Connection connection = session.getConnection();
+            connection.setAutoCommit(false);
+            var previous = new org.springframework.core.io.support.EncodedResource(
+                    new ClassPathResource("db/migration/V26__unify_soul_coins_and_permanent_item_counts.sql"), java.nio.charset.StandardCharsets.UTF_8);
+            var migration = new org.springframework.core.io.support.EncodedResource(
+                    new ClassPathResource("db/migration/V27__replace_soul_coin_category_with_flag.sql"), java.nio.charset.StandardCharsets.UTF_8);
+            ScriptUtils.executeSqlScript(connection, previous);
+            InventoryItemMapper inventory = session.getMapper(InventoryItemMapper.class);
+            AdventureGainedItemMapper gained = session.getMapper(AdventureGainedItemMapper.class);
+            InventoryItem stock = inventoryItem(LEGACY_CHARACTER_ID, AcquisitionSource.ADVENTURE, false);
+            stock.setItemType(InventoryItem.ItemType.CONSUMABLE);
+            stock.setItemName("Custom coin");
+            stock.setQuantity(2);
+            stock.setRarity(InventoryItem.Rarity.RARE);
+            stock.setNotes("Player notes");
+            inventory.insert(stock);
+            AdventureGainedItem snapshot = gainedItem(LEGACY_ENTRY_ID, AcquisitionSource.ADVENTURE, false);
+            snapshot.setItemType("CONSUMABLE");
+            snapshot.setItemName("靈魂硬幣");
+            snapshot.setQuantity(3);
+            snapshot.setNotes("Historical notes");
+            gained.insert(snapshot);
+            stock.setAdventureEntryId(LEGACY_ENTRY_ID);
+            stock.setAdventureGainedItemId(snapshot.getId());
+            inventory.update(stock);
+            for (var target : java.util.Map.of("inventory_item", stock.getId(), "adventure_gained_item", snapshot.getId()).entrySet()) {
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "UPDATE " + target.getKey() + " SET item_category = 'SOUL_COIN' WHERE id = ?")) {
+                    statement.setObject(1, target.getValue());
+                    statement.executeUpdate();
+                }
+            }
+            ScriptUtils.executeSqlScript(connection, migration);
+            session.clearCache();
+            InventoryItem converted = inventory.findById(stock.getId());
+            assertTrue(converted.getIsSoulCoin());
+            assertNull(converted.getItemCategory());
+            assertEquals("Custom coin", converted.getItemName());
+            assertEquals(InventoryItem.Rarity.RARE, converted.getRarity());
+            assertEquals("Player notes", converted.getNotes());
+            assertEquals(stock.getSource(), converted.getSource());
+            assertEquals(snapshot.getId(), converted.getAdventureGainedItemId());
+            assertEquals(2, converted.getQuantity());
+            AdventureGainedItem historical = gained.findById(snapshot.getId());
+            assertTrue(historical.getIsSoulCoin());
+            assertNull(historical.getItemCategory());
+            assertEquals("靈魂幣", historical.getItemName());
+            assertEquals("Historical notes", historical.getNotes());
+            assertEquals(3, historical.getQuantity());
+            converted.setIsSoulCoin(false);
+            converted.setItemCategory(InventoryItem.ItemCategory.POTION);
+            inventory.update(converted);
+            ScriptUtils.executeSqlScript(connection, migration);
+            session.clearCache();
+            assertFalse(inventory.findById(stock.getId()).getIsSoulCoin());
+            assertEquals(InventoryItem.ItemCategory.POTION, inventory.findById(stock.getId()).getItemCategory());
+            assertTrue(gained.findById(snapshot.getId()).getIsSoulCoin());
+            // The obsolete category cannot be recreated after conversion.
+            var checkpoint = connection.setSavepoint();
+            assertThrows(SQLException.class, () -> {
+                try (var statement = connection.createStatement()) {
+                    statement.executeUpdate("UPDATE inventory_item SET item_category = 'SOUL_COIN'");
+                }
+            });
+            connection.rollback(checkpoint);
+            connection.rollback();
+        }
+    }
+
+    @Test
     void categoriesRoundTripAndClearWithoutChangingQuantities() throws Exception {
         try (Connection connection = dataSource.getConnection()) {
             try (var statement = connection.createStatement();
-                    var migration = new ClassPathResource("db/migration/V25__add_item_category.sql").getInputStream()) {
+                    var migration = new ClassPathResource("db/migration/V27__replace_soul_coin_category_with_flag.sql").getInputStream()) {
                 statement.execute(new String(migration.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
             }
             assertNull(queryString(connection, "SELECT item_category FROM inventory_item WHERE id = ?", LEGACY_LINKED_INVENTORY_ID));
@@ -134,6 +411,8 @@ class LedgerPersistenceIntegrationTest {
             assertEquals(item.getItemCategory(), inventory.findById(item.getId()).getItemCategory());
             assertEquals(snapshot.getItemCategory(), gained.findById(snapshot.getId()).getItemCategory());
             for (InventoryItem.ItemCategory category : InventoryItem.ItemCategory.values()) {
+                item.setItemType(InventoryItem.ItemType.PERMANENT);
+                snapshot.setItemType(item.getItemType().name());
                 item.setItemCategory(category);
                 snapshot.setItemCategory(category);
                 inventory.update(item);
@@ -357,7 +636,7 @@ class LedgerPersistenceIntegrationTest {
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         transaction.executeWithoutResult(status -> characterMapper.insert(character));
 
-        CharacterService characterService = new CharacterService(characterMapper, entryMapper);
+        CharacterService characterService = new CharacterService(characterMapper, entryMapper, template.getMapper(InventoryItemMapper.class));
         AdventureEntryService service = new AdventureEntryService(
                 entryMapper,
                 characterMapper,
@@ -413,7 +692,7 @@ class LedgerPersistenceIntegrationTest {
                 activityMapper,
                 template.getMapper(AdventureGainedItemMapper.class),
                 awardMapper,
-                new CharacterService(characterMapper, entryMapper),
+                new CharacterService(characterMapper, entryMapper, template.getMapper(InventoryItemMapper.class)),
                 template.getMapper(InventoryItemMapper.class));
 
         AdventureEntryResponse created = transaction.execute(status ->

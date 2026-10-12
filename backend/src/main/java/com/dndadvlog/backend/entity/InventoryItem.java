@@ -16,6 +16,7 @@ public class InventoryItem {
     private Rarity rarity;
     private ItemCategory itemCategory;
     private Boolean requiresAttunement;
+    private Boolean isSoulCoin;
     private Integer quantity;
     private AcquisitionSource acquisitionSource;
     private Boolean needsDetails;
@@ -34,5 +35,11 @@ public class InventoryItem {
 
     public enum ItemCategory {
         ARMOR, POTION, RING, ROD, SCROLL, STAFF, WAND, WEAPON, WONDROUS_ITEM
+    }
+
+    public static void validateSoulCoin(ItemType type, Boolean isSoulCoin) {
+        if (Boolean.TRUE.equals(isSoulCoin) && type != ItemType.CONSUMABLE) {
+            throw new com.dndadvlog.backend.exception.BusinessException("靈魂幣只能歸類為消耗品");
+        }
     }
 }

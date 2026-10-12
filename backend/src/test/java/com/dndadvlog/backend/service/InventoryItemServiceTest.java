@@ -158,6 +158,15 @@ class InventoryItemServiceTest {
         return request;
     }
 
+    @Test
+    void rejectsPermanentSoulCoinBeforeWriting() {
+        InventoryItemRequest request = request();
+        request.setIsSoulCoin(true);
+        assertThrows(com.dndadvlog.backend.exception.BusinessException.class,
+                () -> service.createItem(characterId, request, userId));
+        verify(inventoryItemMapper, never()).insert(any());
+    }
+
     private InventoryItem inventoryItem(AcquisitionSource source, boolean needsDetails) {
         InventoryItem item = new InventoryItem();
         item.setId(UUID.randomUUID());

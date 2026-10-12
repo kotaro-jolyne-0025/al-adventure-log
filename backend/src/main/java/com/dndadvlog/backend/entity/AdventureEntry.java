@@ -32,6 +32,8 @@ public class AdventureEntry {
     private BigDecimal goldDowntimeChange;
     private Integer downtimeDowntimeChange;
     private Integer magicItemsDowntimeChange;
+    private Integer magicItemsLost;
+    private Integer magicItemsDowntimeLost;
     private String levelUpClassName;
     private String catchupClassName;
     private Integer catchupCount;

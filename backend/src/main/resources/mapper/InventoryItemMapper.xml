@@ -14,6 +14,7 @@
         <result property="rarity"               column="rarity"/>
         <result property="itemCategory"         column="item_category"/>
         <result property="requiresAttunement"   column="requires_attunement"/>
+        <result property="isSoulCoin" column="is_soul_coin"/>
         <result property="quantity"             column="quantity"/>
         <result property="acquisitionSource"    column="acquisition_source"/>
         <result property="needsDetails"         column="needs_details"/>
@@ -53,6 +54,12 @@
           AND adventure_gained_item_id IS NULL
     </select>
 
+    <select id="sumSoulCoinQuantityByCharacterId" resultType="int">
+        SELECT COALESCE(SUM(quantity), 0) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid
+          AND item_type = 'CONSUMABLE'::item_type AND is_soul_coin = TRUE
+    </select>
+
     <select id="findById" resultMap="itemMap">
         SELECT * FROM inventory_item WHERE id = #{id}::uuid
     </select>
@@ -68,7 +75,7 @@
     <insert id="insert">
         INSERT INTO inventory_item (
             id, character_id, adventure_entry_id, adventure_gained_item_id,
-            item_name, item_type, rarity, item_category, requires_attunement, quantity,
+            item_name, item_type, rarity, item_category, requires_attunement, is_soul_coin, quantity,
             acquisition_source, needs_details, source, notes, created_at, updated_at
         )
         VALUES (
@@ -77,7 +84,7 @@
             CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid),
             #{itemName}, #{itemType}::item_type,
             CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity), #{itemCategory},
-            COALESCE(#{requiresAttunement}, false), #{quantity}, #{acquisitionSource},
+            COALESCE(#{requiresAttunement}, false), COALESCE(#{isSoulCoin}, false), #{quantity}, #{acquisitionSource},
             COALESCE(#{needsDetails}, false), #{source}, #{notes}, NOW(), NOW()
         )
     </insert>
@@ -91,6 +98,7 @@
             rarity     = CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity),
             item_category = #{itemCategory},
             requires_attunement = COALESCE(#{requiresAttunement}, false),
+            is_soul_coin = COALESCE(#{isSoulCoin}, false),
             quantity   = #{quantity},
             acquisition_source = #{acquisitionSource},
             needs_details = COALESCE(#{needsDetails}, false),

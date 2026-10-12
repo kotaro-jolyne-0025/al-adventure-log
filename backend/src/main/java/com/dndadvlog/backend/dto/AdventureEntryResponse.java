@@ -30,6 +30,8 @@ public class AdventureEntryResponse {
     private BigDecimal goldDowntimeChange;
     private Integer downtimeDowntimeChange;
     private Integer magicItemsDowntimeChange;
+    private Integer magicItemsLost;
+    private Integer magicItemsDowntimeLost;
     private String startingClassesString;
     private String endingClassesString;
     private String adventureNotes;
