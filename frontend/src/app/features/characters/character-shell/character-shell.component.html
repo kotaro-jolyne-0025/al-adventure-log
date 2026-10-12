@@ -9,7 +9,7 @@
 }
 
   <div class="shell-container">
-    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" [compact]="true" [showRefresh]="readSource() === 'copy'" (refresh)="loadCharacterData()" />
+    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" [compact]="true" (refresh)="loadCharacterData()" />
     @if (character()) {
     
     <!-- Character Header Card & Navigation -->
@@ -29,8 +29,9 @@
           <div class="char-identity-text">
             <div class="name-line">
               <h1 class="char-name" [matTooltip]="character()!.characterName">{{ character()!.characterName }}</h1>
-              <button mat-icon-button [disabled]="readOnly()" (click)="onEdit()" class="btn-edit-mobile" matTooltip="編輯角色" aria-label="編輯角色">
+              <button mat-stroked-button [disabled]="readOnly()" (click)="onEdit()" class="btn-edit-hero" aria-label="編輯角色">
                 <svg lucidePencil [size]="20"></svg>
+                <span class="edit-label">編輯角色</span>
               </button>
             </div>
             <p class="char-meta">
@@ -49,12 +50,6 @@
           </div>
         </div>
 
-        <div class="hero-actions">
-          <button mat-stroked-button [disabled]="readOnly()" (click)="onEdit()" class="btn-edit-hero">
-            <svg lucidePencil [size]="20"></svg>
-            <span>編輯角色</span>
-          </button>
-        </div>
       </div>
 
       <!-- Character HUD Stats Bar (即時數值看板) -->
@@ -122,7 +117,7 @@
     </div>
 
     }
-    @if (!character() && !isLoading()) { <p>角色摘要暫無可用資料，資源數量尚未確認。</p> }
+    @if (!character() && !isLoading()) { <p>目前無法顯示角色資訊，請連線後再試。</p> }
     <!-- Tab Nav -->
     <nav mat-tab-nav-bar [tabPanel]="characterPanel" class="character-tabs" aria-label="角色內容">
       <a mat-tab-link [routerLink]="['/characters', characterId, 'adventures']" [active]="getActiveTab() === 0">
