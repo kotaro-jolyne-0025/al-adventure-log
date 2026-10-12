@@ -4,9 +4,19 @@
     <h1 class="page-title">{{ isEditMode() ? '編輯冒險紀錄' : '新增冒險紀錄' }}</h1>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="onSubmit()">
-    <app-form-feedback [message]="formError()" [target]="errorTarget()" />
-    <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
+  <app-draft-notice [offered]="draft.offered()" [savedAt]="draft.record()?.savedAt ?? null"
+    [completed]="!!draft.record()?.data?.cloudSavedId" [error]="loadFailed() ? draft.error() : null"
+    [canRestore]="draft.canRestore()" [text]="recoveredText()"
+    (restore)="restoreDraft()" (discard)="discardDraft()" (recover)="recoverDraftText()" />
+  @if (isLoading() || !draft.isReady()) { <p role="status">正在取得完整資料，完成後即可填寫。</p> }
+  @if (loadFailed()) {
+    <p role="alert">資料未完整載入，暫時無法編輯或儲存。已保存的草稿可從上方取回。
+      <button type="button" mat-button (click)="retryLoad()">重新取得資料</button>
+    </p>
+  }
+  @if (!isLoading() && !loadFailed() && draft.isReady() && !draft.offered()) {
+  <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" [attr.inert]="isSaving() ? '' : null">
 
     <!-- 冒險基本資訊 -->
     <mat-card class="form-card">
@@ -30,7 +40,7 @@
         <div class="field-row">
           <mat-form-field appearance="outline" class="flex-1">
             <mat-label>遊玩日期</mat-label>
-            <input matInput [matDatepicker]="picker" formControlName="playDate" />
+            <input matInput [matDatepicker]="picker" formControlName="playDate" (input)="dateText.set($any($event.target).value)" />
             <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
             <mat-error>遊玩日期為必填</mat-error>
@@ -180,27 +190,12 @@
             </div>
           </div>
 
-          <!-- 魔法物品資源變動（含消耗品） -->
-          <div class="resource-block-card">
-            <div class="res-card-header">
-              <div class="res-header-left">
-                <svg lucideSparkles [size]="18" class="res-icon magic"></svg>
-                <span class="res-title" matTooltip="Permanent Magic Items">永久性魔法物品</span>
-              </div>
-            </div>
-            <div class="res-inputs-grid single-col">
-              <mat-form-field appearance="outline" class="res-field">
-                <mat-label>冒險中變化</mat-label>
-                <input matInput type="number" formControlName="magicItemsChange" />
-              </mat-form-field>
-            </div>
-          </div>
-
         </div>
 
 
         <!-- 獲得永久性魔法物品清單 -->
         <div class="sub-items-section" data-resize-focus>
+          @if (legacyMagicWarning()) { <p role="note">此舊紀錄將依永久物品明細重新計算獲得數量，請確認後儲存。</p> }
           <div class="sub-section-header">
             <div class="sub-title-flex" [class.mobile-heading-replaced]="gainedMagicItems().length > 0">
               <svg lucideSparkles [size]="18" class="title-icon magic"></svg>
@@ -261,13 +256,20 @@
                   <mat-label>類別</mat-label>
                   <mat-select [value]="item.itemCategory" (selectionChange)="updateGainedItemCategory(i, $event.value)">
                     <mat-option value="">— 未指定 —</mat-option>
-                    @for (category of categories; track category) {
+                    @for (category of permanentCategories; track category) {
                       <mat-option [value]="category">{{ categoryOptionLabels[category] }}</mat-option>
                     }
                   </mat-select>
                 </mat-form-field>
               </div>
 
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>獲得來源</mat-label>
+                <mat-select [value]="item.acquisitionSource || 'ADVENTURE'" (selectionChange)="updateGainedItemSource(i, $event.value)">
+                  <mat-option value="ADVENTURE">冒險獲得</mat-option>
+                  <mat-option value="DOWNTIME">休整期獲得</mat-option>
+                </mat-select>
+              </mat-form-field>
               <div class="checkbox-row attunement-toggle-row">
                 <mat-checkbox [checked]="item.requiresAttunement"
                   (change)="updateGainedItemAttunement(i, $event.checked)" color="primary">
@@ -367,6 +369,10 @@
                 </mat-form-field>
               </div>
 
+              <div class="checkbox-row attunement-toggle-row">
+                <mat-checkbox [checked]="item.isSoulCoin ?? false"
+                  (change)="updateGainedConsumableItemSoulCoin(i, $event.checked)" color="primary">靈魂幣</mat-checkbox>
+              </div>
               <mat-form-field appearance="outline" class="full-width" style="margin-top: 4px;">
                 <mat-label>備註</mat-label>
                 <textarea matInput cdkTextareaAutosize [cdkAutosizeMinRows]="2" [cdkAutosizeMaxRows]="10"
@@ -527,12 +533,8 @@
                 <input matInput type="number" [value]="act.downtime"
                   (input)="updateActivityDowntime(i, $any($event.target).value)" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="delta-field">
-                <mat-label>魔法物品變動 (件)</mat-label>
-                <input matInput type="number" [value]="act.magicItems"
-                  (input)="updateActivityMagicItems(i, $any($event.target).value)" />
-              </mat-form-field>
             </div>
+            <p class="activity-empty" role="note">若物品有減少請至倉庫手動移除</p>
           </div>
           }
 
@@ -601,7 +603,7 @@
             <div class="badge-card-top">
               <div class="badge-title-group">
                 <svg lucideSparkles [size]="18" class="badge-icon magic"></svg>
-                <span class="badge-title">魔法物品變動</span>
+                <span class="badge-title">永久性魔法物品變動</span>
               </div>
               <div class="badge-total-value">
                 <span class="value-num">{{ magicItemsNetChange() }}</span>
@@ -609,9 +611,9 @@
               </div>
             </div>
             <div class="badge-formula-line">
-              <span class="f-part">冒險 {{ form.get('magicItemsChange')?.value ?? 0 }}</span>
+              <span class="f-part">冒險 {{ _magicItemsChange() }}</span>
               <span class="f-op">+</span>
-              <span class="f-part">休整 {{ form.get('magicItemsDowntimeChange')?.value ?? 0 }}</span>
+              <span class="f-part">休整 {{ _magicItemsDowntimeChange() }}</span>
             </div>
           </div>
 
@@ -637,6 +639,8 @@
     </mat-card>
 
     <!-- Actions -->
+    <app-draft-notice [status]="draft.status()" [error]="draft.error()" [savedAt]="draft.record()?.savedAt ?? null"
+      (retry)="retryDraftSave()" (recover)="recoverDraftText()" />
     @if (isLoading()) {
     <p role="status">正在載入完整記錄，完成後即可儲存。</p>
     }
@@ -646,9 +650,10 @@
     </p>
     }
     <div class="form-actions">
+      <app-form-feedback [message]="formError()" [target]="errorTarget()" />
       <button type="button" mat-stroked-button (click)="onBack()">取消</button>
       <button type="submit" mat-flat-button color="primary"
-        [disabled]="isSaving() || isLoading() || loadFailed() || !isLevelBalanced() || !isClassProgressionValid() || !isResourceValid() || form.invalid">
+        [disabled]="isSaving() || isLoading() || loadFailed()">
         @if (isSaving()) {
         <mat-spinner diameter="20"></mat-spinner>
         } @else {
@@ -659,4 +664,5 @@
     </div>
 
   </form>
+  }
 </div>
