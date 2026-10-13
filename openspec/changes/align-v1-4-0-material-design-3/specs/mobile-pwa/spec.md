@@ -32,11 +32,11 @@
 - **THEN** 相應內容區有正確的分頁標籤關聯，搜尋及既有篩選行為保持
 
 ### Requirement: Keyboard operable avatar positioning
-頭像裁切 SHALL 提供不依賴拖曳的鍵盤位移方式，縮放控制 SHALL 有清楚名稱與可讀值，移動／縮放／重設／取消／確認 SHALL 可完全由鍵盤完成。原有指標行為及 300×300 匯出 SHALL 保持。
+頭像上傳 SHALL 接受 JPG、PNG、WebP、HEIC／HEIF，檔案大小 SHALL 不超過 5MB，HEIC／HEIF SHALL 在裝置端轉成 JPEG，並拒絕 GIF。HEIC 解碼器 SHALL 僅於選取 HEIC／HEIF 時載入，轉換期間 SHALL 顯示處理狀態並停用重複選取。頭像裁切 SHALL 可拖曳或聚焦預覽後以方向鍵微調（Shift+方向鍵使用較大步進）；縮放控制 SHALL 有清楚名稱與可讀值，移動／縮放／重設／取消／確認 SHALL 可完全由鍵盤完成，匯出尺寸 SHALL 為 300×300。
 
 #### Scenario: 全鍵盤完成裁切
 - **WHEN** 玩家只用鍵盤調整頭像
-- **THEN** 可到達具可見焦點的位移及縮放操作，確認匯出與可見裁切結果一致，取消不改頭像
+- **THEN** 可聚焦預覽並用方向鍵移動、使用縮放及重設控制，確認匯出與可見裁切結果一致，取消不改頭像
 
 ### Requirement: Perceivable form recovery and busy status
 角色、冒險與物品表單的提交錯誤 SHALL 提供可感知且可定位至相關欄位或區塊的說明，SHALL 保留輸入並展開被收合的錯誤內容。提交中 SHALL 保留可理解的動作文字與進度、避免重複提交。驗證頁的讀取／提交結果及錯誤 SHALL 可由輔助技術感知，MUST NOT 只有視覺 spinner；同一訊息 SHALL 避免重複播報。

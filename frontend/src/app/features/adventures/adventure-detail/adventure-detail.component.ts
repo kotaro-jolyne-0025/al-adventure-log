@@ -92,6 +92,7 @@ export class AdventureDetailComponent implements OnInit {
   protected readonly soulCoinTotal = computed(() => soulCoinQuantity(this.consumableItems()));
   protected storyAwards = signal<StoryAward[]>([]);
   protected isLoading = signal(true);
+  protected isRefreshing = signal(false);
   protected loadError = signal<string | null>(null);
   protected retryable = signal(true);
 
@@ -113,6 +114,7 @@ export class AdventureDetailComponent implements OnInit {
     this.readSource.set(null);
     this.loadError.set(null);
     this.isLoading.set(true);
+    this.isRefreshing.set(true);
     this.reads.read(this.characterId, `adventure:${this.entryId}`, () => forkJoin({
       entry: this.adventureService.getById(this.characterId, this.entryId),
       gainedItems: this.adventureService.getGainedItems(this.entryId),
@@ -145,11 +147,14 @@ export class AdventureDetailComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: (error) => {
+        this.readSource.set(null);
         this.entry.set(null); this.magicItems.set([]); this.consumableItems.set([]); this.storyAwards.set([]);
         this.isLoading.set(false);
+        this.isRefreshing.set(false);
         this.retryable.set(![401, 403, 404].includes(error.status));
         this.loadError.set(readErrorMessage(error, '冒險紀錄'));
       },
+      complete: () => this.isRefreshing.set(false),
     });
   }
 

@@ -2,7 +2,7 @@
   <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters', characterId, 'adventures']" (retry)="loadEntry()" />
 }
 <div class="page-container">
-  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" (refresh)="loadEntry()" />
+  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" (refresh)="loadEntry()" />
   <!-- Loading -->
   @if (isLoading()) {
     <div class="loading-wrapper"><mat-spinner diameter="40"></mat-spinner><p role="status">正在載入冒險資料…</p></div>

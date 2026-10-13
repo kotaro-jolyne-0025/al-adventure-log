@@ -40,13 +40,14 @@ export interface AvatarCropperDialogData {
       </h2>
 
       <mat-dialog-content class="dialog-content">
-        <p class="crop-hint" id="crop-instructions">拖曳圖片或使用下方位移按鈕調整位置，使用縮放滑桿調整大小。</p>
+        <p class="crop-hint" id="crop-instructions">拖曳圖片調整位置；也可先聚焦預覽，再用方向鍵微調。使用縮放滑桿調整大小。</p>
 
         <!-- Canvas Container -->
         <div class="canvas-wrapper">
           <canvas
             #cropCanvas
             role="img" aria-label="頭像裁切預覽" aria-describedby="crop-instructions"
+            tabindex="0"
             width="320"
             height="320"
             (mousedown)="onMouseDown($event)"
@@ -58,14 +59,8 @@ export interface AvatarCropperDialogData {
             (touchend)="onTouchEnd()"
             (touchcancel)="onTouchEnd()"
             (wheel)="onWheel($event)"
+            (keydown)="onCanvasKeydown($event)"
           ></canvas>
-        </div>
-
-        <div class="position-controls" role="group" aria-label="圖片位置">
-          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(0, -10)">上移</button>
-          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(0, 10)">下移</button>
-          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(-10, 0)">左移</button>
-          <button mat-stroked-button type="button" [disabled]="!imageLoaded()" (click)="moveImage(10, 0)">右移</button>
         </div>
         <!-- Controls Bar -->
         <div class="controls-row">
@@ -97,8 +92,7 @@ export interface AvatarCropperDialogData {
   `,
   styles: [
     `
-      .position-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .5rem; }
-      .position-controls button { min-height: 44px; }
+      canvas:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
       .cropper-dialog {
         display: flex;
         flex-direction: column;
@@ -269,6 +263,18 @@ export class AvatarCropperDialogComponent implements OnInit {
     this.offsetX += dx;
     this.offsetY += dy;
     this.draw();
+  }
+
+  protected onCanvasKeydown(event: KeyboardEvent): void {
+    const offset = event.shiftKey ? 10 : 1;
+    const movement: Record<string, [number, number]> = {
+      ArrowUp: [0, -offset], ArrowDown: [0, offset],
+      ArrowLeft: [-offset, 0], ArrowRight: [offset, 0],
+    };
+    const delta = movement[event.key];
+    if (!delta || !this.imageLoaded()) return;
+    event.preventDefault();
+    this.moveImage(...delta);
   }
 
   protected resetTransform(): void {
