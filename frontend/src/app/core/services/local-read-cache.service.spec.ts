@@ -42,12 +42,18 @@ describe('Reading-page fallback', () => {
   it('shows an available copy before cloud data, then replaces it with the complete response', async () => {
     const network = new Subject<string[]>();
     const values: string[][] = [];
-    cache.read('c', 'items', () => network).subscribe(result => values.push(result.data));
+    let completed = false;
+    cache.read('c', 'items', () => network).subscribe({
+      next: result => values.push(result.data),
+      complete: () => { completed = true; },
+    });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(values).toEqual([['previous']]);
+    expect(completed).toBe(false);
     network.next(['latest']);
     network.complete();
     expect(values).toEqual([['previous'], ['latest']]);
+    expect(completed).toBe(true);
   });
   it('keeps the displayed copy when refresh fails temporarily', async () => {
     const values: string[][] = [];

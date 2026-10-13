@@ -105,14 +105,6 @@
 
   @media (max-width: 600px) {
     padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
-
-    > button {
-      flex: 1 1 6rem;
-      height: auto;
-      min-height: 44px;
-      padding-block: 10px;
-      justify-content: center;
-    }
   }
 
   button {

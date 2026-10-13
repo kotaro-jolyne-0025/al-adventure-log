@@ -47,11 +47,15 @@
 - **THEN** 維持目前頁面與輸入，只提供重試方式，不顯示草稿預覽或複製操作
 
 ### Requirement: Efficient offline application delivery
-初次載入 SHALL 延後低頻介面及第三方登入資源，Service Worker 預先快取啟動殼層所需資源，其餘功能資源於使用時快取。部署設定 SHALL 讓入口、manifest 與 worker 中繼檔重新驗證，並讓雜湊命名的靜態資源長期快取。未曾快取的離線功能頁 SHALL 提供可恢復的錯誤提示，且保留目前殼層。
+初次載入 SHALL 延後低頻介面及第三方登入資源，Service Worker 預先快取啟動殼層所需資源，其餘功能資源於使用時快取。部署設定 SHALL 讓入口、manifest 與 worker 中繼檔重新驗證，並讓雜湊命名的靜態資源長期快取。讀取頁以本機副本先行顯示時，背景雲端刷新期間 SHALL 暫不顯示副本提示；刷新失敗並確定使用副本後 SHALL 顯示可更新提示。未曾快取的離線功能頁 SHALL 提供可恢復的錯誤提示，且保留目前殼層。
 
 #### Scenario: 初次安裝
 - **WHEN** 使用者以有限頻寬首次開啟應用程式
 - **THEN** 僅預先下載啟動所需資源，低頻功能資源延後載入
+
+#### Scenario: 背景刷新本機副本
+- **WHEN** 讀取頁先顯示本機副本並正在背景取得雲端資料
+- **THEN** 暫不顯示副本提示；雲端成功時不顯示，刷新失敗後才顯示副本時間及更新入口
 
 ### Requirement: Responsive content containment
 行動版角色、冒險、倉庫與表單頁面 SHALL 使卡片、文字、圖示及操作按鈕保留在可用視窗內，並依空間調整排列；必要操作 MUST 可見且可觸及。
@@ -324,14 +328,14 @@
 - **THEN** 相應內容區有正確的分頁標籤關聯，搜尋及既有篩選行為保持
 
 ### Requirement: Keyboard operable avatar positioning
-頭像裁切 SHALL 提供不依賴拖曳的鍵盤位移方式，縮放控制 SHALL 有清楚名稱與可讀值，移動／縮放／重設／取消／確認 SHALL 可完全由鍵盤完成。原有指標行為及 300×300 匯出 SHALL 保持。
+頭像上傳 SHALL 接受 JPG、PNG、WebP、HEIC／HEIF，檔案大小 SHALL 不超過 5MB，HEIC／HEIF SHALL 在裝置端轉成 JPEG，並拒絕 GIF。HEIC 解碼器 SHALL 僅於選取 HEIC／HEIF 時載入，轉換期間 SHALL 顯示處理狀態並停用重複選取。頭像裁切 SHALL 可拖曳或聚焦預覽後以方向鍵微調（Shift+方向鍵使用較大步進）；縮放控制 SHALL 有清楚名稱與可讀值，移動／縮放／重設／取消／確認 SHALL 可完全由鍵盤完成，匯出尺寸 SHALL 為 300×300。
 
 #### Scenario: 全鍵盤完成裁切
 - **WHEN** 玩家只用鍵盤調整頭像
 - **THEN** 可到達具可見焦點的位移及縮放操作，確認匯出與可見裁切結果一致，取消不改頭像
 
 ### Requirement: Perceivable form recovery and busy status
-角色、冒險與物品表單的提交錯誤 SHALL 提供可感知且可定位至相關欄位或區塊的說明，SHALL 保留輸入並展開被收合的錯誤內容。提交中 SHALL 保留可理解的動作文字與進度、避免重複提交。驗證頁的讀取／提交結果及錯誤 SHALL 可由輔助技術感知，MUST NOT 只有視覺 spinner；同一訊息 SHALL 避免重複播報。
+角色、冒險與物品表單的主要提交按鈕 SHALL 一律顯示「儲存」，不因新增或編輯而改變文案或按鈕寬度；提交中以 spinner 及可感知狀態文字回報進度，避免重複提交。提交錯誤 SHALL 提供可感知且可定位至相關欄位或區塊的說明，SHALL 保留輸入並展開被收合的錯誤內容。驗證頁的讀取／提交結果及錯誤 SHALL 可由輔助技術感知，MUST NOT 只有視覺 spinner；同一訊息 SHALL 避免重複播報。
 
 #### Scenario: 修正長表單錯誤
 - **WHEN** 玩家提交含無效欄位或選填明細的表單
@@ -403,7 +407,7 @@
 - **THEN** 目前欄位及其錯誤可捲入可視區，儲存與取消可達且不觸發重複提交
 
 ### Requirement: Save-adjacent mobile form feedback
-手機角色、冒險及物品表單 SHALL 在儲存操作區旁或其上方持續顯示提交驗證與儲存失敗訊息。錯誤 SHALL 保留輸入、指明修正方法，欄位錯誤 SHALL 提供定位入口並展開相關區塊；同一訊息 MUST NOT 重複播報。提示 SHALL 隨操作區可達，支援短視窗、安全区及文字放大，不覆蓋儲存或最後欄位。修正後重新提交 SHALL 更新或清除過時訊息。
+手機角色、冒險及物品表單 SHALL 在儲存操作區旁或其上方持續顯示提交驗證與儲存失敗訊息。錯誤 SHALL 保留輸入、指明修正方法，欄位錯誤 SHALL 提供定位入口並展開相關區塊；同一訊息 MUST NOT 重複播報。主要提交按鈕 SHALL 至少 48 CSS 像素高，文字放大時可換行且不得溢出。提示 SHALL 隨操作區可達，支援短視窗、安全區及文字放大，不覆蓋儲存或最後欄位。修正後重新提交 SHALL 更新或清除過時訊息。
 
 #### Scenario: 手機長表單必填未填
 - **WHEN** 玩家在手機表單底部按下儲存但必填欄位或明細缺漏

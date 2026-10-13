@@ -74,6 +74,7 @@ export class CharacterFormComponent implements OnInit {
 
   protected isEditMode = signal(false);
   protected isSaving = signal(false);
+  protected isProcessingAvatar = signal(false);
   protected avatarUrl = signal<string | null>(null);
   protected hasAdventureEntries = signal(false);
   private loadedCharacter: Character | null = null;
@@ -165,16 +166,11 @@ export class CharacterFormComponent implements OnInit {
     });
   }
 
-  protected onAvatarFileSelected(event: Event): void {
+  protected async onAvatarFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
+    if (this.isProcessingAvatar()) return;
     if (input.files && input.files[0]) {
       const file = input.files[0];
-      // 驗證是否為圖片
-      if (!file.type.startsWith('image/')) {
-        this.snackBar.open('請選取有效的圖片檔案', '關閉', { duration: 2500 });
-        input.value = '';
-        return;
-      }
       // 限制原始檔案大小（5MB），避免大圖解碼佔用過多記憶體導致裁切卡頓
       const MAX_FILE_SIZE = 5 * 1024 * 1024;
       if (file.size > MAX_FILE_SIZE) {
@@ -182,8 +178,26 @@ export class CharacterFormComponent implements OnInit {
         input.value = '';
         return;
       }
-      this.openCropper(file);
-      input.value = ''; // 重置 input 讓同檔名可重複觸發
+
+      try {
+        const isHeif = /\.(heic|heif)$/i.test(file.name) || /^image\/hei[cf]/i.test(file.type);
+        if (isHeif) {
+          this.isProcessingAvatar.set(true);
+          const { default: convertHeic } = await import('heic2any');
+          const converted = await convertHeic({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+          if (!(converted instanceof Blob)) throw new Error('HEIF conversion returned no image');
+          this.openCropper(new File([converted], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' }));
+        } else if (['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+          this.openCropper(file);
+        } else {
+          this.snackBar.open('請選取 JPG、PNG、WebP 或 HEIC／HEIF 圖片', '關閉', { duration: 3000 });
+        }
+      } catch {
+          this.snackBar.open('無法讀取這張照片，請確認格式後再試一次', '關閉', { duration: 3500 });
+      } finally {
+        this.isProcessingAvatar.set(false);
+        input.value = ''; // 重置 input 讓同檔名可重複觸發
+      }
     }
   }
 

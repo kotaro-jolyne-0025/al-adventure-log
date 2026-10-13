@@ -30,23 +30,29 @@
 
             <div class="avatar-actions-col">
               <div class="avatar-btn-row">
-                <input #fileInput type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none"
+                <input #fileInput type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif" style="display: none"
                   (change)="onAvatarFileSelected($event)" />
-                <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()"
+                <button type="button" mat-stroked-button color="primary" [disabled]="isProcessingAvatar()" (click)="fileInput.click()"
                   class="btn-upload-avatar">
                   @if (avatarUrl()) { <svg lucideRefreshCw [size]="20"></svg> } @else { <svg lucideUpload [size]="20"></svg> }
                   <span>{{ avatarUrl() ? '更換大頭照' : '上傳角色大頭照' }}</span>
                 </button>
 
                 @if (avatarUrl()) {
-                <button type="button" mat-button color="warn" (click)="removeAvatar()" class="btn-remove-avatar">
+                <button type="button" mat-button color="warn" [disabled]="isProcessingAvatar()" (click)="removeAvatar()" class="btn-remove-avatar">
                   <svg lucideTrash2 [size]="20"></svg>
                   <span>移除</span>
                 </button>
                 }
               </div>
+              @if (isProcessingAvatar()) {
+                <p class="avatar-processing" role="status">
+                  <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
+                  <span>正在處理照片，請稍候…</span>
+                </p>
+              }
               <p class="avatar-tip">
-                支援 JPG、PNG、WebP、GIF，檔案上限 5MB。<br />
+                支援 JPG、PNG、WebP、HEIC／HEIF，檔案上限 5MB。<br />
                 建議使用 1:1 正方形圖片，上傳後可裁切調整。
               </p>
             </div>
@@ -153,7 +159,7 @@
             } @else {
             <svg lucideSave [size]="20"></svg>
             }
-            {{ isSaving() ? '正在儲存…' : (isEditMode() ? '儲存變更' : '建立角色') }}
+            儲存
           </button>
         </div>
 

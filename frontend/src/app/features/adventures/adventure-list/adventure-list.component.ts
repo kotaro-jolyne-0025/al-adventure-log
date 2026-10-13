@@ -100,6 +100,7 @@ export class AdventureListComponent implements OnInit {
     'desc'
   );
   protected readonly isLoading = signal(true);
+  protected readonly isRefreshing = signal(false);
   protected loadError = signal<string | null>(null);
   protected hasLoaded = signal(false);
   private readonly pageSize = 20;
@@ -195,6 +196,7 @@ export class AdventureListComponent implements OnInit {
     this.readSource.set(null);
     this.loadError.set(null);
     this.isLoading.set(true);
+    this.isRefreshing.set(true);
     this.reads.read(this.characterId, 'adventures', () => this.adventureService.getAllByCharacter(this.characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         const list = result.data;
@@ -204,10 +206,13 @@ export class AdventureListComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: (error) => {
+        this.readSource.set(null);
         this.rawEntries.set([]); this.hasLoaded.set(false);
         this.loadError.set(readErrorMessage(error, '冒險紀錄'));
         this.isLoading.set(false);
+        this.isRefreshing.set(false);
       },
+      complete: () => this.isRefreshing.set(false),
     });
   }
 
