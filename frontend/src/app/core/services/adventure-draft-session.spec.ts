@@ -115,9 +115,22 @@ describe('Adventure draft lifecycle', () => {
     await draft.flush();
     expect(draft.error()).toContain('草稿保存失敗');
     await draft.flush();
-    expect(draft.error()).toContain('內容已更新');
+    expect(draft.error()).toContain('另一分頁已更新');
     await draft.flush();
     expect(local.putDraft).toHaveBeenCalledTimes(2);
+  });
+  it('explains quota failure while keeping the unsaved input retryable', async () => {
+    await draft.start('c', 'new');
+    draft.cloudLoaded(null, blank);
+    const input = { ...blank, form: { ...blank.form, adventureNotes: '仍需保留的輸入' } };
+    vi.mocked(local.putDraft).mockRejectedValueOnce(new DOMException('quota', 'QuotaExceededError'));
+    draft.capture(input);
+    await draft.flush();
+    expect(draft.error()).toContain('裝置空間不足');
+    expect(draft.error()).toContain('目前表單內容仍保留');
+    expect(draft.error()).toContain('連線儲存至雲端');
+    expect(draft.retryable()).toBe(true);
+    expect(draft.hasChanges(input)).toBe(true);
   });
   it('hides old account drafts and cancels pending debounce', async () => {
     await draft.start('c', 'new');

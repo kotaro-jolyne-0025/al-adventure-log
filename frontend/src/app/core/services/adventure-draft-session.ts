@@ -52,6 +52,7 @@ export class AdventureDraftSession {
       this.loaded.set(true);
       return;
     }
+    void this.local.requestPersistentStorage();
     try {
       const record = await this.local.getDraft<AdventureDraft>(characterId, target);
       if (this.stopped || this.owner !== this.local.owner()) return;
@@ -142,11 +143,12 @@ export class AdventureDraftSession {
         } else {
           this.retryable.set(true);
         }
-        this.error.set(
-          error instanceof DraftConflict
-            ? '內容已更新。請先複製再重新開啟紀錄。'
-            : '草稿保存失敗。請再試一次。',
-        );
+        const quotaExceeded = error instanceof DOMException && error.name === 'QuotaExceededError';
+        this.error.set(error instanceof DraftConflict
+          ? '另一分頁已更新這份草稿；本頁輸入仍保留，請確認內容後再重新開啟紀錄。'
+          : quotaExceeded
+            ? '裝置空間不足，草稿未能暫存。請清出空間後重試；目前表單內容仍保留，也可連線儲存至雲端。'
+            : '草稿保存失敗。目前表單內容仍保留，可重試或連線儲存至雲端。');
       }
     });
     return this.writes;

@@ -104,6 +104,9 @@
   @if (appUpdate.needsReload()) {
     <button mat-menu-item type="button" (click)="confirmUpdate()">重新整理以更新</button>
   }
+  @if (appInstall.available()) {
+    <button mat-menu-item type="button" (click)="installApp()">安裝冒險紀錄表</button>
+  }
 </ng-template>
 
 <main class="app-content" id="main-content" tabindex="-1">

@@ -25,6 +25,7 @@ export class LocalStore {
   private readonly transactions = new Set<IDBTransaction>();
   private copiesBlocked = false;
   private readonly EPOCH_KEY = 'dnd_read_epochs';
+  private persistentStorage?: Promise<boolean>;
 
   constructor() {
     window.addEventListener('storage', (event) => {
@@ -41,6 +42,19 @@ export class LocalStore {
     this.owner.set(owner);
     this.freshCharacters.set(new Set());
     this.sessionChanged.next();
+  }
+
+  requestPersistentStorage(): Promise<boolean> {
+    if (!this.persistentStorage) {
+      try {
+        this.persistentStorage = navigator.storage?.persist
+          ? navigator.storage.persist().catch(() => false)
+          : Promise.resolve(false);
+      } catch {
+        this.persistentStorage = Promise.resolve(false);
+      }
+    }
+    return this.persistentStorage;
   }
 
   currentGeneration(): number {
