@@ -105,4 +105,17 @@ describe('Adventure draft exit choice', () => {
     expect(form['draftActionFailed']()).toBe(true);
     expect(form['canLeave']()).toBe(false);
   });
+
+  it('clears the inspected draft preview after successful discard', async () => {
+    vi.spyOn(draft, 'discard').mockResolvedValue(true);
+    form['recoveredText'].set('冒險名稱：草稿');
+
+    form['discardDraft']();
+    choice.next('confirm');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(form['recoveredText']()).toBe('');
+    expect(form['draftActionFailed']()).toBe(false);
+  });
 });
