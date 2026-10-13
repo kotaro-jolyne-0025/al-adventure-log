@@ -43,6 +43,7 @@
 
 ### Requirement: Cloud save and draft lifecycle
 本機草稿保存成功後不顯示額外確認訊息；保存失敗時 SHALL 顯示重試提示。雲端 API 確認成功後 SHALL 清除對應草稿；驗證、暫時錯誤或傳送結果不明時 SHALL 保留草稿及輸入，MUST NOT 自動重送。返回列表 SHALL 讓玩家選擇保留或捨棄草稿，捨棄草稿 SHALL 明確確認後清除，取消確認 SHALL 保留內容。登出 SHALL 隱藏並停止舊帳號的草稿操作，同帳號重新登入後 SHALL 可經雲端核對恢復。
+查看草稿後若玩家確認捨棄且本機刪除成功，畫面 SHALL 同時清除草稿預覽；刪除失敗 SHALL 保留預覽與輸入。
 
 #### Scenario: 手機儲存後電腦接續
 - **WHEN** 玩家在手機按儲存且收到成功回應
