@@ -449,16 +449,25 @@ a.navigation-card {
 }
 
 @media (max-width: 768px) {
-  app-adventure-form {
+  :is(app-adventure-form, app-inventory-form, app-character-form) {
     .page-container .form-actions {
-      padding-bottom: max(16px, var(--safe-area-bottom));
       flex-wrap: wrap;
+      gap: 10px;
 
       button.mat-mdc-button-base {
         flex: 1 1 8rem;
         min-width: min(100%, 8rem);
-        min-height: 46px;
+        min-height: 48px;
+        height: auto;
+        padding-block: 10px;
+        justify-content: center;
       }
+    }
+  }
+
+  app-adventure-form {
+    .page-container .form-actions {
+      padding-bottom: max(16px, var(--safe-area-bottom));
     }
 
     :is(input, textarea, mat-select) {

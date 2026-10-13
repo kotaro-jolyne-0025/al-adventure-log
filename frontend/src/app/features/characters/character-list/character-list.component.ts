@@ -55,6 +55,7 @@ export class CharacterListComponent implements OnInit {
 
   protected characters = signal<Character[]>([]);
   protected isLoading = signal(true);
+  protected isRefreshing = signal(false);
   protected loadError = signal<string | null>(null);
   protected hasLoaded = signal(false);
 
@@ -66,6 +67,7 @@ export class CharacterListComponent implements OnInit {
     this.readSource.set(null);
     this.loadError.set(null);
     this.isLoading.set(true);
+    this.isRefreshing.set(true);
     this.reads.read('', 'characters', () => this.characterService.getAll(true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         const list = result.data;
@@ -75,10 +77,13 @@ export class CharacterListComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: (error) => {
+        this.readSource.set(null);
         this.characters.set([]); this.hasLoaded.set(false);
         this.loadError.set(readErrorMessage(error, '角色列表'));
         this.isLoading.set(false);
+        this.isRefreshing.set(false);
       },
+      complete: () => this.isRefreshing.set(false),
     });
   }
 

@@ -1,5 +1,5 @@
 <div class="page-container">
-  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" (refresh)="loadEntries()" />
+  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" (refresh)="loadEntries()" />
   <!-- Header Actions -->
   <div class="list-header">
     <div class="header-titles">

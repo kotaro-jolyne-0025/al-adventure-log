@@ -9,7 +9,7 @@
 }
 
   <div class="shell-container">
-    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isLoading()" [compact]="true" (refresh)="loadCharacterData()" />
+    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [compact]="true" (refresh)="loadCharacterData()" />
     @if (character()) {
     
     <!-- Character Header Card & Navigation -->
@@ -117,7 +117,7 @@
     </div>
 
     }
-    @if (!character() && !isLoading()) { <p>目前無法顯示角色資訊，請連線後再試。</p> }
+    @if (!character() && !isLoading() && !loadError()) { <p>目前無法顯示角色資訊，請連線後再試。</p> }
     <!-- Tab Nav -->
     <nav mat-tab-nav-bar [tabPanel]="characterPanel" class="character-tabs" aria-label="角色內容">
       <a mat-tab-link [routerLink]="['/characters', characterId, 'adventures']" [active]="getActiveTab() === 0">
