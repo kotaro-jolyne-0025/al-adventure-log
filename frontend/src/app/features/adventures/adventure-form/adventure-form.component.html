@@ -5,8 +5,8 @@
   </div>
 
   <app-draft-notice [offered]="draft.offered()" [savedAt]="draft.record()?.savedAt ?? null"
-    [error]="loadFailed() || leaveFailed() ? draft.error() : null"
-    [retryable]="draft.retryable() && !loadFailed()"
+    [error]="loadFailed() || draftActionFailed() ? draft.error() : null"
+    [retryable]="draft.retryable() && !loadFailed() && !draftActionFailed()" [pending]="draftActionPending()"
     [canRestore]="draft.canRestore()" [text]="recoveredText()"
     (restore)="restoreDraft()" (discard)="discardDraft()" (recover)="recoverDraftText()" (retry)="retryDraftSave()" />
   @if (isLoading() || !draft.isReady()) { <p role="status">正在準備表單，請稍候。</p> }
@@ -640,8 +640,10 @@
     </mat-card>
 
     <!-- Actions -->
-    <app-draft-notice [status]="draft.status()" [error]="leaveFailed() ? null : draft.error()"
-      [savedAt]="draft.record()?.savedAt ?? null" [retryable]="draft.retryable()"
+      <app-draft-notice [status]="draft.status()"
+        [error]="draft.error() || (leaveFailed() ? '草稿尚未暫存，目前表單內容仍保留。請重試保存或先送出紀錄。' : null)"
+        [savedAt]="draft.record()?.savedAt ?? null" [retryable]="draft.retryable()"
+        [text]="recoveredText()"
       (retry)="retryDraftSave()" (recover)="recoverDraftText()" />
     @if (isLoading()) {
     <p role="status">正在載入完整記錄，完成後即可儲存。</p>

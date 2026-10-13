@@ -35,6 +35,24 @@
 - **WHEN** 玩家完成瀏覽器提供的安裝流程並從裝置入口開啟
 - **THEN** 應用程式以獨立視窗呈現，不顯示一般瀏覽器網址列
 
+### Requirement: Safe install and update experience
+系統 SHALL 在未安裝時提供安裝入口；支援原生提示時由使用者操作觸發，其他平台提供適用的安裝說明，偵測到獨立執行模式或已安裝事件後隱藏入口。manifest SHALL 使用穩定識別、正確語言、主題與背景色，並提供符合安全區域的 maskable 圖示。套用新版前 SHALL 等待冒險表單草稿保存；保存失敗時不得重新載入，並 SHALL 保留目前表單輸入與重試能力，不顯示草稿預覽或複製操作。
+
+#### Scenario: 不支援原生提示的平台安裝
+- **WHEN** 使用者在尚未安裝且沒有原生提示的平台開啟安裝入口
+- **THEN** 顯示平台適用的加入主畫面說明，不宣稱已完成安裝
+
+#### Scenario: 更新期間草稿保存失敗
+- **WHEN** 使用者確認套用更新但表單草稿無法寫入本機
+- **THEN** 維持目前頁面與輸入，只提供重試方式，不顯示草稿預覽或複製操作
+
+### Requirement: Efficient offline application delivery
+初次載入 SHALL 延後低頻介面及第三方登入資源，Service Worker 預先快取啟動殼層所需資源，其餘功能資源於使用時快取。部署設定 SHALL 讓入口、manifest 與 worker 中繼檔重新驗證，並讓雜湊命名的靜態資源長期快取。未曾快取的離線功能頁 SHALL 提供可恢復的錯誤提示，且保留目前殼層。
+
+#### Scenario: 初次安裝
+- **WHEN** 使用者以有限頻寬首次開啟應用程式
+- **THEN** 僅預先下載啟動所需資源，低頻功能資源延後載入
+
 ### Requirement: Responsive content containment
 行動版角色、冒險、倉庫與表單頁面 SHALL 使卡片、文字、圖示及操作按鈕保留在可用視窗內，並依空間調整排列；必要操作 MUST 可見且可觸及。
 

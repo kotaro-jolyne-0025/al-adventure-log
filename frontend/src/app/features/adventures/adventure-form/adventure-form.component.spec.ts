@@ -9,6 +9,7 @@ import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
 import { InventoryItem } from '../../../core/models/inventory.model';
+import { AdventureDraftInput } from '../../../core/models/adventure-draft';
 
 describe('Adventure form complete loading', () => {
   let component: AdventureFormComponent;
@@ -73,6 +74,57 @@ describe('Adventure form complete loading', () => {
     component['retryLoad']();
     warehouse.next([]); warehouse.complete(); submit();
     expect(api.updateWithDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks an update reload and retains the current form values when draft persistence fails', async () => {
+    const draft = component['draft'];
+    vi.spyOn(draft, 'isReady').mockReturnValue(true);
+    vi.spyOn(draft, 'isCurrentOwner').mockReturnValue(true);
+    vi.spyOn(draft, 'hasChanges').mockReturnValue(true);
+    vi.spyOn(draft, 'capture');
+    vi.spyOn(draft, 'flush').mockResolvedValue();
+    vi.spyOn(draft, 'isSaved').mockReturnValue(false);
+    draft.error.set('裝置空間不足，草稿未能暫存。');
+    component['form'].patchValue({ adventureNotes: '更新時仍需保留的冒險內容' });
+
+    expect(await component['prepareUpdateReload']()).toBe(false);
+    expect(draft.capture).toHaveBeenCalledOnce();
+    expect(draft.capture).toHaveBeenCalledWith(expect.objectContaining({
+      form: expect.objectContaining({ adventureNotes: '更新時仍需保留的冒險內容' }),
+    }));
+    expect(draft.flush).toHaveBeenCalledOnce();
+    expect(component['leaveFailed']()).toBe(true);
+    expect(component['recoveredText']()).toBe('');
+  });
+
+  it('restores the saved snapshot over stale form values and keeps only the current baseline fields', () => {
+    const baseline: AdventureDraftInput = {
+      form: { ...component['form'].getRawValue(), adventureName: '', dmName: '', adventureNotes: '', goldChange: null },
+      levelUp: false, catchup: false, catchupCount: 1,
+      classes: [{ className: 'Fighter', level: 1 }], magicItems: [], consumables: [], awards: [], activities: [],
+    };
+    const saved: AdventureDraftInput = {
+      ...baseline,
+      form: { adventureName: '原草稿冒險', playDate: '2026-10-01' },
+      levelUp: true,
+      classes: [{ className: 'Wizard', level: 3 }],
+      magicItems: [{ itemName: '原草稿法杖', rarity: 'RARE', itemCategory: 'WAND', notes: '', requiresAttunement: true }],
+      consumables: [], awards: [{ awardName: '原草稿獎勵', description: '保存在草稿中的獎勵' }],
+      activities: [],
+    };
+    component['initialInput'] = baseline;
+    component['form'].patchValue({ adventureName: '不應殘留', dmName: '不應殘留', goldChange: 999 });
+    vi.spyOn(component['draft'], 'accept').mockReturnValue(saved);
+
+    component['restoreDraft']();
+
+    expect(component['form'].getRawValue()).toMatchObject({
+      adventureName: '原草稿冒險', dmName: '', goldChange: null,
+    });
+    expect(component['levelUp']()).toBe(true);
+    expect(component['classEntries']()).toEqual([{ className: 'Wizard', level: 3 }]);
+    expect(component['gainedMagicItems']()).toEqual(saved.magicItems);
+    expect(component['storyAwards']()).toEqual(saved.awards);
   });
 
   it('ignores manual count and saves consumables without increasing permanent totals', () => {

@@ -3,9 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   EMPTY,
   Observable,
-  catchError,
   defer,
-  finalize,
   from,
   map,
   merge,
@@ -51,33 +49,65 @@ export class LocalReadCache {
       return from([result]);
     };
     let request!: Observable<ReadResult<T>>;
-    const shared = defer(fetch).pipe(
+    const shared = new Observable<ReadResult<T>>((subscriber) => {
+      let copyRecord: Awaited<ReturnType<typeof this.local.getCopy<T>>> | undefined;
+      let networkSettled = false;
+      let networkHasValue = false;
+      let copyEmitted = false;
+      const emitCopy = () => {
+        if (!copyRecord || copyEmitted || subscriber.closed) return;
+        if (owner !== this.local.owner()) return;
+        if (generation !== this.local.currentGeneration()) {
+          subscriber.error(new Error('資料已變更，請重新取得。'));
+          return;
+        }
+        copyEmitted = true;
+        subscriber.next({ data: copyRecord.data, source: 'copy', fetchedAt: copyRecord.savedAt });
+      };
+      const copyRead = this.local.getCopy<T>(characterId, target).catch(() => undefined).then((record) => {
+        copyRecord = record;
+        if (!networkHasValue) emitCopy();
+      });
+      const networkSubscription = defer(fetch).pipe(
       timeout(10000),
       map((data) => ({ data, source: 'cloud' as const, fetchedAt: Date.now() })),
       switchMap(currentResult),
       tap((result) => {
         void this.local.putCopy(characterId, target, result.data, result.fetchedAt).catch(() => {});
       }),
-      catchError((error) => {
-        if ([403, 404].includes(error.status)) this.local.invalidate(characterId, owner, false);
-        if (!(error.status === 0 || error.status >= 500 || error.name === 'TimeoutError'))
-          return throwError(() => error);
-        if (!owner) return throwError(() => error);
-        return from(this.local.getCopy<T>(characterId, target).catch(() => undefined)).pipe(
-          switchMap((copy) =>
-            copy
-              ? from([{ data: copy.data, source: 'copy' as const, fetchedAt: copy.savedAt }])
-              : throwError(() => error),
-          ),
-        );
-      }),
-      switchMap(currentResult),
       takeUntil(merge(this.local.sessionChanged, this.local.changes)),
-      finalize(() => {
+      ).subscribe({
+        next: (result) => {
+          networkHasValue = true;
+          emitCopy();
+          subscriber.next(result);
+        },
+        error: (error) => {
+          networkSettled = true;
+        if ([403, 404].includes(error.status)) this.local.invalidate(characterId, owner, false);
+          const temporary = error.status === 0 || error.status >= 500 || error.name === 'TimeoutError';
+          if (!temporary || !owner) subscriber.error(error);
+          else void copyRead.then(() => {
+            if (subscriber.closed) return;
+            if (copyRecord) { emitCopy(); subscriber.complete(); }
+            else subscriber.error(error);
+          });
+        },
+        complete: () => {
+          networkSettled = true;
+          if (!networkHasValue) void copyRead.then(() => {
+            if (subscriber.closed) return;
+            if (!copyEmitted) emitCopy();
+            subscriber.complete();
+          });
+          else subscriber.complete();
+        },
+      });
+      return () => {
+        networkSubscription.unsubscribe();
         if (this.pending.get(key) === request) this.pending.delete(key);
-      }),
-      shareReplay({ bufferSize: 1, refCount: true }),
-    );
+      };
+    }).pipe(shareReplay({ bufferSize: 1, refCount: true }));
     request = defer(() =>
       owner === this.local.owner() && generation === this.local.currentGeneration()
         ? shared
