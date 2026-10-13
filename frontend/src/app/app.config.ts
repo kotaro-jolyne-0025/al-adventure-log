@@ -6,7 +6,8 @@ import {
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeZhTW from '@angular/common/locales/zh-Hant';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withPreloading } from '@angular/router';
+import { IdlePagePreloadingStrategy } from './core/services/idle-page-preloading.strategy';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS } from '@angular/material/snack-bar';
@@ -36,7 +37,7 @@ export const TW_DATE_FORMATS: MatDateFormats = {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes, withPreloading(IdlePagePreloadingStrategy)),
     provideHttpClient(withInterceptors([authInterceptor])),
     provideAnimationsAsync(),
     {

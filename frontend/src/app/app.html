@@ -109,7 +109,13 @@
   }
 </ng-template>
 
-<main class="app-content" id="main-content" tabindex="-1">
+@if (navigationPending()) {
+  <div class="navigation-status" role="status">
+    <mat-progress-bar mode="indeterminate" aria-label="正在開啟頁面" />
+    <span class="sr-only">正在開啟頁面…</span>
+  </div>
+}
+<main class="app-content" id="main-content" tabindex="-1" [attr.aria-busy]="navigationPending()">
   <router-outlet />
 </main>
 

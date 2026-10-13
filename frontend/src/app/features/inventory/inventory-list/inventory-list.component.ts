@@ -320,12 +320,14 @@ export class InventoryListComponent implements OnInit {
     this.loadError.set(null);
     this.isRefreshing.set(true);
     if (!silent) {
-      this.isLoading.set(true);
+      this.isLoading.set(!this.hasLoaded());
     }
     this.reads.read(this.characterId, 'inventory', () => this.inventoryService.getAllByCharacter(this.characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         const items = result.data;
-        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
+        this.readSource.set(result.source);
+        if (result.source === 'copy' && this.hasLoaded()) return;
+        this.fetchedAt.set(result.fetchedAt);
         this.allItems.set(items);
         this.hasLoaded.set(true);
         if (!silent) {
