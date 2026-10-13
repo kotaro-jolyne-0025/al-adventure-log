@@ -1,22 +1,22 @@
 import { Component, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
 
 @Component({
   selector: 'app-draft-notice',
   standalone: true,
-  imports: [DatePipe, MatButtonModule, MatInputModule, MatFormFieldModule],
+  imports: [DatePipe, MatButtonModule],
   template: ` @if (offered()) {
       <section class="notice" aria-label="未完成的草稿">
         <p>這台裝置有一份草稿，上次保存：{{ savedAt() | date: 'yyyy/MM/dd HH:mm' }}。</p>
         <div class="actions">
-          <button type="button" mat-flat-button [disabled]="!canRestore()" (click)="restore.emit()">
+          <button type="button" mat-flat-button [disabled]="pending() || !canRestore()" (click)="restore.emit()">
             繼續填寫
           </button>
-          <button type="button" mat-button (click)="recover.emit()">查看草稿</button>
-          <button type="button" mat-button (click)="discard.emit()">捨棄草稿</button>
+          <button type="button" mat-button [disabled]="pending()" (click)="recover.emit()">查看草稿</button>
+          <button type="button" mat-button [disabled]="pending()" (click)="discard.emit()">
+            {{ pending() ? '正在捨棄…' : '捨棄草稿' }}
+          </button>
         </div>
       </section>
     }
@@ -33,11 +33,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
         <p>{{ error() }}</p>
         <div class="actions">
           @if (retryable()) { <button type="button" mat-button (click)="retry.emit()">再試一次</button> }
-          <button type="button" mat-button (click)="recover.emit()">查看草稿</button>
         </div>
       </div>
     }
-    @if (text()) {
+    @if (text() && !error()) {
       <section class="preview" aria-label="冒險草稿內容">
         <header>
           <h2>冒險紀錄草稿</h2>
@@ -73,18 +72,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
       }
       .preview {
         margin-top: 1rem;
-        overflow: hidden;
-        border: 1px solid var(--mat-sys-outline-variant);
-        border-radius: 12px;
-        background: var(--mat-sys-surface-container-low);
       }
       .preview header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--mat-sys-outline-variant);
       }
       .preview h2 {
         margin: 0;
@@ -102,8 +95,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
       .preview pre {
         max-height: 22rem;
         overflow: auto;
-        margin: 0;
-        padding: 1rem;
+        margin: 0.5rem 0 0;
         color: var(--mat-sys-on-surface);
         font: inherit;
         line-height: 1.65;
@@ -130,6 +122,7 @@ export class DraftNoticeComponent {
   status = input('');
   error = input<string | null>(null);
   retryable = input(true);
+  pending = input(false);
   text = input('');
   restore = output<void>();
   discard = output<void>();

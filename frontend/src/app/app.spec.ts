@@ -12,6 +12,7 @@ import { version } from '../../package.json';
 import { siteLinks } from './core/config/site-links';
 import { AuthService } from './core/services/auth.service';
 import { User } from './core/models/auth.model';
+import { DraftUpdateCoordinator } from './core/services/draft-update-coordinator.service';
 
 describe('App', () => {
   let snackAction: Subject<void>;
@@ -156,7 +157,7 @@ describe('App', () => {
     expect(openSnack).toHaveBeenCalledTimes(2);
   });
 
-  it('reloads only after confirmation, with cancellation keeping the action available', () => {
+  it('reloads only after confirmation, with cancellation keeping the action available', async () => {
     const closed = new Subject<boolean | undefined>();
     const open = vi.fn(() => ({ afterClosed: () => closed }));
     TestBed.overrideProvider(MatDialog, { useValue: { open } });
@@ -168,6 +169,7 @@ describe('App', () => {
     app.appUpdate.updateReady.set(true);
     app.confirmUpdate();
     app.confirmUpdate();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(open).toHaveBeenCalledTimes(1);
     expect(open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       autoFocus: 'button', data: expect.objectContaining({ message: expect.stringContaining('尚未儲存') }),
@@ -176,7 +178,28 @@ describe('App', () => {
     expect(reload).not.toHaveBeenCalled();
     expect(app.appUpdate.needsReload()).toBe(true);
     app.confirmUpdate();
+    await new Promise(resolve => setTimeout(resolve, 0));
     closed.next(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the current page open when an active draft cannot be saved for an update', async () => {
+    const closed = new Subject<boolean | undefined>();
+    const open = vi.fn(() => ({ afterClosed: () => closed }));
+    const prepareReload = vi.fn().mockResolvedValue(false);
+    TestBed.overrideProvider(MatDialog, { useValue: { open } });
+    TestBed.overrideProvider(DraftUpdateCoordinator, { useValue: { prepareReload } });
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    const reload = vi.spyOn(app.appUpdate, 'reload').mockImplementation(() => {});
+    app.appUpdate.updateReady.set(true);
+    app.confirmUpdate();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    closed.next(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(prepareReload).toHaveBeenCalledOnce();
+    expect(reload).not.toHaveBeenCalled();
+    expect(openSnack).toHaveBeenCalledWith(expect.stringContaining('草稿尚未暫存'), '關閉', expect.anything());
   });
 });

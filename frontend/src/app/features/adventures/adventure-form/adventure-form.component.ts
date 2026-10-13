@@ -1,12 +1,13 @@
 import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
 import { DraftNoticeComponent } from '../../../shared/components/draft-notice/draft-notice.component';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, Injector, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { DraftExitDialogComponent } from '../../../shared/components/draft-exit-dialog/draft-exit-dialog.component';
 import { AdventureDraftSession } from '../../../core/services/adventure-draft-session';
+import { DraftUpdateCoordinator } from '../../../core/services/draft-update-coordinator.service';
 import { adventureBaseline, AdventureDraftInput, draftFormValues, draftText } from '../../../core/models/adventure-draft';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -117,18 +118,23 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   private readonly inventoryService = inject(InventoryService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly draft = inject(AdventureDraftSession);
+  private readonly draftUpdate = inject(DraftUpdateCoordinator);
+  private readonly unregisterDraftUpdate = this.draftUpdate.register(() => this.prepareUpdateReload());
   private readonly dialog = inject(MatDialog);
   private readonly destroy = inject(DestroyRef);
   private readonly formRevision = signal(0);
   private readonly host = inject(ElementRef);
-  private readonly injector = inject(Injector);
   protected readonly dateText = signal('');
   private restoredDraft = false;
   private cloudSaved = false;
+  private initialInput?: AdventureDraftInput;
   protected readonly leaveFailed = signal(false);
+  protected readonly draftActionPending = signal(false);
+  protected readonly draftActionFailed = signal(false);
   protected readonly recoveredText = signal('');
   private leavePrompt?: Promise<boolean>;
   private leaveDialog?: MatDialogRef<DraftExitDialogComponent>;
+  private pendingDraftDiscard?: Promise<boolean>;
 
   constructor() {
     this.draft.retired.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.leaveDialog?.close());
@@ -413,7 +419,8 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
           startingMagicItems: warehouseMagicCount,
         });
         this.isLoading.set(false);
-        this.draft.cloudLoaded(null, this.captureInput());
+        this.initialInput = this.captureInput();
+        this.draft.cloudLoaded(null, this.initialInput);
       },
       error: () => { this.isLoading.set(false); this.loadFailed.set(true); },
     });
@@ -526,7 +533,8 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
         })));
         this.detailsLoaded = true;
         this.isLoading.set(false);
-        this.draft.cloudLoaded(adventureBaseline({ entry, gainedItems, storyAwards }), this.captureInput());
+        this.initialInput = this.captureInput();
+        this.draft.cloudLoaded(adventureBaseline({ entry, gainedItems, storyAwards }), this.initialInput);
       },
       error: () => {
         this.isLoading.set(false);
@@ -555,8 +563,16 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     if (!input) return;
     this.recoveredText.set('');
     const { startingGold, startingDowntime, startingMagicItems, ...editable } = input.form;
-    this.form.patchValue({ ...editable, playDate: this.parseLocalDate(editable['playDate'] as string | null) });
-    this.dateText.set((editable['playDateText'] as string) ?? '');
+    const initialForm = this.initialInput?.form ?? this.form.getRawValue();
+    this.form.reset({
+      ...initialForm,
+      ...editable,
+      startingGold: initialForm['startingGold'],
+      startingDowntime: initialForm['startingDowntime'],
+      startingMagicItems: initialForm['startingMagicItems'],
+      playDate: this.parseLocalDate((editable['playDate'] ?? initialForm['playDate']) as string | null),
+    });
+    this.dateText.set((editable['playDateText'] as string) ?? (initialForm['playDateText'] as string) ?? '');
     if (!editable['playDate'] && this.dateText()) queueMicrotask(() => {
       const dateInput = this.host.nativeElement.querySelector('input[formcontrolname="playDate"]') as HTMLInputElement | null;
       if (dateInput) dateInput.value = this.dateText();
@@ -571,17 +587,26 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   }
 
   protected discardDraft(): void {
+    if (this.draftActionPending()) return;
     this.dialog.open(ConfirmDialogComponent, { width: '360px', data: {
       title: '捨棄草稿', intent: 'destructive', message: '確定要刪除這台裝置上的草稿嗎？已儲存的冒險紀錄會保留。',
       confirmText: '捨棄草稿', cancelText: '保留草稿' } }).afterClosed().subscribe(confirmed => {
-      if (confirmed) void this.draft.discard();
+      if (!confirmed || this.draftActionPending()) return;
+      this.draftActionPending.set(true);
+      this.draftActionFailed.set(false);
+      this.pendingDraftDiscard = this.draft.discard().then(success => {
+        this.draftActionFailed.set(!success);
+        return success;
+      }).finally(() => {
+        this.draftActionPending.set(false);
+        this.pendingDraftDiscard = undefined;
+      });
     });
   }
 
   protected recoverDraftText(): void {
     const input = this.draft.offered() ? this.draft.record()?.data?.input ?? this.draft.record()?.data : this.captureInput();
     this.recoveredText.set(draftText(input));
-    afterNextRender(() => this.host.nativeElement.querySelector('app-draft-notice textarea')?.focus(), { injector: this.injector });
   }
 
   protected async retryDraftSave(): Promise<void> {
@@ -591,6 +616,8 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   }
 
   canLeave(): boolean | Promise<boolean> {
+    if (this.pendingDraftDiscard) return this.pendingDraftDiscard;
+    if (this.draftActionFailed()) return false;
     if (this.cloudSaved || !this.draft.isCurrentOwner()) return true;
     if (this.isSaving()) return false;
     if (!this.draft.hasChanges(this.captureInput())) return true;
@@ -629,7 +656,22 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     this.draft.capture(this.captureInput()); void this.draft.flush();
   }
 
-  ngOnDestroy(): void { this.leaveDialog?.close(); this.flushDraft(); }
+  private async prepareUpdateReload(): Promise<boolean> {
+    if (this.cloudSaved || !this.draft.isReady() || !this.draft.isCurrentOwner()) return true;
+    const input = this.captureInput();
+    if (!this.draft.hasChanges(input)) return true;
+    this.draft.capture(input);
+    await this.draft.flush();
+    if (this.draft.isSaved(input)) return true;
+    this.leaveFailed.set(true);
+    return false;
+  }
+
+  ngOnDestroy(): void {
+    this.unregisterDraftUpdate();
+    this.leaveDialog?.close();
+    this.flushDraft();
+  }
 
   private isSourceMatch(
     itemSource: string | null | undefined,
@@ -1114,7 +1156,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
 
     if (this.isEditMode() && this.entryId) {
       const submit = this.restoredDraft ? this.readCloudBaseline().pipe(switchMap(baseline => {
-        if (!this.draft.baselineMatches(baseline)) throw new Error('這份紀錄有更新。請先複製目前內容，再重新開啟紀錄。');
+        if (!this.draft.baselineMatches(baseline)) throw new Error('這份紀錄已更新。為避免覆蓋新資料，請確認目前內容後再重新載入。');
         return this.adventureService.updateWithDetails(this.characterId, this.entryId!, saveRequest);
       })) : this.adventureService.updateWithDetails(this.characterId, this.entryId, saveRequest);
       submit.pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({

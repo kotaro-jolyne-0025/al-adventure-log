@@ -73,51 +73,39 @@ export class LoginComponent implements AfterViewInit {
     this.initGoogleSignIn();
   }
 
-  private initGoogleSignIn(): void {
+  private async initGoogleSignIn(): Promise<void> {
     if (typeof window === 'undefined') return;
-
-    let retryCount = 0;
-    const maxRetries = 30;
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    this.destroyRef.onDestroy(() => clearTimeout(retryTimer));
-
-    const tryInit = () => {
-      if (this.destroyRef.destroyed) return;
-      if (typeof google !== 'undefined' && google?.accounts?.id) {
-        google.accounts.id.initialize({
-          client_id: environment.googleClientId,
-          callback: (response: any) => {
-            this.ngZone.run(() => {
-              this.handleGoogleCredentialResponse(response);
-            });
-          },
-          auto_select: false,
-          cancel_on_tap_outside: true,
-          ux_mode: 'popup',
+    try {
+      if (typeof google === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        await new Promise<void>((resolve, reject) => {
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Google 登入元件未能載入'));
+          document.head.append(script);
         });
-
-        const container = document.getElementById('google-btn-container');
-        if (container) {
-          const containerWidth = container.offsetWidth > 0 ? container.offsetWidth : 390;
-          google.accounts.id.renderButton(container, {
-            theme: 'outline',
-            size: 'large',
-            type: 'standard',
-            shape: 'rectangular',
-            text: 'signin_with',
-            logo_alignment: 'center',
-            width: Math.min(400, containerWidth),
-          });
-        }
-      } else if (retryCount < maxRetries) {
-        retryCount++;
-        retryTimer = setTimeout(tryInit, 150);
-      } else {
-        this.ngZone.run(() => this.errorMessage.set('Google 登入元件未能載入，請重新整理或改用電子郵件登入'));
       }
-    };
-
-    tryInit();
+      if (this.destroyRef.destroyed || typeof google === 'undefined' || !google?.accounts?.id) return;
+      google.accounts.id.initialize({
+        client_id: environment.googleClientId,
+        callback: (response: any) => this.ngZone.run(() => this.handleGoogleCredentialResponse(response)),
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        ux_mode: 'popup',
+      });
+      const container = document.getElementById('google-btn-container');
+      if (container) {
+        google.accounts.id.renderButton(container, {
+          theme: 'outline', size: 'large', type: 'standard', shape: 'rectangular',
+          text: 'signin_with', logo_alignment: 'center',
+          width: Math.min(400, container.offsetWidth || 390),
+        });
+      }
+    } catch {
+      if (!this.destroyRef.destroyed)
+        this.errorMessage.set('Google 登入元件未能載入，請重新整理或改用電子郵件登入');
+    }
   }
 
   private handleGoogleCredentialResponse(response: { credential: string }): void {
