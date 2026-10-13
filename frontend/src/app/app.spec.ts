@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { computed, signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
+import { Router, NavigationStart, NavigationEnd, NavigationCancel, NavigationError, NavigationSkipped } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { EMPTY } from 'rxjs';
 import { Subject } from 'rxjs';
@@ -46,6 +47,26 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
+  });
+
+  it('shows navigation feedback and ignores cancellation of an older navigation', () => {
+    const events = new Subject<NavigationStart | NavigationEnd | NavigationCancel | NavigationError | NavigationSkipped>();
+    vi.spyOn(TestBed.inject(Router), 'events', 'get').mockReturnValue(events);
+    const fixture = TestBed.createComponent(App);
+    events.next(new NavigationStart(1, '/one'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.navigation-status')).not.toBeNull();
+    events.next(new NavigationStart(2, '/two'));
+    events.next(new NavigationCancel(1, '/one', 'superseded'));
+    expect(fixture.componentInstance.navigationPending()).toBe(true);
+    events.next(new NavigationEnd(2, '/two', '/two'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.navigation-status')).toBeNull();
+    for (const end of [new NavigationCancel(3, '/three', 'guard'), new NavigationError(3, '/three', new Error('fail')), new NavigationSkipped(3, '/three', 'same URL')]) {
+      events.next(new NavigationStart(3, '/three'));
+      events.next(end);
+      expect(fixture.componentInstance.navigationPending()).toBe(false);
+    }
   });
 
   it.each([false, true])('provides public support links and restores menu focus (logged in: %s)', async loggedIn => {

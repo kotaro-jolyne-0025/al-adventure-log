@@ -113,7 +113,7 @@ export class AdventureDetailComponent implements OnInit {
   protected loadEntry(): void {
     this.readSource.set(null);
     this.loadError.set(null);
-    this.isLoading.set(true);
+    this.isLoading.set(!this.entry());
     this.isRefreshing.set(true);
     this.reads.read(this.characterId, `adventure:${this.entryId}`, () => forkJoin({
       entry: this.adventureService.getById(this.characterId, this.entryId),
@@ -131,7 +131,9 @@ export class AdventureDetailComponent implements OnInit {
       })
     )).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
-        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
+        this.readSource.set(result.source);
+        if (result.source === 'copy' && this.entry()) return;
+        this.fetchedAt.set(result.fetchedAt);
         const { entry, gainedItems, storyAwards, legacyItems } = result.data;
         this.entry.set(entry);
         if (gainedItems && gainedItems.length > 0) {
