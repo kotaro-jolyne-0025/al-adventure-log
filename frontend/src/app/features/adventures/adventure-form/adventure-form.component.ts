@@ -596,6 +596,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
       this.draftActionFailed.set(false);
       this.pendingDraftDiscard = this.draft.discard().then(success => {
         this.draftActionFailed.set(!success);
+        if (success) this.recoveredText.set('');
         return success;
       }).finally(() => {
         this.draftActionPending.set(false);
