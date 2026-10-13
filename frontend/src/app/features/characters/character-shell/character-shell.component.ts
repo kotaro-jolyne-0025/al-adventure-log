@@ -86,15 +86,16 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   protected loadCharacterData(): void {
     this.local.markFresh(this.characterId, false);
     this.readSource.set(null);
-    this.character.set(null);
     this.loadError.set(null);
-    this.isLoading.set(true);
+    this.isLoading.set(!this.character());
     this.isRefreshing.set(true);
     this.reads.read(this.characterId, 'character', () => this.characterService.getById(this.characterId, true))
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
-        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
+        this.readSource.set(result.source);
         this.local.markFresh(this.characterId, result.source === 'cloud');
+        if (result.source === 'copy' && this.character()) return;
+        this.fetchedAt.set(result.fetchedAt);
         this.character.set(result.data);
         this.isLoading.set(false);
       },

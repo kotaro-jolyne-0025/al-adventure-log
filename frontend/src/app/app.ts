@@ -1,7 +1,9 @@
 import { Component, DestroyRef, effect, inject, signal, afterNextRender, Injector } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 
-import { RouterOutlet, RouterLink, Router, NavigationEnd, NavigationError } from '@angular/router';
+import { RouterOutlet, RouterLink, Router, NavigationStart, NavigationEnd, NavigationCancel, NavigationError, NavigationSkipped } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { filter, take } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -42,6 +44,7 @@ import {
     RouterLink,
     NgTemplateOutlet,
     MatToolbarModule,
+    MatProgressBarModule,
     MatButtonModule,
     MatMenuModule,
     MatDividerModule,
@@ -82,6 +85,8 @@ export class App {
 
   // 判斷是否處於角色內頁（非角色列表、非登入註冊頁面）
   readonly showBack = signal(false);
+  readonly navigationPending = signal(false);
+  private loadingNavigationId = 0;
 
   protected skipToContent(event: Event): void {
     event.preventDefault();
@@ -89,6 +94,15 @@ export class App {
   }
 
   constructor() {
+    this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(event => {
+      if (event instanceof NavigationStart) {
+        this.loadingNavigationId = event.id;
+        this.navigationPending.set(true);
+      } else if (event instanceof NavigationEnd || event instanceof NavigationCancel ||
+                 event instanceof NavigationError || event instanceof NavigationSkipped) {
+        if (event.id === this.loadingNavigationId) this.navigationPending.set(false);
+      }
+    });
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((event) => {
