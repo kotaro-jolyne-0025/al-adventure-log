@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
   selector: 'app-cache-notice',
   standalone: true,
   imports: [DatePipe, MatButtonModule],
-  template: ` @if (source() === 'copy') { <div class="notice">
+  template: ` @if (source() === 'copy' && !pending()) { <div class="notice">
       <p role="status">
         {{ compact() ? '目前顯示上次查看的角色資訊' : '目前顯示上次查看的資料' }}，上次更新：{{ fetchedAt() | date: 'yyyy/MM/dd HH:mm' }}。
         連線更新後才能修改資料。

@@ -57,6 +57,7 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
 
   protected character = signal<Character | null>(null);
   protected isLoading = signal(true);
+  protected isRefreshing = signal(false);
   protected loadError = signal<string | null>(null);
   protected retryable = signal(true);
   protected characterId!: string;
@@ -88,6 +89,7 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
     this.character.set(null);
     this.loadError.set(null);
     this.isLoading.set(true);
+    this.isRefreshing.set(true);
     this.reads.read(this.characterId, 'character', () => this.characterService.getById(this.characterId, true))
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
@@ -97,10 +99,14 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
         this.isLoading.set(false);
       },
       error: (error) => {
+        this.readSource.set(null);
+        this.character.set(null);
         this.isLoading.set(false);
+        this.isRefreshing.set(false);
         this.retryable.set(![401, 403, 404].includes(error.status));
         this.loadError.set(readErrorMessage(error, '角色'));
       },
+      complete: () => this.isRefreshing.set(false),
     });
   }
 

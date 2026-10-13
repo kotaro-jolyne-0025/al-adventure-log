@@ -111,6 +111,7 @@ export class InventoryListComponent implements OnInit {
 
   protected allItems = signal<InventoryItem[]>([]);
   protected isLoading = signal(true);
+  protected isRefreshing = signal(false);
   protected loadError = signal<string | null>(null);
   protected hasLoaded = signal(false);
   protected activeTab = signal(0); // 0=PERMANENT, 1=CONSUMABLE
@@ -317,6 +318,7 @@ export class InventoryListComponent implements OnInit {
   protected loadItems(silent: boolean = false): void {
     this.readSource.set(null);
     this.loadError.set(null);
+    this.isRefreshing.set(true);
     if (!silent) {
       this.isLoading.set(true);
     }
@@ -331,12 +333,15 @@ export class InventoryListComponent implements OnInit {
         }
       },
       error: (error) => {
+        this.readSource.set(null);
         if (!silent) { this.allItems.set([]); this.hasLoaded.set(false); }
         this.loadError.set(readErrorMessage(error, '倉庫'));
+        this.isRefreshing.set(false);
         if (!silent) {
           this.isLoading.set(false);
         }
       },
+      complete: () => this.isRefreshing.set(false),
     });
   }
 
