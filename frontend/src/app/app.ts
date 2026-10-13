@@ -1,7 +1,7 @@
-import { Component, effect, inject, signal, afterNextRender, Injector } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal, afterNextRender, Injector } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 
-import { RouterOutlet, RouterLink, Router, NavigationEnd } from '@angular/router';
+import { RouterOutlet, RouterLink, Router, NavigationEnd, NavigationError } from '@angular/router';
 import { filter, take } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,14 +11,14 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AppUpdateService } from './core/services/app-update.service';
-import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
-import { ContactDialogComponent } from './shared/components/contact-dialog/contact-dialog.component';
 import { siteLinks } from './core/config/site-links';
 import { version } from '../../package.json';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
 import { ViewportService } from './core/services/viewport.service';
-import { EditProfileDialogComponent } from './features/auth/edit-profile-dialog/edit-profile-dialog.component';
+import { AppInstallService } from './core/services/app-install.service';
+import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
+import { DraftUpdateCoordinator } from './core/services/draft-update-coordinator.service';
 import {
   LucideArrowLeft,
   LucideSun,
@@ -69,11 +69,14 @@ export class App {
   readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly viewport = inject(ViewportService);
   private lastPath = "";
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   readonly appUpdate = inject(AppUpdateService);
+  readonly appInstall = inject(AppInstallService);
+  private readonly draftUpdate = inject(DraftUpdateCoordinator);
   readonly version = version;
   private updateDialogOpen = false;
 
@@ -103,6 +106,15 @@ export class App {
           url.includes('/adventures') ||
           url.includes('/inventory');
         this.showBack.set(isDetailPage);
+      });
+    this.router.events
+      .pipe(filter((e): e is NavigationError => e instanceof NavigationError))
+      .subscribe(event => {
+        if (navigator.onLine === false || event.error instanceof TypeError) {
+          this.snackBar.open('無法載入此頁面。請確認連線後重試。', '重試', {
+            duration: 8000, verticalPosition: 'top', horizontalPosition: 'right',
+          }).onAction().pipe(take(1)).subscribe(() => this.documentReload());
+        }
       });
     effect(() => {
       if (this.appUpdate.needsReload()) this.showUpdateNotice();
@@ -143,9 +155,11 @@ export class App {
         confirmText: '重新整理',
         cancelText: '繼續使用',
       },
-    }).afterClosed().pipe(take(1)).subscribe(confirmed => {
+    }).afterClosed().pipe(take(1)).subscribe(async confirmed => {
       this.updateDialogOpen = false;
-      if (confirmed === true) this.appUpdate.reload();
+      if (confirmed !== true) return;
+      if (await this.draftUpdate.prepareReload()) this.appUpdate.reload();
+      else this.snackBar.open('草稿尚未暫存，請重試保存，或先送出紀錄再更新。', '關閉', { duration: 6000 });
     });
   }
 
@@ -153,22 +167,46 @@ export class App {
     this.router.navigate(['/characters']);
   }
 
+  async installApp(): Promise<void> {
+    const result = await this.appInstall.install();
+    if (result === 'accepted') return;
+    const view = document.defaultView;
+    const isIos = /iPad|iPhone|iPod/.test(view?.navigator.userAgent ?? '') ||
+      (view?.navigator.platform === 'MacIntel' && view.navigator.maxTouchPoints > 1);
+    const message = result === 'instructions'
+      ? isIos
+        ? '在 Safari 點選「分享」，再選「加入主畫面」。'
+        : '請開啟瀏覽器選單，選擇「安裝應用程式」或「加入主畫面」。'
+      : '安裝已取消。你可以稍後再試。';
+    this.snackBar.open(message, '關閉', { duration: 7000 });
+  }
+
+  private documentReload(): void {
+    window.location.reload();
+  }
+
   openContactDialog(): void {
     const trigger = document.querySelector<HTMLButtonElement>(
       this.authService.isAuthenticated() ? '.user-pill-btn' : '.more-menu-btn',
     );
-    this.dialog.open(ContactDialogComponent, {
-      width: '480px', maxWidth: '92vw', restoreFocus: false, ariaLabel: '聯絡我',
-    }).afterClosed().pipe(take(1)).subscribe(() => trigger?.focus());
+    void import('./shared/components/contact-dialog/contact-dialog.component').then(({ ContactDialogComponent }) => {
+      if (this.destroyRef.destroyed) return;
+      this.dialog.open(ContactDialogComponent, {
+        width: '480px', maxWidth: '92vw', restoreFocus: false, ariaLabel: '聯絡我',
+      }).afterClosed().pipe(take(1)).subscribe(() => trigger?.focus());
+    });
   }
 
   openEditProfileDialog(): void {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return;
 
-    this.dialog.open(EditProfileDialogComponent, {
-      width: '400px',
-      data: { user: currentUser },
+    void import('./features/auth/edit-profile-dialog/edit-profile-dialog.component').then(({ EditProfileDialogComponent }) => {
+      if (this.destroyRef.destroyed) return;
+      this.dialog.open(EditProfileDialogComponent, {
+        width: '400px',
+        data: { user: currentUser },
+      });
     });
   }
 

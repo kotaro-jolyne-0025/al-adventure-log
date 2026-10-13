@@ -74,4 +74,35 @@ describe('Adventure draft exit choice', () => {
     vi.mocked(draft.isCurrentOwner).mockReturnValue(false);
     expect(form.canLeave()).toBe(true);
   });
+
+  it('waits for an offered draft discard to finish before allowing navigation', async () => {
+    let finishDiscard!: (deleted: boolean) => void;
+    vi.spyOn(draft, 'discard').mockReturnValue(new Promise(resolve => { finishDiscard = resolve; }));
+    form['discardDraft']();
+    choice.next('confirm');
+    expect(form['draftActionPending']()).toBe(true);
+
+    const navigation = form.canLeave();
+    let didNavigate = false;
+    void Promise.resolve(navigation).then(() => { didNavigate = true; });
+    await Promise.resolve();
+    expect(didNavigate).toBe(false);
+
+    finishDiscard(true);
+    expect(await navigation).toBe(true);
+    expect(form['draftActionPending']()).toBe(false);
+  });
+
+  it('keeps a draft visible and blocks navigation when deleting it fails', async () => {
+    vi.spyOn(draft, 'discard').mockResolvedValue(false);
+    vi.mocked(draft.hasChanges).mockReturnValue(false);
+    draft.error.set('刪除失敗。');
+    form['discardDraft']();
+    choice.next('confirm');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(form['draftActionFailed']()).toBe(true);
+    expect(form['canLeave']()).toBe(false);
+  });
 });
