@@ -6,7 +6,10 @@ import { MatButtonModule } from '@angular/material/button';
   selector: 'app-cache-notice',
   standalone: true,
   imports: [DatePipe, MatButtonModule],
-  template: ` @if (source() === 'copy' && !pending()) { <div class="notice">
+  template: ` @if (pending() && hasContent()) {
+    <p class="updating" role="status">{{ compact() ? '正在更新角色資訊…' : '正在更新資料…' }}</p>
+  }
+  @if (source() === 'copy' && !pending()) { <div class="notice">
       <p role="status">
         {{ compact() ? '目前顯示上次查看的角色資訊' : '目前顯示上次查看的資料' }}，上次更新：{{ fetchedAt() | date: 'yyyy/MM/dd HH:mm' }}。
         連線更新後才能修改資料。
@@ -27,6 +30,9 @@ import { MatButtonModule } from '@angular/material/button';
         gap: 0.5rem;
         margin-block: 0.5rem 1rem;
       }
+      .updating {
+        margin-block: 0.5rem;
+      }
       p {
         flex: 1 1 16rem;
         margin: 0;
@@ -46,6 +52,7 @@ export class CacheNoticeComponent {
   source = input<'cloud' | 'copy' | null>(null);
   fetchedAt = input<number | null>(null);
   pending = input(false);
+  hasContent = input(false);
   compact = input(false);
   refresh = output<void>();
 }

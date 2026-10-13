@@ -9,7 +9,7 @@
 }
 
   <div class="shell-container">
-    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [compact]="true" (refresh)="loadCharacterData()" />
+    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="!!character()" [compact]="true" (refresh)="loadCharacterData()" />
     @if (character()) {
     
     <!-- Character Header Card & Navigation -->

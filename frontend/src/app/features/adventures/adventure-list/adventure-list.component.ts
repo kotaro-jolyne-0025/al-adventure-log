@@ -195,12 +195,14 @@ export class AdventureListComponent implements OnInit {
   protected loadEntries(): void {
     this.readSource.set(null);
     this.loadError.set(null);
-    this.isLoading.set(true);
+    this.isLoading.set(!this.hasLoaded());
     this.isRefreshing.set(true);
     this.reads.read(this.characterId, 'adventures', () => this.adventureService.getAllByCharacter(this.characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         const list = result.data;
-        this.readSource.set(result.source); this.fetchedAt.set(result.fetchedAt);
+        this.readSource.set(result.source);
+        if (result.source === 'copy' && this.hasLoaded()) return;
+        this.fetchedAt.set(result.fetchedAt);
         this.rawEntries.set(list);
         this.hasLoaded.set(true);
         this.isLoading.set(false);
