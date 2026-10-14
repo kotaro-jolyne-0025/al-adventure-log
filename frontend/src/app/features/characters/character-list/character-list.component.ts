@@ -115,13 +115,14 @@ export class CharacterListComponent implements OnInit {
       .afterClosed()
       .subscribe((confirmed) => {
         if (!confirmed || this.readOnly()) return;
-        this.characterService.delete(character.id).subscribe({
+        this.characterService.delete(character.id, character.updatedAt).subscribe({
           next: () => {
             this.snackBar.open(`已刪除角色「${character.characterName}」`, '關閉', { duration: 3000 });
             this.loadCharacters();
           },
-          error: () => {
-            this.snackBar.open('刪除失敗，請稍後再試', '關閉', { duration: 3000 });
+          error: error => {
+            this.snackBar.open(error.error?.message || '刪除失敗，請稍後再試', '關閉', { duration: 6000 });
+            if ([409, 428, 404].includes(error.status)) this.loadCharacters();
           },
         });
       });

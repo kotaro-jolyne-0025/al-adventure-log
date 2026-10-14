@@ -931,7 +931,7 @@ class LedgerPersistenceIntegrationTest {
         }
     }
 
-    private static SqlSessionFactory buildSqlSessionFactory(DataSource source) throws Exception {
+    static SqlSessionFactory buildSqlSessionFactory(DataSource source) throws Exception {
         Configuration configuration = new Configuration(
                 new Environment("embedded-postgres", new SpringManagedTransactionFactory(), source));
         configuration.setMapUnderscoreToCamelCase(true);

@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.dndadvlog.backend.service.MutationGuard;
+import static com.dndadvlog.backend.service.MutationGuard.Resource.*;
 
 @Slf4j
 @RestController
@@ -23,6 +25,7 @@ import java.util.UUID;
 public class InventoryItemController {
 
     private final InventoryItemService inventoryItemService;
+    private final MutationGuard guard;
 
     @GetMapping
     public List<InventoryItemResponse> getItems(
@@ -37,10 +40,18 @@ public class InventoryItemController {
     public ResponseEntity<InventoryItemResponse> createItem(
             @PathVariable UUID characterId,
             @Valid @RequestBody InventoryItemRequest request,
-            @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
         log.info("➕ [POST /api/characters/{}/inventory] 新增物品: {}, userId={}", characterId, request.getItemName(), principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(inventoryItemService.createItem(characterId, request, principal.getId()));
+                .body(request.getAdventureGainedItemId() != null
+                        ? guard.mutate(GAINED_ITEM, request.getAdventureGainedItemId(), principal.getId(), expectedUpdatedAt,
+                            () -> inventoryItemService.createItem(characterId, request, principal.getId()))
+                        : request.getAdventureEntryId() != null
+                            ? guard.mutate(ENTRY, request.getAdventureEntryId(), principal.getId(), expectedUpdatedAt,
+                                () -> inventoryItemService.createItem(characterId, request, principal.getId()))
+                            : guard.createItem(characterId, principal.getId(),
+                                () -> inventoryItemService.createItem(characterId, request, principal.getId())));
     }
 
     @PutMapping("/{itemId}")
@@ -48,18 +59,20 @@ public class InventoryItemController {
             @PathVariable UUID characterId,
             @PathVariable UUID itemId,
             @Valid @RequestBody InventoryItemRequest request,
-            @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
         log.info("✏️ [PUT /api/characters/{}/inventory/{}] 更新物品: {}, userId={}", characterId, itemId, request.getItemName(), principal.getId());
-        return inventoryItemService.updateItem(characterId, itemId, request, principal.getId());
+        return guard.mutate(ITEM, itemId, principal.getId(), expectedUpdatedAt, () -> inventoryItemService.updateItem(characterId, itemId, request, principal.getId()));
     }
 
     @DeleteMapping("/{itemId}")
     public ResponseEntity<Void> deleteItem(
             @PathVariable UUID characterId,
             @PathVariable UUID itemId,
-            @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
         log.info("🗑️ [DELETE /api/characters/{}/inventory/{}] 刪除物品, userId={}", characterId, itemId, principal.getId());
-        inventoryItemService.deleteItem(characterId, itemId, principal.getId());
+        guard.mutate(ITEM, itemId, principal.getId(), expectedUpdatedAt, () -> { inventoryItemService.deleteItem(characterId, itemId, principal.getId()); return null; });
         return ResponseEntity.noContent().build();
     }
 }

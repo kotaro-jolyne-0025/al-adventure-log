@@ -1,3 +1,4 @@
+import { WritePrecondition } from '../services/write-precondition';
 export interface Character {
   id: string;           // UUID
   characterName: string;
@@ -19,7 +20,7 @@ export interface Character {
   updatedAt?: string;
 }
 
-export interface CharacterRequest {
+export interface CharacterRequest extends WritePrecondition {
   characterName: string;
   playerName?: string | null;
   race: string;

@@ -55,7 +55,7 @@
             acquisition_source  = #{acquisitionSource},
             needs_details       = COALESCE(#{needsDetails}, false),
             notes               = #{notes},
-            updated_at          = NOW()
+            updated_at          = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
         WHERE id = #{id}::uuid
     </update>
 

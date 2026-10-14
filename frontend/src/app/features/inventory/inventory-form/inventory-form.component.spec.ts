@@ -1,12 +1,39 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { InventoryItem } from '../../../core/models/inventory.model';
 import { InventoryFormComponent } from './inventory-form.component';
 
 describe('Inventory edit initialization', () => {
+  it.each([409, 428])('preserves the item input and original timestamp after status %i', status => {
+    const item: InventoryItem = { id: 'i', characterId: 'c', itemName: 'Sword', itemType: 'PERMANENT',
+      quantity: 1, updatedAt: '2026-10-14T01:02:03.123456' };
+    const update = vi.fn((_character: string, _item: string, _request: unknown) =>
+      throwError(() => ({ status, error: { message: 'Review the new version' } })));
+    const navigate = vi.fn();
+    TestBed.configureTestingModule({ providers: [
+      { provide: ActivatedRoute, useValue: {
+        parent: { snapshot: { paramMap: convertToParamMap({ id: 'c' }) } },
+        snapshot: { paramMap: convertToParamMap({ itemId: 'i' }), queryParamMap: convertToParamMap({}) },
+      } },
+      { provide: Router, useValue: { navigate } },
+      { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      { provide: InventoryService, useValue: { getAllByCharacter: () => of([item]), update } },
+    ] });
+    const component = TestBed.runInInjectionContext(() => new InventoryFormComponent());
+    component.ngOnInit();
+    component['form'].patchValue({ itemName: 'My edit', quantity: 2 });
+    component['onSubmit']();
+    expect(component['writeConflict']()).toBe(true);
+    expect(component['isSaving']()).toBe(false);
+    expect(component['form'].getRawValue()).toMatchObject({ itemName: 'My edit', quantity: 2 });
+    expect(navigate).not.toHaveBeenCalled();
+    component['onSubmit']();
+    expect(update.mock.calls[0][2]).toMatchObject({ expectedUpdatedAt: item.updatedAt });
+    expect(update.mock.calls[1][2]).toMatchObject({ expectedUpdatedAt: item.updatedAt });
+  });
   it('preserves manual fields when toggling the soul coin marker and clears it when changing to permanent', () => {
     const item: InventoryItem = { id: 'i', characterId: 'c', itemName: 'Custom', itemType: 'CONSUMABLE',
       quantity: 2, isSoulCoin: true, notes: 'Player notes' };

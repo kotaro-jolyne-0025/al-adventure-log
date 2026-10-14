@@ -28,11 +28,13 @@ public class CharacterService {
     private final AdventureEntryMapper adventureEntryMapper;
     private final InventoryItemMapper inventoryItemMapper;
 
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<CharacterResponse> getAllCharacters(UUID userId) {
         return characterMapper.findByUserId(userId)
-                .stream().map(character -> toResponse(character, false)).toList();
+                .stream().map(character -> toResponse(character, false, character.getSoulCoins())).toList();
     }
 
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public CharacterResponse getCharacter(UUID id, UUID userId) {
         return toResponse(findCharacter(id, userId), true);
     }
@@ -143,6 +145,11 @@ public class CharacterService {
     }
 
     private CharacterResponse toResponse(Character character, boolean includeAdventurePresence) {
+        return toResponse(character, includeAdventurePresence,
+                inventoryItemMapper.sumSoulCoinQuantityByCharacterId(character.getId()));
+    }
+
+    private CharacterResponse toResponse(Character character, boolean includeAdventurePresence, int soulCoins) {
         CharacterResponse response = new CharacterResponse();
         response.setId(character.getId());
         response.setUserId(character.getUserId());
@@ -161,7 +168,7 @@ public class CharacterService {
         response.setCurrentGold(character.getCurrentGold());
         response.setCurrentDowntime(character.getCurrentDowntime());
         response.setCurrentMagicItems(character.getCurrentMagicItems());
-        response.setSoulCoins(inventoryItemMapper.sumSoulCoinQuantityByCharacterId(character.getId()));
+        response.setSoulCoins(soulCoins);
         response.setHasAdventureEntries(includeAdventurePresence && adventureEntryMapper.existsByCharacterId(character.getId()));
         return response;
     }

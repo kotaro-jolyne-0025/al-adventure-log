@@ -2,12 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { ElementRef } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, Subject, throwError } from 'rxjs';
+import { forkJoin, map, of, Subject, switchMap, throwError } from 'rxjs';
 import { AdventureFormComponent } from './adventure-form.component';
 import { AdventureDraftSession } from '../../../core/services/adventure-draft-session';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { InventoryService } from '../../../core/services/inventory.service';
-import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
+import { AdventureEntry, AdventureGainedItem } from '../../../core/models/adventure.model';
 import { InventoryItem } from '../../../core/models/inventory.model';
 import { AdventureDraftInput } from '../../../core/models/adventure-draft';
 
@@ -15,17 +15,19 @@ describe('Adventure form complete loading', () => {
   let component: AdventureFormComponent;
   let entry: Subject<AdventureEntry>;
   let items: Subject<AdventureGainedItem[]>;
-  let awards: Subject<StoryAward[]>;
   let warehouse: Subject<InventoryItem[]>;
   let api: { getById: ReturnType<typeof vi.fn>; getGainedItems: ReturnType<typeof vi.fn>;
-    getStoryAwards: ReturnType<typeof vi.fn>; updateWithDetails: ReturnType<typeof vi.fn> };
+    getDetails: AdventureService['getDetails']; updateWithDetails: ReturnType<typeof vi.fn> };
   const data: AdventureEntry = { id: 'e', characterId: 'c', playDate: '2026-09-17',
-    adventureName: 'A', startingLevel: 1, endingLevel: 1, magicItemsLost: 0, magicItemsDowntimeLost: 0, downtimeActivities: [], storyAwards: [] };
+    adventureName: 'A', startingLevel: 1, endingLevel: 1, magicItemsLost: 0, magicItemsDowntimeLost: 0, downtimeActivities: [], storyAwards: [], gainedItems: [], legacyItems: [], updatedAt: '2026-10-14T00:00:00.123456' };
 
   beforeEach(() => {
-    entry = new Subject(); items = new Subject(); awards = new Subject(); warehouse = new Subject();
-    api = { getById: vi.fn(() => entry), getGainedItems: vi.fn(() => items),
-      getStoryAwards: vi.fn(() => awards), updateWithDetails: vi.fn(() => of(data)) };
+    entry = new Subject(); items = new Subject(); warehouse = new Subject();
+    api = { getById: vi.fn(() => forkJoin({ value: entry, gainedItems: items }).pipe(
+      switchMap(({ value, gainedItems }) => gainedItems.length
+        ? of({ ...value, gainedItems, legacyItems: [] } as AdventureEntry)
+        : warehouse.pipe(map(legacyItems => ({ ...value, gainedItems, legacyItems } as AdventureEntry)))))), getGainedItems: vi.fn(() => items),
+      getDetails: AdventureService.prototype.getDetails, updateWithDetails: vi.fn(() => of(data)) };
     TestBed.configureTestingModule({ providers: [
       AdventureDraftSession,
       { provide: ElementRef, useValue: { nativeElement: document.createElement('div') } },
@@ -42,10 +44,9 @@ describe('Adventure form complete loading', () => {
 
   function submit(): void { component['onSubmit'](); }
   function emitEntry(): void { entry.next(data); entry.complete(); }
-  function emitAwards(): void { awards.next([]); awards.complete(); }
 
   it('blocks submit while item loading is pending and allows it after successful completion', () => {
-    emitEntry(); emitAwards(); submit();
+    emitEntry(); submit();
     expect(api.updateWithDetails).not.toHaveBeenCalled();
     items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
     items.complete(); component['form'].patchValue({ magicItemsChange: 1 }); submit();
@@ -65,12 +66,11 @@ describe('Adventure form complete loading', () => {
   });
 
   it('keeps saving blocked on read error and can recover through retry', () => {
-    emitEntry(); emitAwards(); items.error(new Error('offline')); submit();
+    emitEntry(); items.error(new Error('offline')); submit();
     expect(component['loadFailed']()).toBe(true);
     expect(api.updateWithDetails).not.toHaveBeenCalled();
     api.getById.mockReturnValue(of(data));
     api.getGainedItems.mockReturnValue(of([]));
-    api.getStoryAwards.mockReturnValue(of([]));
     component['retryLoad']();
     warehouse.next([]); warehouse.complete(); submit();
     expect(api.updateWithDetails).toHaveBeenCalledTimes(1);
@@ -128,7 +128,7 @@ describe('Adventure form complete loading', () => {
   });
 
   it('ignores manual count and saves consumables without increasing permanent totals', () => {
-    emitEntry(); emitAwards();
+    emitEntry();
     items.next([{ id: 'potion', adventureEntryId: 'e', itemType: 'CONSUMABLE',
       itemName: 'Potion', quantity: 2, itemCategory: 'POTION' }]);
     items.complete();
@@ -143,7 +143,7 @@ describe('Adventure form complete loading', () => {
   });
 
   it('waits for legacy warehouse fallback and preserves its ID on save', () => {
-    emitEntry(); emitAwards(); items.next([]); items.complete(); submit();
+    emitEntry(); items.next([]); items.complete(); submit();
     expect(api.updateWithDetails).not.toHaveBeenCalled();
     warehouse.next([{ id: 'legacy', characterId: 'c', adventureEntryId: 'e', itemName: 'Sword',
       itemType: 'PERMANENT', quantity: 1 }]);
@@ -154,7 +154,7 @@ describe('Adventure form complete loading', () => {
   });
 
   it('reopens a collapsed item section when adding and when a hidden name fails validation', () => {
-    emitEntry(); emitAwards();
+    emitEntry();
     items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
     items.complete();
     component['form'].patchValue({ magicItemsChange: 1 });
@@ -170,14 +170,14 @@ describe('Adventure form complete loading', () => {
   });
 
   it('does not permit save when the legacy fallback fails', () => {
-    emitEntry(); emitAwards(); items.next([]); items.complete();
+    emitEntry(); items.next([]); items.complete();
     warehouse.error(new Error('offline')); submit();
     expect(component['loadFailed']()).toBe(true);
     expect(api.updateWithDetails).not.toHaveBeenCalled();
   });
 
   it('loads and saves the soul coin flag without filling or clearing other loot fields', () => {
-    emitEntry(); emitAwards();
+    emitEntry();
     items.next([{ id: 'coin', adventureEntryId: 'e', itemType: 'CONSUMABLE',
       itemName: 'Custom', quantity: 2, rarity: null, itemCategory: null, isSoulCoin: true, notes: 'Player notes' }]);
     items.complete();
@@ -195,7 +195,7 @@ describe('Adventure form complete loading', () => {
   });
 
   it('derives acquisition sources and losses while consumables do not affect the count', () => {
-    emitEntry(); emitAwards();
+    emitEntry();
     items.next([{ id: 'sword', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
     items.complete();
     component['form'].patchValue({ startingMagicItems: 2, magicItemsLost: 1 });
@@ -211,17 +211,17 @@ describe('Adventure form complete loading', () => {
     });
   });
 
-  it('keeps saving blocked when story awards fail to load', () => {
-    emitEntry();
+  it('keeps saving blocked when the entry response omits story awards', () => {
+    entry.next({ ...data, storyAwards: undefined }); entry.complete();
     items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
     items.complete();
-    awards.error(new Error('offline')); submit();
+    submit();
     expect(component['loadFailed']()).toBe(true);
     expect(api.updateWithDetails).not.toHaveBeenCalled();
   });
 
   it('keeps details and supports retry after an API business error', () => {
-    emitEntry(); emitAwards();
+    emitEntry();
     items.next([{ id:'sword',adventureEntryId:'e',itemType:'PERMANENT',itemName:'Sword' }]); items.complete();
     api.updateWithDetails.mockReturnValue(throwError(() => ({ error:{message:'資源不足，請修正'} })));
     submit();
@@ -233,8 +233,40 @@ describe('Adventure form complete loading', () => {
     expect(api.updateWithDetails).toHaveBeenCalledTimes(2);
   });
 
+  it.each([409, 428])('retains input, items and the original token after status %i', status => {
+    emitEntry();
+    items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
+    items.complete();
+    component['form'].patchValue({ adventureNotes: 'Do not lose my edits' });
+    const before = component['form'].getRawValue();
+    const remove = vi.spyOn(component['draft'], 'savedToCloud');
+    api.updateWithDetails.mockReturnValue(throwError(() => ({ status, error: { message: 'Please review the newer version' } })));
+    submit();
+    expect(component['writeConflict']()).toBe(true);
+    expect(component['isSaving']()).toBe(false);
+    expect(component['form'].getRawValue()).toEqual(before);
+    expect(component['gainedMagicItems']()[0].itemName).toBe('Sword');
+    expect(component['captureInput']().expectedUpdatedAt).toBe(data.updatedAt);
+    expect(remove).not.toHaveBeenCalled();
+    submit();
+    expect(api.updateWithDetails.mock.calls[1][2].expectedUpdatedAt).toBe(data.updatedAt);
+  });
+
+  it.each([undefined, '2026-10-13T01:02:03.123456'])('restores draft token %s without adopting the freshly loaded version', expectedUpdatedAt => {
+    emitEntry(); items.next([]); items.complete(); warehouse.next([]); warehouse.complete();
+    const input = component['captureInput']();
+    const saved = { ...input, expectedUpdatedAt,
+      form: { ...input.form, adventureNotes: 'Older draft' } } as AdventureDraftInput;
+    vi.spyOn(component['draft'], 'accept').mockReturnValue(saved);
+    component['restoreDraft']();
+    expect(component['captureInput']().expectedUpdatedAt).toBe(expectedUpdatedAt);
+    submit();
+    expect(api.updateWithDetails.mock.calls[0][2].expectedUpdatedAt).toBe(expectedUpdatedAt);
+    expect(api.updateWithDetails.mock.calls[0][2].entry.adventureNotes).toBe('Older draft');
+  });
+
   it('does not adopt another adventure item through a matching source label', () => {
-    emitEntry(); emitAwards(); items.next([]); items.complete();
+    emitEntry(); items.next([]); items.complete();
     warehouse.next([{ id: 'other', characterId: 'c', adventureEntryId: 'another-entry', source: 'A',
       itemName: 'Sword', itemType: 'PERMANENT', quantity: 1 }]);
     warehouse.complete(); submit();
@@ -242,7 +274,7 @@ describe('Adventure form complete loading', () => {
   });
 
   it('previews totals from initial snapshots and changes without sending the initial snapshots', () => {
-    emitEntry(); emitAwards();
+    emitEntry();
     items.next([{ id: 'snapshot', adventureEntryId: 'e', itemType: 'PERMANENT', itemName: 'Sword' }]);
     items.complete();
     component['form'].patchValue({
@@ -268,5 +300,56 @@ describe('Adventure form complete loading', () => {
       magicItemsChange: 1, magicItemsDowntimeChange: 0,
     });
     expect(payload.entry).not.toHaveProperty('startingGold');
+  });
+});
+
+describe('New adventure defaults', () => {
+  const defaults = { startingLevel: 1, startingClassesString: 'Fighter1', startingGold: 0,
+    startingDowntime: 0, startingMagicItems: 3, characterUpdatedAt: '2026-10-14T01:02:03.123456' };
+  let component: AdventureFormComponent;
+  let api: { getDefaults: ReturnType<typeof vi.fn>; createWithDetails: ReturnType<typeof vi.fn> };
+  let warehouse: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    api = { getDefaults: vi.fn(() => of(defaults)), createWithDetails: vi.fn(() => new Subject<AdventureEntry>()) };
+    warehouse = vi.fn(() => of([]));
+    TestBed.configureTestingModule({ providers: [AdventureDraftSession,
+      { provide: ElementRef, useValue: { nativeElement: document.createElement('div') } },
+      { provide: ActivatedRoute, useValue: { parent: { snapshot: { paramMap: convertToParamMap({ id: 'c' }) } },
+        snapshot: { paramMap: convertToParamMap({}) } } },
+      { provide: Router, useValue: { navigate: vi.fn() } },
+      { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      { provide: AdventureService, useValue: api },
+      { provide: InventoryService, useValue: { getAllByCharacter: warehouse } },
+    ] });
+    component = TestBed.runInInjectionContext(() => new AdventureFormComponent());
+  });
+
+  it('uses server quantity and character token without downloading the warehouse', () => {
+    component.ngOnInit();
+    expect(api.getDefaults).toHaveBeenCalledWith('c', true);
+    expect(warehouse).not.toHaveBeenCalled();
+    expect(component['loadFailed']()).toBe(false);
+    expect(component['form'].get('startingMagicItems')!.value).toBe(3);
+    expect(component['captureInput']().expectedUpdatedAt).toBe(defaults.characterUpdatedAt);
+    component['form'].patchValue({ adventureName: 'New adventure', playDate: new Date(2026, 9, 14) });
+    component['onSubmit']();
+    expect(api.createWithDetails).toHaveBeenCalledWith('c', expect.objectContaining({ expectedUpdatedAt: defaults.characterUpdatedAt }));
+    expect(warehouse).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { ...defaults, startingMagicItems: undefined },
+    { ...defaults, startingMagicItems: -1 },
+    { ...defaults, startingMagicItems: 1.5 },
+    { ...defaults, characterUpdatedAt: undefined },
+  ])('blocks new saves when defaults are incomplete', response => {
+    api.getDefaults.mockReturnValue(of(response));
+    component.ngOnInit();
+    component['form'].patchValue({ adventureName: 'Keep edits', playDate: new Date(2026, 9, 14) });
+    component['onSubmit']();
+    expect(component['loadFailed']()).toBe(true);
+    expect(api.createWithDetails).not.toHaveBeenCalled();
+    expect(warehouse).not.toHaveBeenCalled();
   });
 });
