@@ -32,4 +32,3 @@ See proposal.md for motivation. Public auth endpoints are Spring controllers, th
 2. Provision private GCS bucket (uniform access, public access prevention and retention), workload identity provider and a service account limited to this bucket. Add required non-secret GitHub variables and database URL secret without exposing their values.
 3. Run a scheduled backup and inspect only object metadata. Run the manual isolated restore drill and record its result.
 4. Roll back by reverting application code while keeping the operations table; the table is harmless and can be removed in a later separately approved migration. Do not roll back or remove a backup bucket with the only recoverable copies.
-
