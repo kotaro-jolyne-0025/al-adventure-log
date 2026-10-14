@@ -1,6 +1,7 @@
+import { WritePrecondition } from '../services/write-precondition';
 
 
-import { ItemCategory, ItemRarity } from './inventory.model';
+import { InventoryItem, ItemCategory, ItemRarity } from './inventory.model';
 
 export type AcquisitionSource = 'ADVENTURE' | 'DOWNTIME';
 
@@ -14,7 +15,7 @@ export interface DowntimeActivity {
   updatedAt?: string;
 }
 
-export interface DowntimeActivityRequest {
+export interface DowntimeActivityRequest extends WritePrecondition {
   id?: string;
   description: string;
 }
@@ -38,7 +39,7 @@ export interface AdventureGainedItem {
   updatedAt?: string;
 }
 
-export interface AdventureGainedItemRequest {
+export interface AdventureGainedItemRequest extends WritePrecondition {
   acquisitionSource?: AcquisitionSource | null;
   id?: string;
   itemName: string;
@@ -62,7 +63,7 @@ export interface StoryAward {
   updatedAt?: string;
 }
 
-export interface StoryAwardRequest {
+export interface StoryAwardRequest extends WritePrecondition {
   id?: string;
   awardName: string;
   description?: string | null;
@@ -99,13 +100,15 @@ export interface AdventureEntry {
   soulCoinChargesUsed?: string;
   downtimeActivities: DowntimeActivity[];
   storyAwards?: StoryAward[];
+  gainedItems?: AdventureGainedItem[];
+  legacyItems?: InventoryItem[];
   recordingModelVersion?: number;
   warnings?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface AdventureEntryRequest {
+export interface AdventureEntryRequest extends WritePrecondition {
   adventureCode?: string | null;
   adventureName?: string | null;
   playDate?: string | null;
@@ -130,7 +133,7 @@ export interface AdventureEntryRequest {
  * 後端會在同一個資料庫交易中同步主記錄與三種子項目；任何一步失敗時，
  * 整包資料都不會寫入，避免手機網路中斷後留下只存一半的資料。
  */
-export interface AdventureEntrySaveRequest {
+export interface AdventureEntrySaveRequest extends WritePrecondition {
   entry: AdventureEntryRequest;
   downtimeActivities: DowntimeActivityRequest[];
   gainedItems: AdventureGainedItemRequest[];
@@ -138,6 +141,7 @@ export interface AdventureEntrySaveRequest {
 }
 
 export interface EntryDefaults {
+  characterUpdatedAt?: string;
   startingLevel?: number | null;
   startingGold?: number | null;
   startingDowntime?: number | null;

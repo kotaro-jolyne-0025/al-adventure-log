@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.dndadvlog.backend.service.MutationGuard;
+import static com.dndadvlog.backend.service.MutationGuard.Resource.*;
 
 @Slf4j
 @RestController
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class CharacterController {
 
     private final CharacterService characterService;
+    private final MutationGuard guard;
 
     @GetMapping
     public List<CharacterResponse> getAllCharacters(@AuthenticationPrincipal UserPrincipal principal) {
@@ -59,16 +62,18 @@ public class CharacterController {
     public CharacterResponse updateCharacter(
             @PathVariable UUID id,
             @Valid @RequestBody CharacterRequest request,
-            @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
         log.info("✏️ [PUT /api/characters/{}] 更新角色: 名稱={}, userId={}",
                 id, request.getCharacterName(), principal.getId());
-        return characterService.updateCharacter(id, request, principal.getId());
+        return guard.mutate(CHARACTER, id, principal.getId(), expectedUpdatedAt, () -> characterService.updateCharacter(id, request, principal.getId()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCharacter(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<Void> deleteCharacter(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
         log.info("🗑️ [DELETE /api/characters/{}] 刪除角色, userId={}", id, principal.getId());
-        characterService.deleteCharacter(id, principal.getId());
+        guard.mutate(CHARACTER, id, principal.getId(), expectedUpdatedAt, () -> { characterService.deleteCharacter(id, principal.getId()); return null; });
         return ResponseEntity.noContent().build();
     }
 }

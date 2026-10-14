@@ -13,6 +13,7 @@ describe('CharacterFormComponent opening baseline edit', () => {
     id: 'c', characterName: 'Hero', race: 'Human', initialClassesString: 'Fighter5',
     currentClassesString: 'Fighter5', initialGold: 10, currentGold: 10,
     initialDowntime: 2, currentDowntime: 2, hasAdventureEntries: true,
+    updatedAt: '2026-10-14T01:02:03.123456',
   };
   let component: CharacterFormComponent;
   let api: { getById: ReturnType<typeof vi.fn>; previewOpeningBaseline: ReturnType<typeof vi.fn>;
@@ -85,6 +86,20 @@ describe('CharacterFormComponent opening baseline edit', () => {
     component['classEntries'].set([{ className: 'Fighter', level: 5 }]);
     component['form'].patchValue({ initialGold: 10, initialDowntime: 2 });
   }
+
+  it.each([409, 428])('keeps profile edits and the original timestamp after status %i', status => {
+    restoreBaseline();
+    component['form'].patchValue({ characterName: 'Unsaved profile' });
+    api.update.mockReturnValue(throwError(() => ({ status, error: { message: 'Review the new version' } })));
+    component['onSubmit']();
+    expect(component['writeConflict']()).toBe(true);
+    expect(component['isSaving']()).toBe(false);
+    expect(component['form'].get('characterName')!.value).toBe('Unsaved profile');
+    expect(api.update).toHaveBeenCalledWith('c', expect.objectContaining({ expectedUpdatedAt: character.updatedAt }));
+    expect(navigate).not.toHaveBeenCalled();
+    component['onSubmit']();
+    expect(api.update.mock.calls[1][1].expectedUpdatedAt).toBe(character.updatedAt);
+  });
 
   it.each(['class', 'level', 'gold', 'downtime'])('confirms a %s change without adventures', (field) => {
     component['hasAdventureEntries'].set(false);

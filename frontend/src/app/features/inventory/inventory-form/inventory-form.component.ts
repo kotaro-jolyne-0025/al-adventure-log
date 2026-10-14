@@ -61,6 +61,8 @@ export class InventoryFormComponent implements OnInit {
   protected itemLoaded = signal(false);
   protected characterId!: string;
   private itemId?: string;
+  private expectedUpdatedAt?: string;
+  protected writeConflict = signal(false);
 
   readonly itemTypes: ItemType[] = ['PERMANENT', 'CONSUMABLE'];
   readonly rarities: (ItemRarity | '')[] = ['', 'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'];
@@ -136,6 +138,7 @@ export class InventoryFormComponent implements OnInit {
           source: item.source ?? '',
           notes: item.notes ?? '',
         });
+        this.expectedUpdatedAt = item.updatedAt;
         this.form.enable();
         this.itemLoaded.set(true);
         this.isLoading.set(false);
@@ -169,6 +172,7 @@ export class InventoryFormComponent implements OnInit {
     const raw = this.form.getRawValue();
     const isPermanent = raw.itemType === 'PERMANENT';
     const req: InventoryItemRequest = {
+      expectedUpdatedAt: this.expectedUpdatedAt,
       itemName: raw.itemName.trim(),
       itemType: raw.itemType as ItemType,
       rarity: raw.rarity || null,
@@ -188,6 +192,7 @@ export class InventoryFormComponent implements OnInit {
         },
         error: (error) => {
           this.isSaving.set(false);
+          this.writeConflict.set([409, 428].includes(error.status));
           this.formError.set(error.error?.message || '更新失敗');
           this.errorTarget.set('');
         },
@@ -209,5 +214,9 @@ export class InventoryFormComponent implements OnInit {
 
   protected onBack(): void {
     this.router.navigate(['/characters', this.characterId, 'inventory']);
+  }
+
+  protected latestDataUrl(): string {
+    return `/characters/${this.characterId}/inventory`;
   }
 }

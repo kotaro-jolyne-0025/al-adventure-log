@@ -58,6 +58,7 @@ public class AdventureEntryService {
     private final CharacterService characterService;
     private final InventoryItemMapper inventoryItemMapper;
 
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<AdventureEntryResponse> getEntriesByCharacter(UUID characterId, UUID userId) {
         characterService.findCharacter(characterId, userId);
         List<AdventureEntry> entries = entryMapper.findByCharacterIdOrderByPlayDateAsc(characterId);
@@ -81,19 +82,29 @@ public class AdventureEntryService {
         return entries.stream().map(this::toResponse).toList();
     }
 
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public AdventureEntryResponse getEntry(UUID entryId, UUID userId) {
-        return toResponseWithContinuityWarning(findEntryAndVerifyOwner(entryId, userId));
+        AdventureEntryResponse response = toResponseWithContinuityWarning(findEntryAndVerifyOwner(entryId, userId));
+        response.setGainedItems(gainedItemMapper.findByAdventureEntryId(entryId)
+                .stream().map(this::toGainedItemResponse).toList());
+        response.setLegacyItems(response.getGainedItems().isEmpty()
+                ? inventoryItemMapper.findByCharacterId(response.getCharacterId()).stream().map(InventoryItemService::toResponse).toList()
+                : List.of());
+        return response;
     }
 
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public EntryDefaultsResponse getDefaults(UUID characterId, UUID userId) {
         EntryDefaultsResponse defaults = new EntryDefaultsResponse();
         Character character = characterService.findCharacter(characterId, userId);
+        defaults.setCharacterUpdatedAt(character.getUpdatedAt());
         defaults.setStartingClassesString(DndClassNames.serialize(
                 DndClassNames.parse(character.getCurrentClassesString()), character.getCurrentClassesString()));
         defaults.setStartingLevel(parseTotalLevelFromClassesString(character.getCurrentClassesString()));
         defaults.setStartingGold(orZero(character.getCurrentGold()));
         defaults.setStartingDowntime(orZero(character.getCurrentDowntime()));
-        defaults.setStartingMagicItems(orZero(character.getCurrentMagicItems()));
+        defaults.setStartingMagicItems(inventoryItemMapper.sumQuantityByCharacterIdAndItemType(
+                characterId, InventoryItem.ItemType.PERMANENT.name()));
 
         return defaults;
     }

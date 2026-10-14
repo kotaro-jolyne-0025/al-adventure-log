@@ -13,11 +13,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { AdventureService } from '../../../core/services/adventure.service';
-import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
 import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS, soulCoinQuantity } from '../../../core/models/inventory.model';
 import { formatClassLevels } from '../../../core/models/dnd-classes';
-import { forkJoin, map, of, switchMap } from 'rxjs';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -82,7 +80,6 @@ export class AdventureDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly adventureService = inject(AdventureService);
-  private readonly inventoryService = inject(InventoryService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
 
@@ -115,21 +112,8 @@ export class AdventureDetailComponent implements OnInit {
     this.loadError.set(null);
     this.isLoading.set(!this.entry());
     this.isRefreshing.set(true);
-    this.reads.read(this.characterId, `adventure:${this.entryId}`, () => forkJoin({
-      entry: this.adventureService.getById(this.characterId, this.entryId),
-      gainedItems: this.adventureService.getGainedItems(this.entryId),
-      storyAwards: this.adventureService.getStoryAwards(this.entryId),
-    }).pipe(
-      switchMap(({ entry, gainedItems, storyAwards }) => {
-        if (gainedItems.length > 0) {
-          return of({ entry, gainedItems, storyAwards, legacyItems: [] as InventoryItem[] });
-        }
-        // 舊資料沒有快照時，才額外讀取整個倉庫做相容性比對。
-        return this.inventoryService.getAllByCharacter(this.characterId, true).pipe(
-          map(legacyItems => ({ entry, gainedItems, storyAwards, legacyItems }))
-        );
-      })
-    )).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+    this.reads.read(this.characterId, `adventure:${this.entryId}`, () => this.adventureService.getDetails(this.characterId, this.entryId))
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         this.readSource.set(result.source);
         if (result.source === 'copy' && this.entry()) return;
@@ -247,12 +231,15 @@ export class AdventureDetailComponent implements OnInit {
       .afterClosed()
       .subscribe((confirmed) => {
         if (!confirmed || this.readOnly()) return;
-        this.adventureService.delete(this.characterId, this.entryId).subscribe({
+        this.adventureService.delete(this.characterId, this.entryId, this.entry()?.updatedAt).subscribe({
           next: () => {
             this.snackBar.open('冒險記錄已刪除', '關閉', { duration: 2500 });
             this.router.navigate(['/characters', this.characterId, 'adventures']);
           },
-          error: () => this.snackBar.open('刪除失敗', '關閉', { duration: 3000 }),
+          error: error => {
+            this.snackBar.open(error.error?.message || '刪除失敗', '關閉', { duration: 6000 });
+            if ([409, 428, 404].includes(error.status)) this.loadEntry();
+          },
         });
       });
   }
