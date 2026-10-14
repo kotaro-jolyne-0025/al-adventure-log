@@ -71,7 +71,7 @@ jobs:
             sleep 2
           done
           docker cp "$dump_file" "$container:/tmp/restore.dump"
-          docker exec "$container" pg_restore --exit-on-error --no-owner --no-acl \
+          docker exec "$container" pg_restore --clean --if-exists --exit-on-error --no-owner --no-acl \
             --username=postgres --dbname=restore_drill /tmp/restore.dump
           table_count="$(docker exec "$container" psql -U postgres -d restore_drill -X -At \
             -c "SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema')")"
