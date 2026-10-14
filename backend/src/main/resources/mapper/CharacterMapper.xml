@@ -67,10 +67,19 @@
             c.current_gold,
             c.current_downtime,
             c.current_magic_items,
-            c.soul_coins,
+            COALESCE(soul.quantity, 0) AS soul_coins,
             c.created_at   AS c_created_at,
             c.updated_at   AS c_updated_at
         FROM "character" c
+        LEFT JOIN (
+            SELECT i.character_id, SUM(i.quantity) AS quantity
+            FROM inventory_item i
+            INNER JOIN "character" owned ON owned.id = i.character_id
+            WHERE owned.user_id = #{userId}::uuid
+              AND i.item_type = 'CONSUMABLE'::item_type
+              AND i.is_soul_coin = TRUE
+            GROUP BY i.character_id
+        ) soul ON soul.character_id = c.id
         WHERE c.user_id = #{userId}::uuid
         ORDER BY c.created_at ASC
     </select>
@@ -169,13 +178,13 @@
             current_downtime = #{currentDowntime},
             current_magic_items = #{currentMagicItems},
             soul_coins     = #{soulCoins},
-            updated_at     = NOW()
+            updated_at     = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
         WHERE id = #{id}::uuid
     </update>
 
     <update id="updateCurrentMagicItems">
         UPDATE "character"
-        SET current_magic_items = #{currentMagicItems}, updated_at = NOW()
+        SET current_magic_items = #{currentMagicItems}, updated_at = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
         WHERE id = #{id}::uuid
     </update>
 

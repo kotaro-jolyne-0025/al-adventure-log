@@ -3,6 +3,7 @@ import { DND_CLASSES } from './dnd-classes';
 
 /** Raw editable values, including incomplete rows. No Angular objects or totals. */
 export interface AdventureDraftInput {
+  expectedUpdatedAt?: string;
   form: Record<string, unknown>;
   levelUp: boolean;
   catchup: boolean;
@@ -86,6 +87,7 @@ export function isDraftInput(value: unknown): value is AdventureDraftInput {
   const input = value as AdventureDraftInput;
   const record = (item: unknown) => !!item && typeof item === 'object' && !Array.isArray(item);
   return (
+    (input.expectedUpdatedAt === undefined || typeof input.expectedUpdatedAt === 'string') &&
     record(input.form) &&
     ['classes', 'magicItems', 'consumables', 'awards', 'activities'].every((key) =>
       Array.isArray((value as Record<string, unknown>)[key]),

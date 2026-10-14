@@ -11,4 +11,5 @@ public class EntryDefaultsResponse {
     private Integer startingDowntime;
     private Integer startingMagicItems;
     private String startingClassesString;
+    private java.time.LocalDateTime characterUpdatedAt;
 }

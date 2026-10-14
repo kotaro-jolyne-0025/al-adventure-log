@@ -34,7 +34,7 @@ public class InventoryItemService {
         List<InventoryItem> items = (itemType != null)
                 ? inventoryItemMapper.findByCharacterIdAndItemType(characterId, itemType.name())
                 : inventoryItemMapper.findByCharacterId(characterId);
-        return items.stream().map(this::toResponse).toList();
+        return items.stream().map(InventoryItemService::toResponse).toList();
     }
 
     @Transactional
@@ -129,7 +129,7 @@ public class InventoryItemService {
         item.setAdventureGainedItemId(snapshotId);
     }
 
-    private InventoryItemResponse toResponse(InventoryItem item) {
+    static InventoryItemResponse toResponse(InventoryItem item) {
         InventoryItemResponse response = new InventoryItemResponse();
         response.setId(item.getId());
         response.setCharacterId(item.getCharacterId());

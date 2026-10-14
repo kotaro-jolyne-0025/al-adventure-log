@@ -1,5 +1,14 @@
 # 冒險紀錄表Web版 — 資料庫 Schema
 
+## updated_at 並行編輯標記
+
+- 角色、冒險與倉庫沿用既有 `timestamp without time zone`（微秒精度 6）之 `updated_at`，不新增 revision／version 欄位。V28 以 `CREATE OR REPLACE FUNCTION` 修正既有時間觸發器，保留原有欄位及觸發器。
+- 前端原樣回傳讀取時的時間戳；共用寫入交易先取得所屬角色的短暫列鎖，再執行帶 `WHERE updated_at = expected` 的條件更新，衝突全部回滾。
+- 更新時間使用 `GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')`，避免同交易 NOW 相同或時鐘回退造成標記不變。子項目修改推進父冒險時間戳；倉庫異動使使用舊庫存相容資料的空快照冒險標記失效。
+- 既有 `update_updated_at_column()` 也必須使用 `GREATEST(clock_timestamp()::timestamp, OLD.updated_at + INTERVAL '1 microsecond')`。原先觸發器的 `NOW()` 會覆蓋 UPDATE 指定的時間；V28 必須隨後端套用，不能只更新應用 SQL。
+- 新增冒險使用 defaults 回應的 `characterUpdatedAt` 檢查角色基準。完整冒險的主紀錄、子清單及相容庫存使用同一 REPEATABLE READ 快照。
+- 此規則由業務 API 執行；直接 SQL 或後續背景寫入也必須維持相同鎖順序與時間戳失效規則，不得跳過主紀錄標記。
+
 > 2026-09-19 已加入 Flyway V20 變化式帳本 migration，V23 增加角色開卡金幣與休整期基準欄位，V24 要求每個角色都有非空白的開卡職業／等級基準。倉庫的 `character_id`、
 > `adventure_entry_id`、`adventure_gained_item_id` 不只有各別外鍵存在性要求，
 > 服務層寫入時還必須驗證三者屬於同一角色／冒險，防止不合法關聯影響同步與級聯刪除。

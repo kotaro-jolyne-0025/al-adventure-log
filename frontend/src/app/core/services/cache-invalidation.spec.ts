@@ -5,6 +5,7 @@ import { CharacterService } from './character.service';
 import { AdventureService } from './adventure.service';
 import { InventoryService } from './inventory.service';
 import { environment } from '../../../environments/environment';
+import { Observable } from 'rxjs';
 
 describe('Related data cache invalidation', () => {
   let http: HttpTestingController;
@@ -21,6 +22,38 @@ describe('Related data cache invalidation', () => {
     inventory = TestBed.inject(InventoryService);
   });
   afterEach(() => http.verify());
+
+  it('carries the original token on every gameplay mutation API', () => {
+    const expectedUpdatedAt = '2026-10-14T01:02:03.123456';
+    const calls: Array<() => Observable<unknown>> = [
+      () => characters.update('c', { characterName: 'Hero', race: 'Human', expectedUpdatedAt }),
+      () => characters.delete('c', expectedUpdatedAt),
+      () => inventory.create('c', { itemName: 'Sword', itemType: 'PERMANENT', expectedUpdatedAt }),
+      () => inventory.update('c', 'i', { itemName: 'Sword', itemType: 'PERMANENT', expectedUpdatedAt }),
+      () => inventory.delete('c', 'i', expectedUpdatedAt),
+      () => adventures.create('c', { playDate: '2026-10-14', expectedUpdatedAt }),
+      () => adventures.createWithDetails('c', { entry: { playDate: '2026-10-14' }, gainedItems: [], storyAwards: [], downtimeActivities: [], expectedUpdatedAt }),
+      () => adventures.update('c', 'e', { playDate: '2026-10-14', expectedUpdatedAt }),
+      () => adventures.updateWithDetails('c', 'e', { entry: { playDate: '2026-10-14' }, gainedItems: [], storyAwards: [], downtimeActivities: [], expectedUpdatedAt }),
+      () => adventures.delete('c', 'e', expectedUpdatedAt),
+      () => adventures.addDowntime('e', { description: 'Rest', expectedUpdatedAt }),
+      () => adventures.updateDowntime('d', { description: 'Rest', expectedUpdatedAt }),
+      () => adventures.deleteDowntime('e', 'd', expectedUpdatedAt),
+      () => adventures.addGainedItem('e', { itemName: 'Sword', itemType: 'PERMANENT', expectedUpdatedAt }),
+      () => adventures.updateGainedItem('e', 'g', { itemName: 'Sword', itemType: 'PERMANENT', expectedUpdatedAt }),
+      () => adventures.deleteGainedItem('g', expectedUpdatedAt),
+      () => adventures.addStoryAward('e', { awardName: 'Award', expectedUpdatedAt }),
+      () => adventures.updateStoryAward('e', 'a', { awardName: 'Award', expectedUpdatedAt }),
+      () => adventures.deleteStoryAward('a', expectedUpdatedAt),
+    ];
+    for (const call of calls) {
+      call().subscribe({ error: () => {} });
+      const [request] = http.match(() => true);
+      expect(request.request.headers.get('X-Expected-Updated-At')).toBe(expectedUpdatedAt);
+      if (request.request.body) expect(request.request.body).not.toHaveProperty('expectedUpdatedAt');
+      request.flush({ message: 'Conflict' }, { status: 409, statusText: 'Conflict' });
+    }
+  });
 
   it('cancels account A requests and issues a new request for account B', () => {
     const oldReceiver = vi.fn(), receiver = vi.fn();

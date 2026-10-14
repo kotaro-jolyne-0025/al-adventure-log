@@ -74,6 +74,7 @@ export class CharacterFormComponent implements OnInit {
 
   protected isEditMode = signal(false);
   protected isSaving = signal(false);
+  protected writeConflict = signal(false);
   protected isProcessingAvatar = signal(false);
   protected avatarUrl = signal<string | null>(null);
   protected hasAdventureEntries = signal(false);
@@ -252,6 +253,7 @@ export class CharacterFormComponent implements OnInit {
     this.isSaving.set(true);
     const raw = this.form.getRawValue();
     const req: CharacterRequest = {
+      expectedUpdatedAt: this.loadedCharacter?.updatedAt,
       characterName: raw.characterName.trim(),
       race: raw.race.trim(),
       subclass: raw.subclass?.trim() || null,
@@ -347,6 +349,7 @@ export class CharacterFormComponent implements OnInit {
         },
         error: (error) => {
           this.isSaving.set(false);
+          this.writeConflict.set([409, 428].includes(error.status));
           this.formError.set(error.error?.message || '更新失敗，請稍後再試');
           this.errorTarget.set('');
         },
@@ -359,5 +362,9 @@ export class CharacterFormComponent implements OnInit {
     } else {
       this.router.navigate(['/characters']);
     }
+  }
+
+  protected latestDataUrl(): string {
+    return `/characters/${this.characterId}/adventures`;
   }
 }

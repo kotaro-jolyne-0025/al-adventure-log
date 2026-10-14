@@ -11,6 +11,9 @@ import { MatButtonModule } from '@angular/material/button';
         @if (target()) {
           <button mat-button type="button" (click)="locate()">前往需要修正的欄位</button>
         }
+        @if (viewUrl()) {
+          <a mat-button [href]="viewUrl()" target="_blank" rel="noopener">查看新版（新分頁）</a>
+        }
       </section>
     }
   `,
@@ -18,11 +21,12 @@ import { MatButtonModule } from '@angular/material/button';
     .form-feedback { margin-block: .5rem; padding: .75rem;
       border-inline-start: 3px solid var(--mat-sys-error); background: var(--mat-sys-error-container); }
     p { margin: 0; font-size: var(--type-label); color: var(--mat-sys-on-error-container); overflow-wrap: anywhere; }
-    button { height: auto; min-height: 44px; max-width: 100%; padding-block: .5rem; white-space: normal; }
+    button, a { height: auto; min-height: 44px; max-width: 100%; padding-block: .5rem; white-space: normal; }
   `,
 })
 export class FormFeedbackComponent {
   readonly message = input<string | null>(null);
+  readonly viewUrl = input<string | null>(null);
   readonly target = input('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
 

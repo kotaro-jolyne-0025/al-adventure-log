@@ -1,3 +1,4 @@
+import { WritePrecondition } from '../services/write-precondition';
 export type ItemType = 'PERMANENT' | 'CONSUMABLE';
 export type ItemRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'VERY_RARE' | 'LEGENDARY' | 'ARTIFACT';
 export type ItemCategory = 'ARMOR' | 'POTION' | 'RING' | 'ROD' | 'SCROLL' | 'STAFF' | 'WAND' | 'WEAPON' | 'WONDROUS_ITEM';
@@ -57,7 +58,7 @@ export interface InventoryItem {
   updatedAt?: string;
 }
 
-export interface InventoryItemRequest {
+export interface InventoryItemRequest extends WritePrecondition {
   adventureEntryId?: string | null;
   adventureGainedItemId?: string | null;
   itemName: string;

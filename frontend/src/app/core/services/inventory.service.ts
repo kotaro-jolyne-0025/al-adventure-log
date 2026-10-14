@@ -1,3 +1,4 @@
+import { versionHeader, writeRequest } from './write-precondition';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
@@ -31,9 +32,10 @@ export class InventoryService {
   }
 
   create(characterId: string, req: InventoryItemRequest): Observable<InventoryItem> {
+    const { body, options } = writeRequest(req);
     return this.http.post<InventoryItem>(
       `${this.base}/${characterId}/inventory`,
-      req
+      body, options
     ).pipe(
       tap(() => {
         this.clearCache(characterId);
@@ -47,9 +49,10 @@ export class InventoryService {
     itemId: string,
     req: InventoryItemRequest
   ): Observable<InventoryItem> {
+    const { body, options } = writeRequest(req);
     return this.http.put<InventoryItem>(
       `${this.base}/${characterId}/inventory/${itemId}`,
-      req
+      body, options
     ).pipe(
       tap(() => {
         this.clearCache(characterId);
@@ -58,9 +61,10 @@ export class InventoryService {
     );
   }
 
-  delete(characterId: string, itemId: string): Observable<void> {
+  delete(characterId: string, itemId: string, expectedUpdatedAt?: string): Observable<void> {
     return this.http.delete<void>(
-      `${this.base}/${characterId}/inventory/${itemId}`
+      `${this.base}/${characterId}/inventory/${itemId}`,
+      versionHeader(expectedUpdatedAt)
     ).pipe(
       tap(() => {
         this.clearCache(characterId);

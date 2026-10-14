@@ -1,3 +1,4 @@
+import { versionHeader, writeRequest } from './write-precondition';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject, tap } from 'rxjs';
@@ -45,23 +46,29 @@ export class CharacterService {
   }
 
   create(req: CharacterRequest): Observable<Character> {
-    return this.http.post<Character>(this.base, req).pipe(
+    const { body } = writeRequest(req);
+    return this.http.post<Character>(this.base, body).pipe(
       tap((created) => this.notifyCharacterChanged(created.id))
     );
   }
 
   update(id: string, req: CharacterRequest): Observable<Character> {
-    return this.http.put<Character>(`${this.base}/${id}`, req).pipe(
+    const { body, options } = writeRequest(req);
+    return this.http.put<Character>(`${this.base}/${id}`, body, options).pipe(
       tap(() => this.notifyCharacterChanged(id))
     );
   }
 
   previewOpeningBaseline(id: string, req: CharacterBaselineRequest): Observable<CharacterBaselinePreview> {
-    return this.http.post<CharacterBaselinePreview>(`${this.base}/${id}/opening-baseline-preview`, req);
+    return this.http.post<CharacterBaselinePreview>(`${this.base}/${id}/opening-baseline-preview`, {
+      initialClassesString: req.initialClassesString,
+      initialGold: req.initialGold,
+      initialDowntime: req.initialDowntime,
+    });
   }
 
-  delete(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`).pipe(
+  delete(id: string, expectedUpdatedAt?: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`, versionHeader(expectedUpdatedAt)).pipe(
       tap(() => this.notifyCharacterChanged(id))
     );
   }
