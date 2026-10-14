@@ -7,4 +7,4 @@ BEGIN
                              OLD.updated_at + INTERVAL '1 microsecond');
     RETURN NEW;
 END;
-$$ LANGUAGE 'plpgsql' SET search_path = public;
+$$ LANGUAGE 'plpgsql' SET search_path = public, pg_temp;
