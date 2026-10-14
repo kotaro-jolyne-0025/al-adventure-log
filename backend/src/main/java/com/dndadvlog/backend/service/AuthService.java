@@ -106,7 +106,7 @@ public class AuthService {
 
         // 安全考量：無論使用者是否存在，皆不向前端洩漏帳號是否存在
         if (user == null) {
-            log.info("忘記密碼申請: Email {} 不存在於資料庫，忽略信件發送。", normalizedEmail);
+            log.info("忘記密碼申請已處理；若帳號存在，將寄送重設信件。");
             return;
         }
 
@@ -130,8 +130,8 @@ public class AuthService {
 
         resetTokenMapper.insert(resetToken);
 
-        // 3. 發送郵件或於後端 Console 輸出
-        emailService.sendPasswordResetEmail(user.getEmail(), user.getDisplayName(), rawToken, expiryMinutes);
+        // 3. 發送郵件，不在日誌記錄重設憑證
+        emailService.sendPasswordResetEmail(user.getEmail(), rawToken, expiryMinutes);
     }
 
     @Transactional
@@ -161,7 +161,7 @@ public class AuthService {
 
         // 標記 Token 為已使用
         resetTokenMapper.markAsUsed(resetToken.getId(), LocalDateTime.now());
-        log.info("使用者 {} 密碼已成功重設", user.getEmail());
+        log.info("使用者密碼已成功重設。");
     }
 
     public void verifyResetToken(String token) {

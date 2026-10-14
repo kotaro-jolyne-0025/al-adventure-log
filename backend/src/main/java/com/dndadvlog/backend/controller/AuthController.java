@@ -3,7 +3,9 @@ package com.dndadvlog.backend.controller;
 import com.dndadvlog.backend.config.UserPrincipal;
 import com.dndadvlog.backend.dto.auth.*;
 import com.dndadvlog.backend.service.AuthService;
+import com.dndadvlog.backend.service.AuthRateLimitService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,17 +19,20 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthRateLimitService rateLimitService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("📢 [POST /api/auth/register] 收到新使用者註冊請求: {}", request.getEmail());
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        log.info("收到註冊請求。");
+        rateLimitService.check("register", request.getEmail(), httpRequest);
         AuthResponse response = authService.register(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        log.info("📢 [POST /api/auth/login] 收到使用者登入請求: {}", request.getEmail());
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        log.info("收到登入請求。");
+        rateLimitService.check("login", request.getEmail(), httpRequest);
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
@@ -40,8 +45,9 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        log.info("📢 [POST /api/auth/forgot-password] 收到忘記密碼申請: {}", request.getEmail());
+    public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest httpRequest) {
+        log.info("收到忘記密碼申請。");
+        rateLimitService.check("forgot-password", request.getEmail(), httpRequest);
         authService.forgotPassword(request);
         return ResponseEntity.ok(java.util.Map.of("message", "若此 Email 存在於系統中，已發送重設密碼信件至您的電子信箱"));
     }

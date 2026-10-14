@@ -9,6 +9,10 @@
 - 新增冒險使用 defaults 回應的 `characterUpdatedAt` 檢查角色基準。完整冒險的主紀錄、子清單及相容庫存使用同一 REPEATABLE READ 快照。
 - 此規則由業務 API 執行；直接 SQL 或後續背景寫入也必須維持相同鎖順序與時間戳失效規則，不得跳過主紀錄標記。
 
+## Migration 29（認證限流操作紀錄）
+
+V29 新增啟用 RLS 的 `auth_rate_limits` 操作資料表，撤銷 `PUBLIC`、`anon` 與 `authenticated` 的表權限。該表使用 HMAC 後的認證路由／Email／來源識別值作主鍵，記錄視窗計數、冷卻時間及索引化到期時間。登入、註冊及忘記密碼的限制以 PostgreSQL 原子 upsert 共用於所有後端執行個體；到期資料由限流請求分批清理。此 migration 不修改 `users` 或角色資料欄位。
+
 > 2026-09-19 已加入 Flyway V20 變化式帳本 migration，V23 增加角色開卡金幣與休整期基準欄位，V24 要求每個角色都有非空白的開卡職業／等級基準。倉庫的 `character_id`、
 > `adventure_entry_id`、`adventure_gained_item_id` 不只有各別外鍵存在性要求，
 > 服務層寫入時還必須驗證三者屬於同一角色／冒險，防止不合法關聯影響同步與級聯刪除。

@@ -24,18 +24,11 @@ public class EmailService {
     @Value("${app.frontend.url:http://localhost:4200}")
     private String frontendUrl;
 
-    public void sendPasswordResetEmail(String toEmail, String displayName, String token, int expiryMinutes) {
+    public void sendPasswordResetEmail(String toEmail, String token, int expiryMinutes) {
         String resetUrl = frontendUrl + "/reset-password?token=" + token;
 
-        log.info("================================================================================");
-        log.info("📧 [密碼重設通知]");
-        log.info("   收件者: {} ({})", displayName, toEmail);
-        log.info("   重設連結: {}", resetUrl);
-        log.info("   有效時間: {} 分鐘", expiryMinutes);
-        log.info("================================================================================");
-
         if (mailSender == null || mailHost == null || mailHost.isBlank()) {
-            log.info("ℹ️ 未設定 SMTP 郵件伺服器 (spring.mail.host 為空)，僅以 Log 印出重設連結。");
+            log.warn("密碼重設信件未寄出：SMTP 尚未設定。");
             return;
         }
 
@@ -66,9 +59,9 @@ public class EmailService {
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
-            log.info("✅ 密碼重設信件已成功寄送至: {}", toEmail);
+            log.info("密碼重設信件已寄送。");
         } catch (Exception e) {
-            log.error("❌ 寄送密碼重設郵件時發生錯誤 (Email: {}): {}", toEmail, e.getMessage());
+            log.error("密碼重設信件寄送失敗 ({})。", e.getClass().getSimpleName());
         }
     }
 }

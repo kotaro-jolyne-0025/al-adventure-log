@@ -44,7 +44,7 @@ public class OAuthService {
     @Value("${app.oauth.discord.redirect-uri:http://localhost:4200/auth/callback/discord}")
     private String discordDefaultRedirectUri;
 
-    public record OAuthUserInfo(String provider, String providerUserId, String email, String displayName, String avatarUrl) {}
+    public record OAuthUserInfo(String provider, String providerUserId, String email, String displayName, String avatarUrl, boolean emailVerified) {}
 
     @Transactional
     public User processOAuthLogin(OAuthLoginRequest request) {
@@ -73,18 +73,23 @@ public class OAuthService {
         UserOAuthAccount existingOAuth = oauthAccountMapper.findByProviderAndProviderUserId(userInfo.provider(), userInfo.providerUserId());
         if (existingOAuth != null) {
             User user = userMapper.findById(existingOAuth.getUserId());
-            if (user != null) {
-                updateAvatarIfPresent(user, userInfo.avatarUrl());
-                return user;
+            if (user == null || Boolean.FALSE.equals(user.getIsActive())) {
+                throw new BusinessException("此帳號目前無法登入，請聯繫管理員");
             }
+            if ("GOOGLE".equals(userInfo.provider()) && user.getPasswordHash() != null) {
+                userMapper.updatePassword(user.getId(), null);
+                user.setPasswordHash(null);
+            }
+            updateAvatarIfPresent(user, userInfo.avatarUrl());
+            return user;
         }
 
         // 2. 檢查 email 是否已註冊過
         if (userInfo.email() != null && !userInfo.email().isBlank()) {
             User emailUser = userMapper.findByEmail(userInfo.email());
             if (emailUser != null) {
-                bindOAuthAccount(emailUser.getId(), userInfo);
-                return emailUser;
+                // Never attach an unbound provider subject using email alone.
+                throw new BusinessException("此登入方式尚未連結，請先使用原本的登入方式");
             }
         }
 
@@ -110,6 +115,7 @@ public class OAuthService {
     }
 
     private User createNewUserWithOAuth(OAuthUserInfo userInfo) {
+        validateProviderEmail(userInfo.email(), userInfo.emailVerified());
         UUID newUserId = UUID.randomUUID();
         String fallbackEmail = (userInfo.email() != null && !userInfo.email().isBlank())
                 ? userInfo.email()
@@ -131,6 +137,12 @@ public class OAuthService {
 
         bindOAuthAccount(newUserId, userInfo);
         return newUser;
+    }
+
+    void validateProviderEmail(String email, boolean verified) {
+        if (email != null && !email.isBlank() && !verified) {
+            throw new BusinessException("第三方帳號電子郵件尚未驗證，請完成驗證後再登入");
+        }
     }
 
     private OAuthUserInfo verifyGoogleToken(String tokenOrCode) {
@@ -155,7 +167,7 @@ public class OAuthService {
             String name = root.path("name").asText(root.path("given_name").asText("Google 玩家"));
             String picture = root.path("picture").asText(null);
 
-            return new OAuthUserInfo("GOOGLE", sub, email, name, picture);
+            return new OAuthUserInfo("GOOGLE", sub, email, name, picture, true);
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientException | JsonProcessingException e) {
@@ -213,6 +225,7 @@ public class OAuthService {
             String discordId = userJson.path("id").asText();
             String username = userJson.path("global_name").asText(userJson.path("username").asText("Discord 玩家"));
             String email = userJson.path("email").asText(null);
+            boolean emailVerified = userJson.path("verified").asBoolean(false);
             String avatarHash = userJson.path("avatar").asText(null);
 
             String avatarUrl = null;
@@ -223,12 +236,13 @@ public class OAuthService {
             // 3. 主動撤銷 Access Token（用完即棄，減少暴露風險）
             revokeDiscordToken(accessToken);
 
-            return new OAuthUserInfo("DISCORD", discordId, email, username, avatarUrl);
+            validateProviderEmail(email, emailVerified);
+            return new OAuthUserInfo("DISCORD", discordId, email, username, avatarUrl, emailVerified);
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientException | JsonProcessingException e) {
-            log.error("Discord OAuth 交換失敗: {}", e.getMessage());
-            throw new BusinessException("Discord 登入驗證失敗: " + e.getMessage());
+            log.warn("Discord OAuth 交換失敗 ({})", e.getClass().getSimpleName());
+            throw new BusinessException("Discord 登入驗證失敗，請重新登入或稍後再試");
         }
     }
 
@@ -254,7 +268,7 @@ public class OAuthService {
             log.debug("Discord access token 已成功撤銷");
         } catch (Exception e) {
             // Revoke 失敗不影響登入流程，僅記錄警告
-            log.warn("Discord token 撤銷失敗（不影響登入）: {}", e.getMessage());
+            log.warn("Discord token 撤銷失敗（不影響登入，{}）", e.getClass().getSimpleName());
         }
     }
 }

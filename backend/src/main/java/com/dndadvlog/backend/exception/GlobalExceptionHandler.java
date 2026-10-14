@@ -2,6 +2,7 @@ package com.dndadvlog.backend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,6 +22,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePrecondition(
             org.springframework.web.server.ResponseStatusException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getReason(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<Map<String, Object>> handleRateLimit(
+            RateLimitException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(buildBody(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(BusinessException.class)
@@ -64,12 +73,16 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<Map<String, Object>> buildResponse(
             HttpStatus status, String message, String path) {
+        return ResponseEntity.status(status).body(buildBody(status, message, path));
+    }
+
+    private Map<String, Object> buildBody(HttpStatus status, String message, String path) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
         body.put("message", message);
         body.put("path", path);
-        return ResponseEntity.status(status).body(body);
+        return body;
     }
 }

@@ -68,6 +68,19 @@ describe('Daily account confirmation', () => {
     vi.restoreAllMocks();
   });
 
+  it('surfaces a rate limit response without automatically retrying login', async () => {
+    const service = await start();
+    const failure = vi.fn();
+    service.login({ email: user.email, password: 'wrong-password' }).subscribe({ error: failure });
+    http.expectOne(`${api}/login`).flush(
+      { status: 429, message: '嘗試次數過多，請稍後再試' },
+      { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '900' } },
+    );
+    expect(failure).toHaveBeenCalledTimes(1);
+    expect(failure.mock.calls[0][0].status).toBe(429);
+    http.expectNone(`${api}/login`);
+  });
+
   it('uses the stored account on reload and repeated navigation within 24 hours', async () => {
     storedSession({ userId: user.id, checkedAt: now - day + 1 });
     const service = await start();
