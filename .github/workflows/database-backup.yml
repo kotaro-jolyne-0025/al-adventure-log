@@ -1,0 +1,65 @@
+name: Private database backup
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: database-backups
+    steps:
+      - name: Validate private backup configuration
+        shell: bash
+        env:
+          BACKUP_BUCKET: ${{ vars.GCP_BACKUP_BUCKET }}
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          SERVICE_ACCOUNT: ${{ vars.GCP_BACKUP_SERVICE_ACCOUNT }}
+          DATABASE_URL: ${{ secrets.DB_BACKUP_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_BUCKET"
+          test -n "$WIF_PROVIDER"
+          test -n "$SERVICE_ACCOUNT"
+          test -n "$DATABASE_URL"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_BACKUP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Verify bucket privacy and retention
+        shell: bash
+        env:
+          BACKUP_BUCKET: ${{ vars.GCP_BACKUP_BUCKET }}
+        run: |
+          set -euo pipefail
+          policy="$(gcloud storage buckets describe "gs://${BACKUP_BUCKET}" --format=json)"
+          jq -e '.public_access_prevention == "enforced" and .uniform_bucket_level_access == true and any(.lifecycle_config.rule[]?; .action.type == "Delete" and .condition.age > 0)' <<<"$policy" >/dev/null
+
+      - name: Create and upload PostgreSQL custom dump
+        shell: bash
+        env:
+          BACKUP_BUCKET: ${{ vars.GCP_BACKUP_BUCKET }}
+          DATABASE_URL: ${{ secrets.DB_BACKUP_URL }}
+        run: |
+          set -euo pipefail
+          dump_file="$(mktemp --tmpdir="$RUNNER_TEMP" --suffix=.dump)"
+          trap 'rm -f "$dump_file"' EXIT
+          container_dump_file="/backup/$(basename "$dump_file")"
+          docker run --rm \
+            --env DATABASE_URL \
+            --env DUMP_FILE="$container_dump_file" \
+            --volume "$RUNNER_TEMP:/backup" \
+            postgres:17 sh -c 'pg_dump --schema=public --no-owner --no-acl --format=custom --file="$DUMP_FILE" "$DATABASE_URL"'
+          test -s "$dump_file"
+          object="backups/$(date -u +%Y/%m/%d)/database-$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_RUN_ID}.dump"
+          gcloud storage cp "$dump_file" "gs://${BACKUP_BUCKET}/${object}"
+          echo "Uploaded private backup object: ${object}"

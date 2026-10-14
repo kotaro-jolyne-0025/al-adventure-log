@@ -1,0 +1,85 @@
+name: Isolated database restore drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      object:
+        description: Private GCS object path, such as backups/YYYY/MM/DD/database-....dump
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    environment: database-backups
+    steps:
+      - name: Validate private backup configuration
+        shell: bash
+        env:
+          BACKUP_BUCKET: ${{ vars.GCP_BACKUP_BUCKET }}
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          SERVICE_ACCOUNT: ${{ vars.GCP_BACKUP_SERVICE_ACCOUNT }}
+          DUMP_OBJECT: ${{ inputs.object }}
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_BUCKET"
+          test -n "$WIF_PROVIDER"
+          test -n "$SERVICE_ACCOUNT"
+          [[ "$DUMP_OBJECT" =~ ^backups/[A-Za-z0-9._/-]+\.dump$ ]]
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_BACKUP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Verify bucket privacy and retention
+        shell: bash
+        env:
+          BACKUP_BUCKET: ${{ vars.GCP_BACKUP_BUCKET }}
+        run: |
+          set -euo pipefail
+          policy="$(gcloud storage buckets describe "gs://${BACKUP_BUCKET}" --format=json)"
+          jq -e '.public_access_prevention == "enforced" and .uniform_bucket_level_access == true and any(.lifecycle_config.rule[]?; .action.type == "Delete" and .condition.age > 0)' <<<"$policy" >/dev/null
+
+      - name: Restore only into a disposable local PostgreSQL container
+        shell: bash
+        env:
+          BACKUP_BUCKET: ${{ vars.GCP_BACKUP_BUCKET }}
+          DUMP_OBJECT: ${{ inputs.object }}
+        run: |
+          set -euo pipefail
+          dump_file="$(mktemp --suffix=.dump)"
+          container="restore-drill-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            rm -f "$dump_file"
+          }
+          trap cleanup EXIT
+          gcloud storage cp "gs://${BACKUP_BUCKET}/${DUMP_OBJECT}" "$dump_file"
+          docker run --network none --detach --rm --name "$container" \
+            --env POSTGRES_PASSWORD=drill-only \
+            --env POSTGRES_DB=restore_drill postgres:17 >/dev/null
+          for attempt in {1..30}; do
+            if docker exec "$container" pg_isready -U postgres -d restore_drill >/dev/null 2>&1; then break; fi
+            if [[ "$attempt" == 30 ]]; then echo 'Disposable PostgreSQL did not become ready.' >&2; exit 1; fi
+            sleep 2
+          done
+          docker cp "$dump_file" "$container:/tmp/restore.dump"
+          docker exec "$container" pg_restore --exit-on-error --no-owner --no-acl \
+            --username=postgres --dbname=restore_drill /tmp/restore.dump
+          table_count="$(docker exec "$container" psql -U postgres -d restore_drill -X -At \
+            -c "SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema')")"
+          test "$table_count" -gt 0
+          has_users="$(docker exec "$container" psql -U postgres -d restore_drill -X -At \
+            -c "SELECT to_regclass('public.users') IS NOT NULL")"
+          test "$has_users" = 't'
+          echo "Restored schema contains ${table_count} application tables. Row counts:"
+          docker exec "$container" psql -U postgres -d restore_drill -X -AtF ' ' \
+            -c "SELECT format('SELECT %L, count(*) FROM %I.%I;', schemaname || '.' || tablename, schemaname, tablename) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema') ORDER BY schemaname, tablename" \
+            | docker exec -i "$container" psql -U postgres -d restore_drill -X -AtF ' '
