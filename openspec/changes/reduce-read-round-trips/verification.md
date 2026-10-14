@@ -23,6 +23,10 @@
 
 ## 2026-10-14 後續授權驗證
 
-後续使用者授權驗證後，已實際執行隔離 PostgreSQL 的列表 SQL、defaults 及完整讀取交易測試；確認即時靈魂幣 quantity、零物品角色、使用者歸屬及一致讀取。服務測試確認列表沒有逐角色庫存查詢；HttpTestingController 確認詳情只發一筆 GET，新冒險表單不下載倉庫。前端 203 項、後端 85 項回歸及前後端正式建置通過；詳細結果與觸發器修正見 protect-updates-with-timestamps/verification.md。
+後續使用者授權驗證後，已實際執行隔離 PostgreSQL 的列表 SQL、defaults 及完整讀取交易測試；確認即時靈魂幣 quantity、零物品角色、使用者歸屬及一致讀取。服務測試確認列表沒有逐角色庫存查詢；HttpTestingController 確認詳情只發一筆 GET，新冒險表單不下載倉庫。前端 203 項、後端 85 項回歸及前後端正式建置通過；詳細結果與觸發器修正見 protect-updates-with-timestamps/verification.md。
 
-尚未做瀏覽器人工驗收或正式站速度比較；不得用先前 SQL 毫秒數或本機測試宣稱正式延遲改善。本次無 commit、push、升版或部署，正式站仍為既有 v1.6.2。後續發布須先確認 V28 與新版後端，再提供新前端行為。
+尚未做瀏覽器人工驗收或正式站速度比較；不得用先前 SQL 毫秒數或本機測試宣稱正式延遲改善。
+
+## 2026-10-14 授權後部署
+
+使用者後續授權部署除 README 外的本輪修改。PR #29 合併 commit `5a664c9ba70f76a6080d986ab5eeaa21f05580df` 已完成前後端 CI/CD，正式版本為 v2.0.0，V28 已套用；README 保留本機。完整紀錄見 adopt-polyform-noncommercial/verification.md，手機速度與實際操作交由使用者驗收，未建立 Tag／Release。
