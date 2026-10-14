@@ -163,7 +163,7 @@
             adventure_notes            = #{adventureNotes},
             soul_coin_charges_used     = #{soulCoinChargesUsed},
             recording_model_version    = COALESCE(#{recordingModelVersion}, recording_model_version),
-            updated_at                 = NOW()
+            updated_at                 = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
         WHERE id = #{id}::uuid
     </update>
 

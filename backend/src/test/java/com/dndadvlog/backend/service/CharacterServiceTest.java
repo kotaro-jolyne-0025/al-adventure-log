@@ -40,6 +40,21 @@ class CharacterServiceTest {
     private CharacterService service;
 
     @Test
+    void listUsesBatchedSoulCoinTotalsWithoutPerCharacterInventoryQueries() {
+        UUID userId = UUID.randomUUID();
+        Character first = new Character();
+        first.setId(UUID.randomUUID());
+        first.setSoulCoins(3);
+        Character second = new Character();
+        second.setId(UUID.randomUUID());
+        second.setSoulCoins(0);
+        when(characterMapper.findByUserId(userId)).thenReturn(List.of(first, second));
+        assertEquals(List.of(3, 0), service.getAllCharacters(userId).stream().map(CharacterResponse::getSoulCoins).toList());
+        org.mockito.Mockito.verifyNoInteractions(inventoryItemMapper);
+        verify(characterMapper).findByUserId(userId);
+    }
+
+    @Test
     void rejectsIndependentSoulCoinWrites() {
         CharacterRequest request = request(null);
         request.setSoulCoins(2);

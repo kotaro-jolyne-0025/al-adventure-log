@@ -375,14 +375,14 @@ export class InventoryListComponent implements OnInit {
         if (!confirmed || this.readOnly()) return;
         // 樂觀更新：立即從本地移除
         this.allItems.update((items) => items.filter((i) => i.id !== item.id));
-        this.inventoryService.delete(this.characterId, item.id).subscribe({
+        this.inventoryService.delete(this.characterId, item.id, item.updatedAt).subscribe({
           next: () => {
             this.snackBar.open(`已刪除「${item.itemName}」`, '關閉', { duration: 2500 });
           },
-          error: () => {
+          error: error => {
             this.allItems.update(items => items.some(existing => existing.id === item.id)
               ? items : [...items, item]);
-            this.snackBar.open('刪除失敗', '關閉', { duration: 3000 });
+            this.snackBar.open(error.error?.message || '刪除失敗', '關閉', { duration: 6000 });
             this.loadItems(true);
           },
         });

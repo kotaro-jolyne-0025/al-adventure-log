@@ -30,11 +30,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { AdventureService } from '../../../core/services/adventure.service';
-import { InventoryService } from '../../../core/services/inventory.service';
 import { AdventureEntryRequest, AdventureEntrySaveRequest, AdventureGainedItem } from '../../../core/models/adventure.model';
 import { ItemCategory, ItemRarity, ITEM_CATEGORIES, PERMANENT_ITEM_CATEGORIES, ITEM_CATEGORY_LABELS, ITEM_CATEGORY_OPTION_LABELS, ITEM_RARITY_LABELS } from '../../../core/models/inventory.model';
 import { DND_CLASSES, parseClassLevels } from '../../../core/models/dnd-classes';
-import { firstValueFrom, of, forkJoin, map, switchMap, takeUntil } from 'rxjs';
+import { firstValueFrom, of, map, switchMap, takeUntil } from 'rxjs';
 
 import {
   LucideCoins,
@@ -115,7 +114,6 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly adventureService = inject(AdventureService);
-  private readonly inventoryService = inject(InventoryService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly draft = inject(AdventureDraftSession);
   private readonly draftUpdate = inject(DraftUpdateCoordinator);
@@ -125,7 +123,6 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   private readonly formRevision = signal(0);
   private readonly host = inject(ElementRef);
   protected readonly dateText = signal('');
-  private restoredDraft = false;
   private cloudSaved = false;
   private initialInput?: AdventureDraftInput;
   protected readonly leaveFailed = signal(false);
@@ -394,11 +391,18 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   private loadDefaults(): void {
     this.isLoading.set(true);
     this.loadFailed.set(false);
-    forkJoin({
-      d: this.adventureService.getDefaults(this.characterId, true),
-      inventory: this.inventoryService.getAllByCharacter(this.characterId, true),
-    }).pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
-      next: ({ d, inventory }) => {
+    this.adventureService.getDefaults(this.characterId, true).pipe(
+      map(d => {
+        if (typeof d.characterUpdatedAt !== 'string' || !d.characterUpdatedAt || typeof d.startingMagicItems !== 'number'
+            || !Number.isInteger(d.startingMagicItems) || d.startingMagicItems < 0) {
+          throw new Error('倉庫物品統計不完整，請重新載入。');
+        }
+        return d;
+      }),
+      takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy),
+    ).subscribe({
+      next: d => {
+        this.expectedUpdatedAt = d.characterUpdatedAt;
         if (d.startingLevel != null) {
           this._startingLevel.set(d.startingLevel);
         }
@@ -409,14 +413,10 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
             this.classEntries.set(parsed);
           }
         }
-        const warehouseMagicCount = (inventory ?? [])
-          .filter((i) => i.itemType === 'PERMANENT')
-          .reduce((sum, i) => sum + (i.quantity || 1), 0);
-
         this.form.patchValue({
           startingGold: d.startingGold ?? 0,
           startingDowntime: d.startingDowntime ?? 0,
-          startingMagicItems: warehouseMagicCount,
+          startingMagicItems: d.startingMagicItems,
         });
         this.isLoading.set(false);
         this.initialInput = this.captureInput();
@@ -430,28 +430,15 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.loadFailed.set(false);
     this.detailsLoaded = false;
-    forkJoin({
-      entry: this.adventureService.getById(this.characterId, id),
-      gainedItems: this.adventureService.getGainedItems(id),
-      storyAwards: this.adventureService.getStoryAwards(id),
-    }).pipe(
-      switchMap(result => {
-        if (result.gainedItems.length > 0) return of(result);
-        // Only a successful empty snapshot response permits the legacy fallback.
-        return this.inventoryService.getAllByCharacter(this.characterId).pipe(
-          map(items => ({
-            ...result,
-            gainedItems: items.filter(item =>
-              !item.adventureGainedItemId &&
-              (item.adventureEntryId === id ||
-                (!item.adventureEntryId && this.isSourceMatch(item.source,
-                  result.entry.adventureName, result.entry.adventureCode)))
-            ).map(item => ({ ...item, adventureEntryId: id })),
-          }))
-        );
-      })
+    this.adventureService.getDetails(this.characterId, id).pipe(
+      map(result => ({ ...result, gainedItems: result.gainedItems.length ? result.gainedItems
+        : result.legacyItems.filter(item => !item.adventureGainedItemId &&
+            (item.adventureEntryId === id || (!item.adventureEntryId &&
+              this.isSourceMatch(item.source, result.entry.adventureName, result.entry.adventureCode))))
+            .map(item => ({ ...item, adventureEntryId: id })) })),
     ).pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
       next: ({ entry, gainedItems, storyAwards }) => {
+        this.expectedUpdatedAt = entry.updatedAt;
         this._startingLevel.set(entry.startingLevel ?? 1);
         this._startingClassesString.set(entry.startingClassesString ?? null);
 
@@ -552,7 +539,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   private captureInput(): AdventureDraftInput {
     const form = draftFormValues(this.form.getRawValue());
     if (!form['playDate'] && this.dateText()) form['playDateText'] = this.dateText();
-    return structuredClone({ form,
+    return structuredClone({ form, expectedUpdatedAt: this.expectedUpdatedAt,
       levelUp: this.levelUp(), catchup: this.catchup(), catchupCount: this.catchupCount(), classes: this.classEntries(),
       magicItems: this.gainedMagicItems(), consumables: this.gainedConsumableItems(),
       awards: this.storyAwards(), activities: this.downtimeActivities() });
@@ -562,6 +549,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     const input = this.draft.accept();
     if (!input) return;
     this.recoveredText.set('');
+    this.expectedUpdatedAt = input.expectedUpdatedAt;
     const { startingGold, startingDowntime, startingMagicItems, ...editable } = input.form;
     const initialForm = this.initialInput?.form ?? this.form.getRawValue();
     this.form.reset({
@@ -582,7 +570,6 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     this.gainedMagicItems.set(input.magicItems as ReturnType<typeof this.gainedMagicItems>);
     this.gainedConsumableItems.set(input.consumables as ReturnType<typeof this.gainedConsumableItems>);
     this.storyAwards.set(input.awards); this.downtimeActivities.set(input.activities);
-    this.restoredDraft = this.isEditMode();
     this.form.markAsDirty();
   }
 
@@ -1089,11 +1076,14 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     };
   }
 
+  protected writeConflict = signal(false);
+  private expectedUpdatedAt?: string;
   protected formError = signal<string | null>(null);
   protected errorTarget = signal('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
 
   protected onSubmit(): void {
     this.formError.set(null);
+    this.writeConflict.set(false);
     if (this.isSaving() || this.isLoading() || this.loadFailed() || this.draft.offered() ||
         (this.isEditMode() && !this.detailsLoaded)) return;
     if (this.form.invalid) {
@@ -1153,19 +1143,17 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     this.flushDraft();
     this.draft.pause();
     const req = this.buildRequest();
-    const saveRequest = this.buildSaveRequest(req);
+    const saveRequest = { ...this.buildSaveRequest(req), expectedUpdatedAt: this.expectedUpdatedAt };
 
     if (this.isEditMode() && this.entryId) {
-      const submit = this.restoredDraft ? this.readCloudBaseline().pipe(switchMap(baseline => {
-        if (!this.draft.baselineMatches(baseline)) throw new Error('這份紀錄已更新。為避免覆蓋新資料，請確認目前內容後再重新載入。');
-        return this.adventureService.updateWithDetails(this.characterId, this.entryId!, saveRequest);
-      })) : this.adventureService.updateWithDetails(this.characterId, this.entryId, saveRequest);
+      const submit = this.adventureService.updateWithDetails(this.characterId, this.entryId, saveRequest);
       submit.pipe(takeUntil(this.draft.retired), takeUntilDestroyed(this.destroy)).subscribe({
         next: (updated) => {
           void this.completeSave(updated.id, '記錄已更新');
         },
         error: (error) => {
           this.isSaving.set(false);
+          this.writeConflict.set([409, 428].includes(error.status));
           this.formError.set(error.error?.message || error.message || '更新失敗，請稍後再試');
           if (error.status === 0 || error.status >= 500) this.formError.set('目前無法確認是否儲存成功。草稿仍保留，請先查看紀錄列表。');
           this.errorTarget.set('');
@@ -1179,6 +1167,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           this.isSaving.set(false);
+          this.writeConflict.set([409, 428].includes(error.status));
           this.formError.set(error.error?.message || '新增失敗，請稍後再試');
           if (error.status === 0 || error.status >= 500) this.formError.set('目前無法確認是否儲存成功。草稿仍保留，請先查看紀錄列表。');
           this.errorTarget.set('');
@@ -1204,13 +1193,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/characters', this.characterId, 'adventures', id]);
   }
 
-  private readCloudBaseline() {
-    return forkJoin({ entry: this.adventureService.getById(this.characterId, this.entryId!),
-      gainedItems: this.adventureService.getGainedItems(this.entryId!), storyAwards: this.adventureService.getStoryAwards(this.entryId!)
-    }).pipe(switchMap(result => result.gainedItems.length ? of(result)
-      : this.inventoryService.getAllByCharacter(this.characterId, true).pipe(map(items => ({ ...result,
-        gainedItems: items.filter(item => !item.adventureGainedItemId && (item.adventureEntryId === this.entryId ||
-          (!item.adventureEntryId && this.isSourceMatch(item.source, result.entry.adventureName, result.entry.adventureCode))))
-          .map(item => ({ ...item, adventureEntryId: this.entryId! })) })))), map(adventureBaseline));
+  protected latestDataUrl(): string {
+    return `/characters/${this.characterId}/adventures${this.entryId ? '/' + this.entryId : ''}`;
   }
 }

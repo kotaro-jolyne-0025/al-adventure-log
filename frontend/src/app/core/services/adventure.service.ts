@@ -1,6 +1,7 @@
+import { versionHeader, writeRequest } from './write-precondition';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { map, Observable, tap } from 'rxjs';
 import { RequestCache } from './request-cache';
 import { environment } from '../../../environments/environment';
 import {
@@ -55,10 +56,26 @@ export class AdventureService {
     );
   }
 
+  getDetails(characterId: string, entryId: string) {
+    return this.getById(characterId, entryId).pipe(map(response => {
+      if (response.characterId !== characterId || !Array.isArray(response.storyAwards) || !Array.isArray(response.gainedItems)
+          || typeof response.updatedAt !== 'string' || !response.updatedAt) {
+        throw new Error('冒險資料或更新時間不完整，請更新網頁後重新載入。');
+      }
+      const storyAwards = response.storyAwards;
+      const { gainedItems, legacyItems, ...entry } = response;
+      if (gainedItems.length === 0 && !Array.isArray(legacyItems)) {
+        throw new Error('舊倉庫資料未完整載入。');
+      }
+      return { entry, gainedItems, storyAwards, legacyItems: legacyItems ?? [] };
+    }));
+  }
+
   create(characterId: string, req: AdventureEntryRequest): Observable<AdventureEntry> {
+    const { body, options } = writeRequest(req);
     return this.http.post<AdventureEntry>(
       `${this.base}/${characterId}/entries`,
-      req
+      body, options
     ).pipe(
       tap(() => {
         this.clearCache(characterId);
@@ -68,9 +85,10 @@ export class AdventureService {
   }
 
   createWithDetails(characterId: string, req: AdventureEntrySaveRequest): Observable<AdventureEntry> {
+    const { body, options } = writeRequest(req);
     return this.http.post<AdventureEntry>(
       `${this.base}/${characterId}/entries/with-details`,
-      req
+      body, options
     ).pipe(
       tap(() => {
         this.clearCache(characterId);
@@ -84,9 +102,10 @@ export class AdventureService {
     entryId: string,
     req: AdventureEntryRequest
   ): Observable<AdventureEntry> {
+    const { body, options } = writeRequest(req);
     return this.http.put<AdventureEntry>(
       `${environment.apiUrl}/entries/${entryId}`,
-      req
+      body, options
     ).pipe(
       tap(() => {
         this.clearCache(characterId);
@@ -100,9 +119,10 @@ export class AdventureService {
     entryId: string,
     req: AdventureEntrySaveRequest
   ): Observable<AdventureEntry> {
+    const { body, options } = writeRequest(req);
     return this.http.put<AdventureEntry>(
       `${environment.apiUrl}/entries/${entryId}/with-details`,
-      req
+      body, options
     ).pipe(
       tap(() => {
         this.clearCache(characterId);
@@ -111,9 +131,10 @@ export class AdventureService {
     );
   }
 
-  delete(characterId: string, entryId: string): Observable<void> {
+  delete(characterId: string, entryId: string, expectedUpdatedAt?: string): Observable<void> {
     return this.http.delete<void>(
-      `${environment.apiUrl}/entries/${entryId}`
+      `${environment.apiUrl}/entries/${entryId}`,
+      versionHeader(expectedUpdatedAt)
     ).pipe(
       tap(() => {
         this.clearCache(characterId);
@@ -126,22 +147,25 @@ export class AdventureService {
   // 後端路徑：/api/entries/{entryId}/downtime-activities
 
   addDowntime(entryId: string, req: DowntimeActivityRequest): Observable<DowntimeActivity> {
+    const { body, options } = writeRequest(req);
     return this.http.post<DowntimeActivity>(
       `${environment.apiUrl}/entries/${entryId}/downtime-activities`,
-      req
+      body, options
     );
   }
 
   updateDowntime(downtimeId: string, req: DowntimeActivityRequest): Observable<DowntimeActivity> {
+    const { body, options } = writeRequest(req);
     return this.http.put<DowntimeActivity>(
       `${environment.apiUrl}/downtime-activities/${downtimeId}`,
-      req
+      body, options
     );
   }
 
-  deleteDowntime(entryId: string, downtimeId: string): Observable<void> {
+  deleteDowntime(entryId: string, downtimeId: string, expectedUpdatedAt?: string): Observable<void> {
     return this.http.delete<void>(
-      `${environment.apiUrl}/downtime-activities/${downtimeId}`
+      `${environment.apiUrl}/downtime-activities/${downtimeId}`,
+      versionHeader(expectedUpdatedAt)
     );
   }
 
@@ -155,22 +179,25 @@ export class AdventureService {
   }
 
   addGainedItem(entryId: string, req: AdventureGainedItemRequest): Observable<AdventureGainedItem> {
+    const { body, options } = writeRequest(req);
     return this.http.post<AdventureGainedItem>(
       `${environment.apiUrl}/entries/${entryId}/gained-items`,
-      req
+      body, options
     );
   }
 
   updateGainedItem(entryId: string, itemId: string, req: AdventureGainedItemRequest): Observable<AdventureGainedItem> {
+    const { body, options } = writeRequest(req);
     return this.http.put<AdventureGainedItem>(
       `${environment.apiUrl}/entries/${entryId}/gained-items/${itemId}`,
-      req
+      body, options
     );
   }
 
-  deleteGainedItem(itemId: string): Observable<void> {
+  deleteGainedItem(itemId: string, expectedUpdatedAt?: string): Observable<void> {
     return this.http.delete<void>(
-      `${environment.apiUrl}/gained-items/${itemId}`
+      `${environment.apiUrl}/gained-items/${itemId}`,
+      versionHeader(expectedUpdatedAt)
     );
   }
 
@@ -184,22 +211,25 @@ export class AdventureService {
   }
 
   addStoryAward(entryId: string, req: StoryAwardRequest): Observable<StoryAward> {
+    const { body, options } = writeRequest(req);
     return this.http.post<StoryAward>(
       `${environment.apiUrl}/entries/${entryId}/story-awards`,
-      req
+      body, options
     );
   }
 
   updateStoryAward(entryId: string, awardId: string, req: StoryAwardRequest): Observable<StoryAward> {
+    const { body, options } = writeRequest(req);
     return this.http.put<StoryAward>(
       `${environment.apiUrl}/entries/${entryId}/story-awards/${awardId}`,
-      req
+      body, options
     );
   }
 
-  deleteStoryAward(awardId: string): Observable<void> {
+  deleteStoryAward(awardId: string, expectedUpdatedAt?: string): Observable<void> {
     return this.http.delete<void>(
-      `${environment.apiUrl}/story-awards/${awardId}`
+      `${environment.apiUrl}/story-awards/${awardId}`,
+      versionHeader(expectedUpdatedAt)
     );
   }
 }

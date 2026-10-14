@@ -39,6 +39,8 @@ public class AdventureEntryResponse {
     private Integer recordingModelVersion;
     private List<DowntimeActivityResponse> downtimeActivities;
     private List<StoryAwardResponse> storyAwards;
+    private List<AdventureGainedItemResponse> gainedItems;
+    private List<InventoryItemResponse> legacyItems;
     private List<String> warnings;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
