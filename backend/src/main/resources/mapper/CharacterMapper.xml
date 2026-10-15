@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dndadvlog.backend.mapper.CharacterMapper">
+
+    <!-- ResultMap：Character -->
+    <resultMap id="characterMap" type="com.dndadvlog.backend.entity.Character">
+        <id     property="id"            column="c_id"/>
+        <result property="userId"        column="user_id"/>
+        <result property="characterName" column="character_name"/>
+        <result property="playerName"    column="player_name"/>
+        <result property="race"          column="race"/>
+        <result property="subclass"      column="subclass"/>
+        <result property="faction"       column="faction"/>
+        <result property="avatarUrl"     column="avatar_url"/>
+        <result property="createdAt"     column="c_created_at"/>
+        <result property="updatedAt"     column="c_updated_at"/>
+        <result property="initialClassesString" column="initial_classes_string"/>
+        <result property="initialGold" column="initial_gold"/>
+        <result property="initialDowntime" column="initial_downtime"/>
+        <result property="currentClassesString" column="current_classes_string"/>
+        <result property="currentGold"   column="current_gold"/>
+        <result property="currentDowntime" column="current_downtime"/>
+        <result property="currentMagicItems" column="current_magic_items"/>
+        <result property="soulCoins"     column="soul_coins"/>
+        <result property="hasAdventureEntries" column="has_adventure_entries"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="characterMap">
+        SELECT
+            c.id           AS c_id,
+            c.user_id,
+            c.character_name,
+            c.player_name,
+            c.race,
+            c.subclass,
+            c.faction,
+            c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
+            c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
+            c.soul_coins,
+            c.created_at   AS c_created_at,
+            c.updated_at   AS c_updated_at
+        FROM "character" c
+        ORDER BY c.created_at ASC
+    </select>
+
+    <select id="findByUserId" resultMap="characterMap">
+        SELECT
+            c.id           AS c_id,
+            c.user_id,
+            c.character_name,
+            c.player_name,
+            c.race,
+            c.subclass,
+            c.faction,
+            c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
+            c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
+            COALESCE(soul.quantity, 0) AS soul_coins,
+            c.created_at   AS c_created_at,
+            c.updated_at   AS c_updated_at
+        FROM "character" c
+        LEFT JOIN (
+            SELECT i.character_id, SUM(i.quantity) AS quantity
+            FROM inventory_item i
+            INNER JOIN "character" owned ON owned.id = i.character_id
+            WHERE owned.user_id = #{userId}::uuid
+              AND i.item_type = 'CONSUMABLE'::item_type
+              AND i.is_soul_coin = TRUE
+            GROUP BY i.character_id
+        ) soul ON soul.character_id = c.id
+        WHERE c.user_id = #{userId}::uuid
+        ORDER BY c.created_at ASC
+    </select>
+
+    <select id="findById" resultMap="characterMap">
+        SELECT
+            c.id           AS c_id,
+            c.user_id,
+            c.character_name,
+            c.player_name,
+            c.race,
+            c.subclass,
+            c.faction,
+            c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
+            c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
+            c.soul_coins,
+            c.created_at   AS c_created_at,
+            c.updated_at   AS c_updated_at
+        FROM "character" c
+        WHERE c.id = #{id}::uuid
+    </select>
+
+    <select id="findByIdAndUserId" resultMap="characterMap">
+        SELECT
+            c.id           AS c_id,
+            c.user_id,
+            c.character_name,
+            c.player_name,
+            c.race,
+            c.subclass,
+            c.faction,
+            c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
+            c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
+            c.soul_coins,
+            c.created_at   AS c_created_at,
+            c.updated_at   AS c_updated_at
+        FROM "character" c
+        WHERE c.id = #{id}::uuid AND c.user_id = #{userId}::uuid
+    </select>
+
+    <select id="findByIdAndUserIdWithSummary" resultMap="characterMap">
+        SELECT
+            c.id           AS c_id,
+            c.user_id,
+            c.character_name,
+            c.player_name,
+            c.race,
+            c.subclass,
+            c.faction,
+            c.avatar_url,
+            c.initial_classes_string,
+            c.initial_gold,
+            c.initial_downtime,
+            c.current_classes_string,
+            c.current_gold,
+            c.current_downtime,
+            c.current_magic_items,
+            COALESCE((
+                SELECT SUM(i.quantity)
+                FROM inventory_item i
+                WHERE i.character_id = c.id
+                  AND i.item_type = 'CONSUMABLE'::item_type
+                  AND i.is_soul_coin = TRUE
+            ), 0) AS soul_coins,
+            EXISTS (SELECT 1 FROM adventure_entry e WHERE e.character_id = c.id) AS has_adventure_entries,
+            c.created_at   AS c_created_at,
+            c.updated_at   AS c_updated_at
+        FROM "character" c
+        WHERE c.id = #{id}::uuid AND c.user_id = #{userId}::uuid
+    </select>
+
+    <insert id="insert">
+        INSERT INTO "character" (
+            id, user_id, character_name, player_name, race, subclass, faction, avatar_url,
+            initial_classes_string, initial_gold, initial_downtime, current_classes_string,
+            current_gold, current_downtime, current_magic_items, soul_coins,
+            created_at, updated_at
+        )
+        VALUES (
+            #{id}::uuid,
+            #{userId}::uuid,
+            #{characterName},
+            #{playerName},
+            #{race},
+            #{subclass},
+            #{faction},
+            #{avatarUrl},
+            #{initialClassesString},
+            #{initialGold},
+            #{initialDowntime},
+            #{currentClassesString},
+            #{currentGold},
+            #{currentDowntime},
+            #{currentMagicItems},
+            #{soulCoins},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE "character"
+        SET
+            character_name = #{characterName},
+            player_name    = #{playerName},
+            race           = #{race},
+            subclass       = #{subclass},
+            faction        = #{faction},
+            avatar_url     = #{avatarUrl},
+            initial_classes_string = #{initialClassesString},
+            initial_gold = #{initialGold},
+            initial_downtime = #{initialDowntime},
+            current_classes_string = #{currentClassesString},
+            current_gold   = #{currentGold},
+            current_downtime = #{currentDowntime},
+            current_magic_items = #{currentMagicItems},
+            soul_coins     = #{soulCoins},
+            updated_at     = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
+        WHERE id = #{id}::uuid
+    </update>
+
+    <update id="updateCurrentMagicItems">
+        UPDATE "character"
+        SET current_magic_items = #{currentMagicItems}, updated_at = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
+        WHERE id = #{id}::uuid
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM "character" WHERE id = #{id}::uuid
+    </delete>
+
+
+
+</mapper>

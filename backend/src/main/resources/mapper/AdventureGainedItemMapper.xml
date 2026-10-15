@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dndadvlog.backend.mapper.AdventureGainedItemMapper">
+
+    <resultMap id="gainedItemMap" type="com.dndadvlog.backend.entity.AdventureGainedItem">
+        <id     property="id"               column="id"/>
+        <result property="adventureEntryId" column="adventure_entry_id"/>
+        <result property="itemName"         column="item_name"/>
+        <result property="itemType"         column="item_type"/>
+        <result property="rarity"           column="rarity"/>
+        <result property="itemCategory"     column="item_category"/>
+        <result property="requiresAttunement" column="requires_attunement"/>
+        <result property="isSoulCoin" column="is_soul_coin"/>
+        <result property="quantity"         column="quantity"/>
+        <result property="acquisitionSource" column="acquisition_source"/>
+        <result property="needsDetails"      column="needs_details"/>
+        <result property="notes"            column="notes"/>
+        <result property="createdAt"        column="created_at"/>
+        <result property="updatedAt"        column="updated_at"/>
+    </resultMap>
+
+    <select id="findByAdventureEntryId" resultMap="gainedItemMap">
+        SELECT * FROM adventure_gained_item
+        WHERE adventure_entry_id = #{adventureEntryId}::uuid
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="findById" resultMap="gainedItemMap">
+        SELECT * FROM adventure_gained_item WHERE id = #{id}::uuid
+    </select>
+
+    <insert id="insert">
+        INSERT INTO adventure_gained_item (
+            id, adventure_entry_id, item_name, item_type, rarity, item_category, requires_attunement, is_soul_coin,
+            quantity, acquisition_source, needs_details, notes, created_at, updated_at
+        )
+        VALUES (
+            #{id}::uuid, #{adventureEntryId}::uuid, #{itemName}, #{itemType}, #{rarity}, #{itemCategory},
+            COALESCE(#{requiresAttunement}, false), COALESCE(#{isSoulCoin}, false), #{quantity}, #{acquisitionSource},
+            COALESCE(#{needsDetails}, false), #{notes}, NOW(), NOW()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE adventure_gained_item SET
+            item_name           = #{itemName},
+            item_type           = #{itemType},
+            rarity              = #{rarity},
+            item_category       = #{itemCategory},
+            requires_attunement = COALESCE(#{requiresAttunement}, false),
+            is_soul_coin = COALESCE(#{isSoulCoin}, false),
+            quantity            = #{quantity},
+            acquisition_source  = #{acquisitionSource},
+            needs_details       = COALESCE(#{needsDetails}, false),
+            notes               = #{notes},
+            updated_at          = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
+        WHERE id = #{id}::uuid
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM adventure_gained_item WHERE id = #{id}::uuid
+    </delete>
+
+    <delete id="deleteByAdventureEntryId">
+        DELETE FROM adventure_gained_item WHERE adventure_entry_id = #{adventureEntryId}::uuid
+    </delete>
+
+</mapper>

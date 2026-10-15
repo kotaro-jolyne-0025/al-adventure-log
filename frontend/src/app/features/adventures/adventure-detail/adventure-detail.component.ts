@@ -1,0 +1,246 @@
+import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
+import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
+import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
+import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
+import { LocalStore } from '../../../core/services/local-store.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { AdventureService } from '../../../core/services/adventure.service';
+import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
+import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS, soulCoinQuantity } from '../../../core/models/inventory.model';
+import { formatClassLevels } from '../../../core/models/dnd-classes';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+
+import {
+  LucideCoins,
+  LucideTent,
+  LucideSparkles,
+  LucideFlaskConical,
+  LucideInfinity,
+  LucideStar,
+  LucideArrowLeft,
+  LucideCalendar,
+  LucidePencil,
+  LucideTrash2,
+  LucideInfo,
+  LucideArrowRight,
+  LucideFileText,
+  LucideCircle,
+} from '@lucide/angular';
+
+@Component({
+  selector: 'app-adventure-detail',
+  standalone: true,
+  imports: [
+    CacheNoticeComponent,
+    ReadErrorComponent,
+    CommonModule,
+    DatePipe,
+    DecimalPipe,
+    MatCardModule,
+    MatButtonModule,
+    MatProgressSpinner,
+    MatTooltipModule,
+    LucideCoins,
+    LucideTent,
+    LucideSparkles,
+    LucideFlaskConical,
+    LucideInfinity,
+    LucideStar,
+    LucideArrowLeft,
+    LucideCalendar,
+    LucidePencil,
+    LucideTrash2,
+    LucideInfo,
+    LucideArrowRight,
+    LucideFileText,
+    LucideCircle,
+  ],
+  templateUrl: './adventure-detail.component.html',
+  styleUrl: './adventure-detail.component.scss',
+})
+export class AdventureDetailComponent implements OnInit {
+  private readonly local = inject(LocalStore);
+  private readonly reads = inject(LocalReadCache);
+  private readonly destroy = inject(DestroyRef);
+  protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
+  protected readonly fetchedAt = signal<number | null>(null);
+  protected readonly readOnly = computed(() => this.readSource() !== 'cloud' || !this.local.freshCharacters().has(this.characterId));
+  private readonly refreshWatcher = watchReadPage(() => this.loadEntry());
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly adventureService = inject(AdventureService);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
+
+  protected entry = signal<AdventureEntry | null>(null);
+  protected magicItems = signal<(AdventureGainedItem | InventoryItem)[]>([]);
+  protected consumableItems = signal<(AdventureGainedItem | InventoryItem)[]>([]);
+  protected readonly soulCoinTotal = computed(() => soulCoinQuantity(this.consumableItems()));
+  protected storyAwards = signal<StoryAward[]>([]);
+  protected isLoading = signal(true);
+  protected isRefreshing = signal(false);
+  protected loadError = signal<string | null>(null);
+  protected retryable = signal(true);
+
+  readonly rarityLabels: Record<string, string> = ITEM_RARITY_LABELS;
+  readonly categoryLabels = ITEM_CATEGORY_LABELS;
+
+  protected characterId!: string;
+  private entryId!: string;
+
+  ngOnInit(): void {
+    this.characterId =
+      this.route.parent?.snapshot.paramMap.get('id') ??
+      this.route.snapshot.paramMap.get('characterId') ?? '';
+    this.entryId = this.route.snapshot.paramMap.get('entryId') ?? '';
+    this.loadEntry();
+  }
+
+  protected loadEntry(): void {
+    this.readSource.set(null);
+    this.loadError.set(null);
+    this.isLoading.set(!this.entry());
+    this.isRefreshing.set(true);
+    this.reads.read(this.characterId, `adventure:${this.entryId}`, () => this.adventureService.getDetails(this.characterId, this.entryId))
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (result) => {
+        this.readSource.set(result.source);
+        if (result.source === 'copy' && this.entry()) return;
+        this.fetchedAt.set(result.fetchedAt);
+        const { entry, gainedItems, storyAwards, legacyItems } = result.data;
+        this.entry.set(entry);
+        if (gainedItems && gainedItems.length > 0) {
+          this.magicItems.set(gainedItems.filter(i => i.itemType === 'PERMANENT'));
+          this.consumableItems.set(gainedItems.filter(i => i.itemType === 'CONSUMABLE'));
+        } else {
+          // 向後相容：若舊記錄尚未有快照，降級回倉庫比對
+          this.processGainedItems(entry, legacyItems);
+        }
+
+        this.storyAwards.set(storyAwards);
+
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        this.readSource.set(null);
+        this.entry.set(null); this.magicItems.set([]); this.consumableItems.set([]); this.storyAwards.set([]);
+        this.isLoading.set(false);
+        this.isRefreshing.set(false);
+        this.retryable.set(![401, 403, 404].includes(error.status));
+        this.loadError.set(readErrorMessage(error, '冒險紀錄'));
+      },
+      complete: () => this.isRefreshing.set(false),
+    });
+  }
+
+  private isSourceMatch(
+    itemSource: string | null | undefined,
+    advName?: string | null,
+    advCode?: string | null
+  ): boolean {
+    if (!itemSource) return false;
+    const s = itemSource.trim().toLowerCase();
+    const name = advName?.trim().toLowerCase();
+    const code = advCode?.trim().toLowerCase();
+
+    if (!name && !code) {
+      return s === '冒險獲得';
+    }
+
+    const matchText = (sourceText: string, target: string): boolean => {
+      if (target.length < 2) return sourceText === target;
+      return sourceText.includes(target) || target.includes(sourceText);
+    };
+
+    return !!(
+      (name && matchText(s, name)) ||
+      (code && matchText(s, code))
+    );
+  }
+
+  private processGainedItems(entry: AdventureEntry, items: InventoryItem[]): void {
+    const matchedMagic = items.filter(item =>
+      item.itemType === 'PERMANENT' && this.isSourceMatch(item.source, entry.adventureName, entry.adventureCode)
+    );
+    this.magicItems.set(matchedMagic);
+
+    const matchedConsumables = items.filter(item =>
+      item.itemType === 'CONSUMABLE' && this.isSourceMatch(item.source, entry.adventureName, entry.adventureCode)
+    );
+    this.consumableItems.set(matchedConsumables);
+  }
+
+  protected formatClassesDisplay(classesString?: string | null, level?: number | null): string {
+    if (classesString && classesString.trim()) return formatClassLevels(classesString);
+    return level != null ? `Lv.${level}` : '—';
+  }
+
+  protected magicItemsReduction(): number {
+    const entry = this.entry();
+    if (!entry) return 0;
+    return (entry.magicItemsLost ?? Math.abs(Math.min(0, entry.magicItemsChange ?? 0)))
+      + (entry.magicItemsDowntimeLost ?? Math.abs(Math.min(0, entry.magicItemsDowntimeChange ?? 0)));
+  }
+
+  protected acquisitionSourceLabel(source?: 'ADVENTURE' | 'DOWNTIME' | null): string {
+    return source === 'ADVENTURE' ? '冒險獲得' : source === 'DOWNTIME' ? '休整期獲得' : '';
+  }
+
+  protected onOpenInventory(): void {
+    this.router.navigate(['/characters', this.characterId, 'inventory']);
+  }
+
+  protected formatChange(val?: number | null, prefix = ''): string {
+    if (val == null || val === 0) return '—';
+    const rounded = typeof val === 'number' ? Math.round(val * 100) / 100 : val;
+    return rounded > 0 ? `+${rounded}${prefix}` : `${rounded}${prefix}`;
+  }
+
+  protected onBack(): void {
+    this.router.navigate(['/characters', this.characterId, 'adventures']);
+  }
+
+  protected onEdit(): void {
+    if (this.readOnly()) return;
+    this.router.navigate([
+      '/characters', this.characterId, 'adventures', this.entryId, 'edit',
+    ]);
+  }
+
+  protected onDelete(): void {
+    if (this.readOnly()) return;
+    const data: ConfirmDialogData = {
+      title: '刪除冒險記錄',
+      intent: 'destructive',
+      message: '確定要刪除此冒險記錄嗎？此操作無法復原。',
+      confirmText: '確認刪除',
+      cancelText: '取消',
+    };
+    this.dialog.open(ConfirmDialogComponent, { data, width: '360px' })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (!confirmed || this.readOnly()) return;
+        this.adventureService.delete(this.characterId, this.entryId, this.entry()?.updatedAt).subscribe({
+          next: () => {
+            this.snackBar.open('冒險記錄已刪除', '關閉', { duration: 2500 });
+            this.router.navigate(['/characters', this.characterId, 'adventures']);
+          },
+          error: error => {
+            this.snackBar.open(error.error?.message || '刪除失敗', '關閉', { duration: 6000 });
+            if ([409, 428, 404].includes(error.status)) this.loadEntry();
+          },
+        });
+      });
+  }
+}

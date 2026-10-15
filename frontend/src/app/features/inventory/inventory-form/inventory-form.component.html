@@ -1,0 +1,105 @@
+<div class="page-container">
+  <div class="page-header">
+    <button mat-icon-button (click)="onBack()" class="btn-back" matTooltip="返回倉庫" aria-label="返回倉庫">
+      <svg lucideArrowLeft [size]="20"></svg>
+    </button>
+    <h1 class="page-title">{{ isEditMode() ? '編輯物品' : '新增物品' }}</h1>
+  </div>
+
+  <div class="form-card clean-card">
+    @if (isLoading()) { <p role="status">正在載入物品…</p> }
+    @if (loadError()) {
+      <app-read-error [message]="loadError()!" [pending]="isLoading()" [retryable]="retryable()"
+        [returnTo]="['/characters', characterId, 'inventory']" (retry)="retryLoad()" />
+    }
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>物品名稱 *</mat-label>
+        <input matInput formControlName="itemName" />
+        @if (form.get('itemName')?.hasError('required') && form.get('itemName')?.touched) {
+          <mat-error>物品名稱為必填</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="field-row">
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>物品類型 *</mat-label>
+          <mat-select formControlName="itemType">
+            @for (t of itemTypes; track t) {
+              <mat-option [value]="t">{{ typeLabels[t] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>稀有度</mat-label>
+          <mat-select formControlName="rarity">
+            <mat-option value="">— 未設定 —</mat-option>
+            @for (r of rarities; track r) {
+              @if (r !== '') {
+                <mat-option [value]="r">{{ rarityLabels[r] }}</mat-option>
+              }
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>類別</mat-label>
+        <mat-select formControlName="itemCategory">
+          <mat-option value="">— 未指定 —</mat-option>
+          @for (category of availableCategories(); track category) {
+            <mat-option [value]="category">{{ categoryOptionLabels[category] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (form.get('itemType')?.value === 'PERMANENT') {
+        <div class="checkbox-row">
+          <mat-checkbox formControlName="requiresAttunement" color="primary">
+            需同調 (Requires Attunement)
+          </mat-checkbox>
+        </div>
+      }
+
+      @if (form.get('itemType')?.value === 'CONSUMABLE') {
+        <div class="checkbox-row">
+          <mat-checkbox formControlName="isSoulCoin" color="primary">靈魂幣</mat-checkbox>
+        </div>
+      }
+
+      <div class="field-row">
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>數量</mat-label>
+          <input matInput type="number" formControlName="quantity" min="1" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="flex-2">
+          <mat-label>取得來源（選填）</mat-label>
+          <input matInput formControlName="source" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>備註</mat-label>
+        <textarea matInput formControlName="notes" rows="4"></textarea>
+      </mat-form-field>
+
+      <div class="form-actions">
+          <app-form-feedback [message]="formError()" [target]="errorTarget()" [viewUrl]="writeConflict() ? latestDataUrl() : null" />
+        <button type="button" mat-stroked-button (click)="onBack()">取消</button>
+        <button type="submit" mat-flat-button color="primary" [disabled]="isSaving() || isLoading() || (isEditMode() && !itemLoaded())">
+          @if (isSaving()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <svg lucideSave [size]="18" style="margin-right: 6px;"></svg>
+          }
+          儲存
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>

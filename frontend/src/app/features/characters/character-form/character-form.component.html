@@ -1,0 +1,169 @@
+<div class="page-container">
+  <div class="page-header">
+    <button mat-icon-button (click)="onBack()" aria-label="返回角色列表">
+      <svg lucideArrowLeft [size]="20"></svg>
+    </button>
+    <h1 class="page-title">{{ isEditMode() ? '編輯角色' : '新增角色' }}</h1>
+  </div>
+
+  <mat-card class="form-card">
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
+
+        <!-- 基本資料區 -->
+        <section class="form-section">
+          <h2 class="section-title">基本資料</h2>
+
+          <!-- 角色大頭貼上傳區 -->
+          <div class="avatar-upload-box">
+            <div class="avatar-preview-wrapper">
+              @if (avatarUrl()) {
+              <img [src]="avatarUrl()" alt="角色大頭照" class="avatar-preview-img" />
+              } @else {
+              <div class="avatar-placeholder">
+                <svg lucideImagePlus [size]="20" class="placeholder-icon"></svg>
+                <span class="placeholder-text">未設定</span>
+              </div>
+              }
+            </div>
+
+            <div class="avatar-actions-col">
+              <div class="avatar-btn-row">
+                <input #fileInput type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif" style="display: none"
+                  (change)="onAvatarFileSelected($event)" />
+                <button type="button" mat-stroked-button color="primary" [disabled]="isProcessingAvatar()" (click)="fileInput.click()"
+                  class="btn-upload-avatar">
+                  @if (avatarUrl()) { <svg lucideRefreshCw [size]="20"></svg> } @else { <svg lucideUpload [size]="20"></svg> }
+                  <span>{{ avatarUrl() ? '更換大頭照' : '上傳角色大頭照' }}</span>
+                </button>
+
+                @if (avatarUrl()) {
+                <button type="button" mat-button color="warn" [disabled]="isProcessingAvatar()" (click)="removeAvatar()" class="btn-remove-avatar">
+                  <svg lucideTrash2 [size]="20"></svg>
+                  <span>移除</span>
+                </button>
+                }
+              </div>
+              @if (isProcessingAvatar()) {
+                <p class="avatar-processing" role="status">
+                  <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
+                  <span>正在處理照片，請稍候…</span>
+                </p>
+              }
+              <p class="avatar-tip">
+                支援 JPG、PNG、WebP、HEIC／HEIF，檔案上限 5MB。<br />
+                建議使用 1:1 正方形圖片，上傳後可裁切調整。
+              </p>
+            </div>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>角色名稱 *</mat-label>
+            <input matInput formControlName="characterName" />
+            @if (form.get('characterName')?.hasError('required') && form.get('characterName')?.touched) {
+            <mat-error>角色名稱為必填</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>種族 *</mat-label>
+            <input matInput formControlName="race" />
+            @if (form.get('race')?.hasError('required') && form.get('race')?.touched) {
+            <mat-error>種族為必填</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>子職（選填）</mat-label>
+            <input matInput formControlName="subclass" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>派系（選填）</mat-label>
+            <input matInput formControlName="faction" />
+          </mat-form-field>
+
+
+
+          <div class="section-header" style="margin-top: 8px;">
+            <h3 class="section-title" style="font-size:0.9rem; margin:0;">開卡職業與等級</h3>
+            <button type="button" mat-stroked-button (click)="addClass()">
+              <svg lucidePlus [size]="20"></svg> 新增職業（兼職）
+            </button>
+          </div>
+          <div class="classes-list">
+            @for (entry of classEntries(); track $index; let i = $index) {
+            <div class="class-row">
+              <mat-form-field appearance="outline" class="class-name-field">
+                <mat-label>職業</mat-label>
+                <mat-select [value]="entry.className" (selectionChange)="updateClassName(i, $event.value)">
+                  @for (cls of CLASS_OPTIONS; track cls.id) {
+                  <mat-option [value]="cls.id">{{ cls.label }} ({{ cls.id }})</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="class-level-field">
+                <mat-label>等級</mat-label>
+                <input matInput type="number" min="1" max="20" [value]="entry.level"
+                  (change)="updateClassLevel(i, $event)" />
+              </mat-form-field>
+              @if (classEntries().length > 1) {
+              <button type="button" mat-icon-button color="warn" style="margin-top: 8px;" (click)="removeClass(i)"
+                matTooltip="移除此職業" aria-label="移除此職業">
+                <svg lucideTrash2 [size]="20"></svg>
+              </button>
+              }
+            </div>
+            }
+          </div>
+          <p class="hint-text" style="color: var(--mat-sys-outline); font-size:0.8rem; margin: 4px 0 16px;">
+            總等級：{{ totalLevel() }}　兼職最多可達 20 級
+          </p>
+
+          <div class="opening-resources">
+            <mat-form-field appearance="outline">
+              <mat-label>開卡金幣 (GP)</mat-label>
+              <input matInput type="number" formControlName="initialGold" min="0" step="0.01" />
+              @if (form.get('initialGold')?.invalid && form.get('initialGold')?.touched) {
+                <mat-error>請輸入大於等於 0、最多兩位小數的金額</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>開卡休整期 (天)</mat-label>
+              <input matInput type="number" formControlName="initialDowntime" min="0" step="1" />
+              @if (form.get('initialDowntime')?.invalid && form.get('initialDowntime')?.touched) {
+                <mat-error>請輸入大於等於 0 的整數</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          <p class="opening-items-hint">
+            開卡時已有的魔法物品請在角色倉庫新增。
+          </p>
+          @if (hasAdventureEntries()) {
+            <p class="opening-baseline-warning">
+              修改後會重新計算角色目前值；既有冒險及倉庫物品不會自動修改。
+            </p>
+          }
+        </section>
+
+
+
+        <!-- 操作按鈕 -->
+        <div class="form-actions">
+          <app-form-feedback [message]="formError()" [target]="errorTarget()" [viewUrl]="writeConflict() ? latestDataUrl() : null" />
+          <button type="button" mat-stroked-button (click)="onBack()">取消</button>
+          <button type="submit" mat-flat-button color="primary" [disabled]="isSaving()">
+            @if (isSaving()) {
+            <mat-spinner diameter="20" class="btn-spinner"></mat-spinner>
+            } @else {
+            <svg lucideSave [size]="20"></svg>
+            }
+            儲存
+          </button>
+        </div>
+
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

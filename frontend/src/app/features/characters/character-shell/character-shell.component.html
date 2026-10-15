@@ -1,0 +1,134 @@
+@if (loadError()) {
+  <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters']" (retry)="loadCharacterData()" />
+}
+@if (isLoading()) {
+  <div class="loading-wrapper">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p role="status">正在載入角色資料…</p>
+  </div>
+}
+
+  <div class="shell-container">
+    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="!!character()" [compact]="true" (refresh)="loadCharacterData()" />
+    @if (character()) {
+    
+    <!-- Character Header Card & Navigation -->
+    <div class="char-hero-card clean-card">
+
+      <!-- Hero Portrait + Identity & Actions -->
+      <div class="char-hero-top" data-resize-focus>
+        <div class="hero-identity">
+          <div class="char-avatar-hero">
+            @if (character()!.avatarUrl) {
+              <img [src]="character()!.avatarUrl" [alt]="character()!.characterName" class="char-hero-img" />
+            } @else {
+              <div class="char-hero-fallback">{{ getInitial(character()!.characterName) }}</div>
+            }
+          </div>
+
+          <div class="char-identity-text">
+            <div class="name-line">
+              <h1 class="char-name" [matTooltip]="character()!.characterName">{{ character()!.characterName }}</h1>
+              <button mat-stroked-button [disabled]="readOnly()" (click)="onEdit()" class="btn-edit-hero" aria-label="編輯角色">
+                <svg lucidePencil [size]="20"></svg>
+                <span class="edit-label">編輯角色</span>
+              </button>
+            </div>
+            <p class="char-meta">
+              <span>{{ character()!.race }}</span>
+              <span class="meta-dot">・</span>
+              <span class="meta-classes">{{ formatClasses(character()!) }}</span>
+              @if (character()!.subclass) {
+                <span class="meta-dot">・</span>
+                <span class="meta-subclass">{{ character()!.subclass }}</span>
+              }
+              @if (character()!.faction) {
+                <span class="meta-dot">・</span>
+                <span class="meta-faction">{{ character()!.faction }}</span>
+              }
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Character HUD Stats Bar (即時數值看板) -->
+      <ng-template #resourceSummary>
+      <div class="char-hud-bar">
+        
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <span class="hud-label">當前等級</span>
+          </div>
+          <span class="hud-value stat-level">Lv. {{ parseTotalLevel() }}</span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideCoins class="hud-icon stat-gold-icon" [size]="16"></svg>
+            <span class="hud-label" matTooltip="Gold">金幣</span>
+          </div>
+          <span class="hud-value stat-gold">
+            <span class="hud-number">{{ (character()!.currentGold ?? 0) | number:'1.0-2' }}</span> <small class="unit">金</small>
+          </span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideTent class="hud-icon stat-downtime-icon" [size]="16"></svg>
+            <span class="hud-label" matTooltip="Downtime">休整期</span>
+          </div>
+          <span class="hud-value stat-downtime">
+            <span class="hud-number">{{ character()!.currentDowntime ?? 0 }}</span> <small class="unit">天</small>
+          </span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideSparkles class="hud-icon stat-magic-icon" [size]="16"></svg>
+            <span class="hud-label" matTooltip="Permanent Magic Items">永久性魔法物品</span>
+          </div>
+          <span class="hud-value stat-magic">
+            <span class="hud-number">{{ character()!.currentMagicItems ?? 0 }}</span> <small class="unit">件</small>
+          </span>
+        </div>
+
+        <div class="hud-stat-box">
+          <div class="hud-stat-header">
+            <svg lucideGhost class="hud-icon stat-soul-icon" [size]="16"></svg>
+            <span class="hud-label" matTooltip="Soul Coins">靈魂幣</span>
+          </div>
+          <span class="hud-value stat-soul">
+            <span class="hud-number">{{ character()!.soulCoins ?? 0 }}</span> <small class="unit">枚</small>
+          </span>
+        </div>
+
+      </div>
+      </ng-template>
+      <div data-resize-focus>
+      <div class="full-resource-summary" tabindex="-1" data-resize-focus-target role="region" aria-label="角色資源">
+        <ng-container *ngTemplateOutlet="resourceSummary" />
+      </div>
+      <details class="compact-resource-summary">
+        <summary>角色資源</summary>
+        <ng-container *ngTemplateOutlet="resourceSummary" />
+      </details>
+      </div>
+    </div>
+
+    }
+    @if (!character() && !isLoading() && !loadError()) { <p>目前無法顯示角色資訊，請連線後再試。</p> }
+    <!-- Tab Nav -->
+    <nav mat-tab-nav-bar [tabPanel]="characterPanel" class="character-tabs" aria-label="角色內容">
+      <a mat-tab-link [routerLink]="['/characters', characterId, 'adventures']" [active]="getActiveTab() === 0">
+        <svg lucideBookOpen [size]="20" class="tab-icon" aria-hidden="true"></svg><span>冒險紀錄表</span>
+      </a>
+      <a mat-tab-link [routerLink]="['/characters', characterId, 'inventory']" [active]="getActiveTab() === 1">
+        <svg lucideBox [size]="20" class="tab-icon" aria-hidden="true"></svg><span>倉庫</span>
+      </a>
+    </nav>
+    <mat-tab-nav-panel #characterPanel class="tab-content-area">
+      <router-outlet />
+    </mat-tab-nav-panel>
+
+  </div>

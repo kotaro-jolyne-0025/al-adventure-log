@@ -1,0 +1,135 @@
+<div class="page-container">
+  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="hasLoaded()" (refresh)="loadCharacters()" />
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <svg lucideUsers [size]="20" class="title-icon"></svg>
+        我的角色
+      </h1>
+      <p class="page-subtitle" role="status">{{ isLoading() ? '正在載入角色…' : '管理角色、冒險紀錄表與倉庫' }}</p>
+    </div>
+    <button mat-flat-button color="primary" class="btn-create-char" (click)="onCreateCharacter()" [disabled]="readOnly()">
+      <svg lucidePlus [size]="20"></svg>
+      建立新角色
+    </button>
+  </div>
+
+
+  @if (loadError()) {
+    <app-read-error [message]="(hasLoaded() ? '資料尚未更新。' : '') + loadError()!" [pending]="isLoading()" (retry)="loadCharacters()" />
+  }
+
+  <!-- Loading Skeletons -->
+  @if (isLoading()) {
+    <div class="card-grid" aria-hidden="true">
+      @for (item of [1, 2, 3]; track $index) {
+        <div class="char-card clean-card">
+          <div class="card-hero-layout">
+            <div class="char-portrait-token skeleton-box"></div>
+            <div class="char-content-col">
+              <div class="skeleton-name skeleton-box" style="width: 60%;"></div>
+              <div class="char-info-list">
+                @for (line of [1, 2, 3, 4]; track line) {
+                  <div class="skeleton-box" style="height: 1.3125rem;"></div>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="skeleton-actions skeleton-box"></div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!isLoading() && (hasLoaded() || !loadError()) && characters().length === 0) {
+    <div class="empty-state clean-card">
+      <div class="empty-icon-wrap">
+        <svg lucideUserPlus [size]="20" class="empty-icon"></svg>
+      </div>
+      <h2 class="empty-title">尚無角色</h2>
+      <p class="empty-desc">建立您的第一個冒險者，開始記錄冒險紀錄表！</p>
+      <button mat-flat-button color="primary" (click)="onCreateCharacter()" class="empty-btn" [disabled]="readOnly()">
+        <svg lucidePlus [size]="20"></svg>
+        建立新角色
+      </button>
+    </div>
+  }
+
+  <!-- Character Cards Grid -->
+  @if (!isLoading() && (hasLoaded() || !loadError()) && characters().length > 0) {
+    <div class="card-grid">
+      @for (char of characters(); track char.id) {
+        <div class="char-card clean-card clickable navigation-card">
+
+          <div class="card-hero-layout">
+            <!-- 左側大肖像 -->
+            <div class="char-portrait-token">
+              @if (char.avatarUrl) {
+                <img [src]="char.avatarUrl" [alt]="char.characterName" class="char-avatar-img"
+                  loading="lazy" decoding="async" />
+              } @else {
+                <div class="char-avatar-fallback">{{ getInitial(char.characterName) }}</div>
+              }
+            </div>
+
+            <!-- 右側標題與資料 -->
+            <div class="char-content-col">
+              <div class="char-name-row">
+                <h3 class="char-name"><a class="card-navigation-link"
+                  [routerLink]="['/characters', char.id, 'adventures']"
+                  [attr.aria-label]="'查看角色：' + char.characterName">{{ char.characterName }}</a></h3>
+                <span class="level-badge">Lv. {{ parseTotalLevel(char.currentClassesString) }}</span>
+              </div>
+
+              <div class="char-info-list">
+                <div class="info-row">
+                  <span class="info-label">種族：</span>
+                  <span class="info-value">{{ char.race }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">職業：</span>
+                  <span class="info-value">{{ formatClasses(char) }}</span>
+                </div>
+                @if (char.subclass) {
+                  <div class="info-row">
+                    <span class="info-label">子職：</span>
+                    <span class="info-value">{{ char.subclass }}</span>
+                  </div>
+                }
+                @if (char.faction) {
+                  <div class="info-row">
+                    <span class="info-label">派系：</span>
+                    <span class="info-value">{{ char.faction }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- 卡片底部操作列 (方案 D) -->
+          <div class="card-footer">
+            <div class="card-footer-actions card-independent-actions">
+              <button mat-button class="footer-action-btn"
+                matTooltip="編輯角色資訊"
+                (click)="onEditCharacter($event, char.id)" [disabled]="readOnly()">
+                <svg lucidePenLine [size]="20"></svg>
+                <span>編輯</span>
+              </button>
+              <button mat-button class="footer-action-btn delete-btn"
+                matTooltip="刪除角色"
+                (click)="onDeleteCharacter($event, char)" [disabled]="readOnly()">
+                <svg lucideTrash2 [size]="20"></svg>
+                <span>刪除</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+</div>

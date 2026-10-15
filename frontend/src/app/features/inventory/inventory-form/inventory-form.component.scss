@@ -1,0 +1,115 @@
+.page-container {
+  width: 100%;
+  min-width: 0;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 16px max(16px, var(--page-safe-right)) max(80px, var(--safe-area-bottom)) max(16px, var(--page-safe-left));
+
+  @media (max-width: 600px) {
+    padding: 12px max(12px, var(--page-safe-right)) 70px max(12px, var(--page-safe-left));
+  }
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  min-width: 0;
+
+  @media (max-width: 600px) {
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+}
+
+.btn-back {
+  color: var(--text-secondary);
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  @media (max-width: 600px) {
+    font-size: 1.25rem;
+  }
+}
+
+.form-card {
+  padding: 24px;
+  min-width: 0;
+  overflow: hidden;
+
+  @media (max-width: 600px) {
+    padding: 16px;
+  }
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.field-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+
+  .flex-1 { flex: 1; min-width: 140px; }
+  .flex-2 { flex: 2; min-width: 200px; }
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    gap: 8px;
+
+    .flex-1, .flex-2 {
+      min-width: 100%;
+    }
+  }
+}
+
+.checkbox-row {
+  margin: -10px 0 22px 2px;
+  display: flex;
+  align-items: center;
+
+  ::ng-deep .mdc-checkbox {
+    margin-left: -4px;
+  }
+
+  ::ng-deep .mdc-label {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 12px;
+
+  @media (max-width: 600px) {
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+  }
+
+  button {
+    font-weight: 600;
+  }
+}
+
+.form-actions app-form-feedback { flex-basis: 100%; width: 100%; }

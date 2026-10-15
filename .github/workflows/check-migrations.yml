@@ -1,0 +1,27 @@
+name: Protect Flyway migrations
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  immutable-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject edits to existing migrations
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git diff --name-status --no-renames "$BASE_SHA" HEAD -- backend/src/main/resources/db/migration/ |
+            while IFS=$'\t' read -r status path; do
+              if [[ "$status" != A ]]; then
+                echo "Existing Flyway migration changed: $path ($status)" >&2
+                exit 1
+              fi
+            done

@@ -1,0 +1,80 @@
+# ==========================================
+# 冒險紀錄表 Web版 — .gitignore
+# ==========================================
+
+# -------
+# Java / Spring Boot
+# -------
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/*.jar
+backend/*.war
+*.class
+*.log
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse
+.settings/
+.classpath
+.project
+bin/
+
+# Spring Boot 本機設定（含機密資訊，不可 commit）
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-local.yml
+
+# -------
+# Node.js / Angular
+# -------
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# npm / yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -------
+# 環境變數（機密資訊）
+# -------
+.env
+.env.local
+.env.production
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
+
+# -------
+# 作業系統
+# -------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ------
+# Zeabur設定
+# ------
+zeabur-deploy-fix-plan.md
+
+# 本機工作任務追蹤（不公開至遠端）
+backlog.md
+
+# 私人資料庫備份與暫存匯出工具（禁止提交）
+.private-backups/
+
+# Agent 配置與本地技能/規則
+.agents/
+.codex/
+AGENTS.md
+

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dndadvlog.backend.mapper.DowntimeActivityMapper">
+
+    <resultMap id="activityMap" type="com.dndadvlog.backend.entity.DowntimeActivity">
+        <id     property="id"               column="id"/>
+        <result property="adventureEntryId" column="adventure_entry_id"/>
+        <result property="description"      column="description"/>
+        <result property="createdAt"        column="created_at"/>
+        <result property="updatedAt"        column="updated_at"/>
+    </resultMap>
+
+    <select id="findByEntryIdOrderByCreatedAtAsc" resultMap="activityMap">
+        SELECT * FROM downtime_activity
+        WHERE adventure_entry_id = #{entryId}::uuid
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="findByEntryIds" resultMap="activityMap">
+        SELECT * FROM downtime_activity
+        WHERE adventure_entry_id IN
+        <foreach collection="entryIds" item="entryId" open="(" separator="," close=")">
+            #{entryId}::uuid
+        </foreach>
+        ORDER BY adventure_entry_id, created_at ASC
+    </select>
+
+    <select id="findById" resultMap="activityMap">
+        SELECT * FROM downtime_activity WHERE id = #{id}::uuid
+    </select>
+
+    <insert id="insert">
+        INSERT INTO downtime_activity (id, adventure_entry_id, description, created_at, updated_at)
+        VALUES (#{id}::uuid, #{adventureEntryId}::uuid, #{description}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE downtime_activity SET
+            description = #{description},
+            updated_at  = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
+        WHERE id = #{id}::uuid
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM downtime_activity WHERE id = #{id}::uuid
+    </delete>
+
+</mapper>

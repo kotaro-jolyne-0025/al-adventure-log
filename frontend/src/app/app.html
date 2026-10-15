@@ -1,0 +1,121 @@
+<a class="skip-link" href="#main-content" (click)="skipToContent($event)">跳到主要內容</a>
+<header class="app-header">
+  <mat-toolbar class="app-toolbar">
+    @if (showBack()) {
+      <button mat-icon-button (click)="goBack()" class="top-nav-back-btn" matTooltip="返回角色列表" aria-label="返回角色列表">
+        <svg lucideArrowLeft [size]="20"></svg>
+      </button>
+    }
+
+    <a class="brand-container" [routerLink]="authService.isAuthenticated() ? '/characters' : '/'"
+      aria-label="冒險紀錄表 Web版首頁">
+      <img src="logo.png" alt="冒險紀錄表 Web版 Logo" class="brand-logo-img" />
+      <span class="brand-title">冒險紀錄表 Web版</span>
+    </a>
+
+    <span class="spacer"></span>
+
+    <!-- 主題切換按鈕 (A 淺色 / B 炭灰深色) -->
+    <button
+      mat-icon-button
+      (click)="themeService.toggleTheme()"
+      [matTooltip]="themeService.isDark() ? '切換為淺色模式 (風格 A)' : '切換為深色模式 (風格 B)'"
+      class="theme-toggle-btn"
+      aria-label="切換深淺色模式">
+      @if (themeService.isDark()) { <svg lucideSun [size]="24" class="theme-icon"></svg> } @else { <svg lucideMoon [size]="24" class="theme-icon"></svg> }
+    </button>
+
+    <!-- 已登入狀態 -->
+    @if (authService.currentUser(); as user) {
+      <button mat-button [matMenuTriggerFor]="userMenu" class="user-pill-btn" aria-label="使用者選單">
+        <svg lucideUser [size]="20" class="user-icon"></svg>
+        <span class="user-name">{{ user.displayName }}</span>
+        <svg lucideChevronDown [size]="20" class="dropdown-icon"></svg>
+      </button>
+
+      <mat-menu #userMenu="matMenu" xPosition="before" class="app-user-menu">
+        <div class="menu-user-header">
+          <span class="menu-user-name">{{ user.displayName }}</span>
+          <span class="menu-user-email">{{ user.email }}</span>
+        </div>
+        <mat-divider></mat-divider>
+        <button mat-menu-item routerLink="/characters">
+          <svg lucideUsers [size]="20"></svg>
+          <span>我的角色列表</span>
+        </button>
+        <button mat-menu-item (click)="openEditProfileDialog()">
+          <svg lucideIdCard [size]="20"></svg>
+          <span>修改顯示名稱</span>
+        </button>
+        <button mat-menu-item routerLink="/legal">
+          <svg lucideGavel [size]="20"></svg>
+          <span>版權與免責聲明</span>
+        </button>
+        <mat-divider></mat-divider>
+        <ng-container *ngTemplateOutlet="supportMenuItems"></ng-container>
+        <mat-divider></mat-divider>
+        <ng-container *ngTemplateOutlet="updateMenuItems"></ng-container>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="logout()" class="logout-menu-item">
+          <svg lucideLogOut [size]="20" class="logout-icon"></svg>
+          <span class="logout-text">登出系統</span>
+        </button>
+      </mat-menu>
+    }
+
+    <!-- 未登入狀態 -->
+    @if (!authService.isAuthenticated()) {
+      <div class="auth-actions">
+        <a mat-button routerLink="/login" class="btn-login-nav">登入</a>
+        <a mat-flat-button color="primary" routerLink="/register" class="btn-register-nav">註冊帳號</a>
+      </div>
+      <button mat-icon-button [matMenuTriggerFor]="guestMenu" class="more-menu-btn" aria-label="更多選單">
+        <svg lucideEllipsisVertical [size]="20"></svg>
+      </button>
+      <mat-menu #guestMenu="matMenu" xPosition="before" class="app-user-menu">
+        <ng-container *ngTemplateOutlet="supportMenuItems"></ng-container>
+        <mat-divider></mat-divider>
+        <ng-container *ngTemplateOutlet="updateMenuItems"></ng-container>
+      </mat-menu>
+    }
+  </mat-toolbar>
+</header>
+
+<ng-template #supportMenuItems>
+  <button mat-menu-item type="button" (click)="openContactDialog()">
+    <svg lucideMail [size]="20" aria-hidden="true"></svg>
+    <span>聯絡我</span>
+  </button>
+  @if (siteLinks.sponsorshipUrl; as sponsorshipUrl) {
+    <a mat-menu-item [href]="sponsorshipUrl" target="_blank" rel="noopener noreferrer"
+      aria-label="贊助支持（外部網站，新分頁開啟）">
+      <svg lucideHeart [size]="20" aria-hidden="true"></svg>
+      <span>贊助支持 ↗</span>
+    </a>
+  }
+</ng-template>
+
+<ng-template #updateMenuItems>
+  <div class="menu-version">目前版本 v{{ version }}</div>
+  <button mat-menu-item type="button" (click)="checkForUpdates()"
+    [disabled]="!appUpdate.enabled || appUpdate.checking()">
+    {{ appUpdate.checking() ? '檢查中…' : '檢查更新' }}
+  </button>
+  @if (appUpdate.needsReload()) {
+    <button mat-menu-item type="button" (click)="confirmUpdate()">重新整理以更新</button>
+  }
+  @if (appInstall.available()) {
+    <button mat-menu-item type="button" (click)="installApp()">安裝冒險紀錄表</button>
+  }
+</ng-template>
+
+@if (navigationPending()) {
+  <div class="navigation-status" role="status">
+    <mat-progress-bar mode="indeterminate" aria-label="正在開啟頁面" />
+    <span class="sr-only">正在開啟頁面…</span>
+  </div>
+}
+<main class="app-content" id="main-content" tabindex="-1" [attr.aria-busy]="navigationPending()">
+  <router-outlet />
+</main>
+

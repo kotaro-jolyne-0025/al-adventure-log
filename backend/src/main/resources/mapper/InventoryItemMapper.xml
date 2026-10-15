@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dndadvlog.backend.mapper.InventoryItemMapper">
+
+    <resultMap id="itemMap" type="com.dndadvlog.backend.entity.InventoryItem">
+        <id     property="id"               column="id"/>
+        <result property="characterId"          column="character_id"/>
+        <result property="adventureEntryId"     column="adventure_entry_id"/>
+        <result property="adventureGainedItemId" column="adventure_gained_item_id"/>
+        <result property="itemName"             column="item_name"/>
+        <result property="itemType"             column="item_type"/>
+        <result property="rarity"               column="rarity"/>
+        <result property="itemCategory"         column="item_category"/>
+        <result property="requiresAttunement"   column="requires_attunement"/>
+        <result property="isSoulCoin" column="is_soul_coin"/>
+        <result property="quantity"             column="quantity"/>
+        <result property="acquisitionSource"    column="acquisition_source"/>
+        <result property="needsDetails"         column="needs_details"/>
+        <result property="source"               column="source"/>
+        <result property="notes"                column="notes"/>
+        <result property="createdAt"            column="created_at"/>
+        <result property="updatedAt"            column="updated_at"/>
+    </resultMap>
+
+    <select id="findByCharacterId" resultMap="itemMap">
+        SELECT * FROM inventory_item
+        WHERE character_id = #{characterId}::uuid
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="findByCharacterIdAndItemType" resultMap="itemMap">
+        SELECT * FROM inventory_item
+        WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}::item_type
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="countByCharacterIdAndItemType" resultType="int">
+        SELECT COUNT(*) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}::item_type
+    </select>
+
+    <select id="sumQuantityByCharacterIdAndItemType" resultType="int">
+        SELECT COALESCE(SUM(quantity), 0) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid AND item_type = #{itemType}::item_type
+    </select>
+
+    <select id="sumUnlinkedPermanentQuantityByCharacterId" resultType="int">
+        SELECT COALESCE(SUM(quantity), 0) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid
+          AND item_type = 'PERMANENT'::item_type
+          AND adventure_entry_id IS NULL
+          AND adventure_gained_item_id IS NULL
+    </select>
+
+    <select id="sumSoulCoinQuantityByCharacterId" resultType="int">
+        SELECT COALESCE(SUM(quantity), 0) FROM inventory_item
+        WHERE character_id = #{characterId}::uuid
+          AND item_type = 'CONSUMABLE'::item_type AND is_soul_coin = TRUE
+    </select>
+
+    <select id="findById" resultMap="itemMap">
+        SELECT * FROM inventory_item WHERE id = #{id}::uuid
+    </select>
+
+    <select id="findByAdventureGainedItemId" resultMap="itemMap">
+        SELECT * FROM inventory_item WHERE adventure_gained_item_id = #{gainedItemId}::uuid LIMIT 1
+    </select>
+
+    <select id="findByAdventureEntryId" resultMap="itemMap">
+        SELECT * FROM inventory_item WHERE adventure_entry_id = #{adventureEntryId}::uuid
+    </select>
+
+    <insert id="insert">
+        INSERT INTO inventory_item (
+            id, character_id, adventure_entry_id, adventure_gained_item_id,
+            item_name, item_type, rarity, item_category, requires_attunement, is_soul_coin, quantity,
+            acquisition_source, needs_details, source, notes, created_at, updated_at
+        )
+        VALUES (
+            #{id}::uuid, #{characterId}::uuid,
+            CAST(#{adventureEntryId, jdbcType=VARCHAR} AS uuid),
+            CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid),
+            #{itemName}, #{itemType}::item_type,
+            CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity), #{itemCategory},
+            COALESCE(#{requiresAttunement}, false), COALESCE(#{isSoulCoin}, false), #{quantity}, #{acquisitionSource},
+            COALESCE(#{needsDetails}, false), #{source}, #{notes}, NOW(), NOW()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE inventory_item SET
+            adventure_entry_id = CAST(#{adventureEntryId, jdbcType=VARCHAR} AS uuid),
+            adventure_gained_item_id = CAST(#{adventureGainedItemId, jdbcType=VARCHAR} AS uuid),
+            item_name  = #{itemName},
+            item_type  = #{itemType}::item_type,
+            rarity     = CAST(#{rarity, jdbcType=VARCHAR} AS item_rarity),
+            item_category = #{itemCategory},
+            requires_attunement = COALESCE(#{requiresAttunement}, false),
+            is_soul_coin = COALESCE(#{isSoulCoin}, false),
+            quantity   = #{quantity},
+            acquisition_source = #{acquisitionSource},
+            needs_details = COALESCE(#{needsDetails}, false),
+            source     = #{source},
+            notes      = #{notes},
+            updated_at = GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')
+        WHERE id = #{id}::uuid
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM inventory_item WHERE id = #{id}::uuid
+    </delete>
+
+</mapper>

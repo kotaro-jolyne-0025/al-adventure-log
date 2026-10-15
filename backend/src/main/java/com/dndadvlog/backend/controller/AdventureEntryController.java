@@ -1,0 +1,225 @@
+package com.dndadvlog.backend.controller;
+
+import com.dndadvlog.backend.config.UserPrincipal;
+import com.dndadvlog.backend.dto.*;
+import com.dndadvlog.backend.service.AdventureEntryService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+import com.dndadvlog.backend.service.MutationGuard;
+import static com.dndadvlog.backend.service.MutationGuard.Resource.*;
+
+@Slf4j
+@RestController
+@RequiredArgsConstructor
+public class AdventureEntryController {
+
+    private final AdventureEntryService adventureEntryService;
+    private final MutationGuard guard;
+
+    // Adventure Entries
+    @GetMapping("/api/characters/{characterId}/entries")
+    public List<AdventureEntryResponse> getEntries(
+            @PathVariable UUID characterId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("📜 [GET /api/characters/{}/entries] 查詢冒險記錄列表, userId={}", characterId, principal.getId());
+        return adventureEntryService.getEntriesByCharacter(characterId, principal.getId());
+    }
+
+    @GetMapping("/api/characters/{characterId}/entries/defaults")
+    public EntryDefaultsResponse getDefaults(
+            @PathVariable UUID characterId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("⚙️ [GET /api/characters/{}/entries/defaults] 取得新記錄預設起始值, userId={}", characterId, principal.getId());
+        return adventureEntryService.getDefaults(characterId, principal.getId());
+    }
+
+    @GetMapping("/api/entries/{id}")
+    public AdventureEntryResponse getEntry(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("🔍 [GET /api/entries/{}] 查詢冒險記錄詳情, userId={}", id, principal.getId());
+        return adventureEntryService.getEntry(id, principal.getId());
+    }
+
+    @PostMapping("/api/characters/{characterId}/entries")
+    public ResponseEntity<AdventureEntryResponse> createEntry(
+            @PathVariable UUID characterId,
+            @Valid @RequestBody AdventureEntryRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("➕ [POST /api/characters/{}/entries] 新增冒險記錄: 名稱={}, 代碼={}, userId={}",
+                characterId, request.getAdventureName(), request.getAdventureCode(), principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(guard.mutate(CHARACTER, characterId, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.createEntry(characterId, request, principal.getId())));
+    }
+
+    @PostMapping("/api/characters/{characterId}/entries/with-details")
+    public ResponseEntity<AdventureEntryResponse> createEntryWithDetails(
+            @PathVariable UUID characterId,
+            @Valid @RequestBody AdventureEntrySaveRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(guard.mutate(CHARACTER, characterId, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.createEntryWithDetails(characterId, request, principal.getId())));
+    }
+
+    @PutMapping("/api/entries/{id}")
+    public AdventureEntryResponse updateEntry(
+            @PathVariable UUID id,
+            @Valid @RequestBody AdventureEntryRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("✏️ [PUT /api/entries/{}] 更新冒險記錄: 名稱={}, 代碼={}, userId={}",
+                id, request.getAdventureName(), request.getAdventureCode(), principal.getId());
+        return guard.mutate(ENTRY, id, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.updateEntry(id, request, principal.getId()));
+    }
+
+    @PutMapping("/api/entries/{id}/with-details")
+    public AdventureEntryResponse updateEntryWithDetails(
+            @PathVariable UUID id,
+            @Valid @RequestBody AdventureEntrySaveRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        return guard.mutate(ENTRY, id, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.updateEntryWithDetails(id, request, principal.getId()));
+    }
+
+    @DeleteMapping("/api/entries/{id}")
+    public ResponseEntity<Void> deleteEntry(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("🗑️ [DELETE /api/entries/{}] 刪除冒險記錄, userId={}", id, principal.getId());
+        guard.mutate(ENTRY, id, principal.getId(), expectedUpdatedAt, () -> { adventureEntryService.deleteEntry(id, principal.getId()); return null; });
+        return ResponseEntity.noContent().build();
+    }
+
+    // Downtime Activities
+    @GetMapping("/api/entries/{entryId}/downtime-activities")
+    public List<DowntimeActivityResponse> getActivities(
+            @PathVariable UUID entryId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("🏕️ [GET /api/entries/{}/downtime-activities] 查詢休整期活動, userId={}", entryId, principal.getId());
+        return adventureEntryService.getActivities(entryId, principal.getId());
+    }
+
+    @PostMapping("/api/entries/{entryId}/downtime-activities")
+    public ResponseEntity<DowntimeActivityResponse> createActivity(
+            @PathVariable UUID entryId,
+            @Valid @RequestBody DowntimeActivityRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("➕ [POST /api/entries/{}/downtime-activities] 新增休整期活動: {}, userId={}", entryId, request.getDescription(), principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(guard.mutate(ENTRY, entryId, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.createActivity(entryId, request, principal.getId())));
+    }
+
+    @PutMapping("/api/downtime-activities/{id}")
+    public DowntimeActivityResponse updateActivity(
+            @PathVariable UUID id,
+            @Valid @RequestBody DowntimeActivityRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("✏️ [PUT /api/downtime-activities/{}] 更新休整期活動, userId={}", id, principal.getId());
+        return guard.mutate(ACTIVITY, id, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.updateActivity(id, request, principal.getId()));
+    }
+
+    @DeleteMapping("/api/downtime-activities/{id}")
+    public ResponseEntity<Void> deleteActivity(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("🗑️ [DELETE /api/downtime-activities/{}] 刪除休整期活動, userId={}", id, principal.getId());
+        guard.mutate(ACTIVITY, id, principal.getId(), expectedUpdatedAt, () -> { adventureEntryService.deleteActivity(id, principal.getId()); return null; });
+        return ResponseEntity.noContent().build();
+    }
+
+    // Gained Items (冒險獲得物品快照)
+    @GetMapping("/api/entries/{entryId}/gained-items")
+    public List<AdventureGainedItemResponse> getGainedItems(
+            @PathVariable UUID entryId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("🎁 [GET /api/entries/{}/gained-items] 查詢冒險獲得物品快照, userId={}", entryId, principal.getId());
+        return adventureEntryService.getGainedItems(entryId, principal.getId());
+    }
+
+    @PostMapping("/api/entries/{entryId}/gained-items")
+    public ResponseEntity<AdventureGainedItemResponse> createGainedItem(
+            @PathVariable UUID entryId,
+            @Valid @RequestBody AdventureGainedItemRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("➕ [POST /api/entries/{}/gained-items] 新增冒險獲得物品快照: {}, userId={}", entryId, request.getItemName(), principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(guard.mutate(ENTRY, entryId, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.createGainedItem(entryId, request, principal.getId())));
+    }
+
+    @PutMapping("/api/entries/{entryId}/gained-items/{itemId}")
+    public AdventureGainedItemResponse updateGainedItem(
+            @PathVariable UUID entryId,
+            @PathVariable UUID itemId,
+            @Valid @RequestBody AdventureGainedItemRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("✏️ [PUT /api/entries/{}/gained-items/{}] 更新冒險獲得物品快照: {}, userId={}", entryId, itemId, request.getItemName(), principal.getId());
+        return guard.mutate(ENTRY, entryId, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.updateGainedItem(entryId, itemId, request, principal.getId()));
+    }
+
+    @DeleteMapping("/api/gained-items/{id}")
+    public ResponseEntity<Void> deleteGainedItem(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("🗑️ [DELETE /api/gained-items/{}] 刪除冒險獲得物品快照, userId={}", id, principal.getId());
+        guard.mutate(GAINED_ITEM, id, principal.getId(), expectedUpdatedAt, () -> { adventureEntryService.deleteGainedItem(id, principal.getId()); return null; });
+        return ResponseEntity.noContent().build();
+    }
+
+    // Story Awards (故事獎勵)
+    @GetMapping("/api/entries/{entryId}/story-awards")
+    public List<StoryAwardResponse> getStoryAwards(
+            @PathVariable UUID entryId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("⭐ [GET /api/entries/{}/story-awards] 查詢故事獎勵列表, userId={}", entryId, principal.getId());
+        return adventureEntryService.getStoryAwards(entryId, principal.getId());
+    }
+
+    @PostMapping("/api/entries/{entryId}/story-awards")
+    public ResponseEntity<StoryAwardResponse> createStoryAward(
+            @PathVariable UUID entryId,
+            @Valid @RequestBody StoryAwardRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("➕ [POST /api/entries/{}/story-awards] 新增故事獎勵: {}, userId={}", entryId, request.getAwardName(), principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(guard.mutate(ENTRY, entryId, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.createStoryAward(entryId, request, principal.getId())));
+    }
+
+    @PutMapping("/api/entries/{entryId}/story-awards/{awardId}")
+    public StoryAwardResponse updateStoryAward(
+            @PathVariable UUID entryId,
+            @PathVariable UUID awardId,
+            @Valid @RequestBody StoryAwardRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("✏️ [PUT /api/entries/{}/story-awards/{}] 更新故事獎勵: {}, userId={}", entryId, awardId, request.getAwardName(), principal.getId());
+        return guard.mutate(ENTRY, entryId, principal.getId(), expectedUpdatedAt, () -> adventureEntryService.updateStoryAward(entryId, awardId, request, principal.getId()));
+    }
+
+    @DeleteMapping("/api/story-awards/{id}")
+    public ResponseEntity<Void> deleteStoryAward(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "X-Expected-Updated-At", required = false) String expectedUpdatedAt) {
+        log.info("🗑️ [DELETE /api/story-awards/{}] 刪除故事獎勵, userId={}", id, principal.getId());
+        guard.mutate(STORY_AWARD, id, principal.getId(), expectedUpdatedAt, () -> { adventureEntryService.deleteStoryAward(id, principal.getId()); return null; });
+        return ResponseEntity.noContent().build();
+    }
+}

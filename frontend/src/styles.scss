@@ -1,0 +1,964 @@
+@use '@angular/material' as mat;
+
+/* ==========================================================================
+   Design Tokens & CSS Variables (Style A: Clean Light & Style B: Soft Charcoal)
+   ========================================================================== */
+
+/* ── 風格 A：現代簡約淺色 (Clean Light - 預設) ── */
+:root,
+body,
+body.theme-light {
+  // Base Surfaces
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
+  --bg-surface-hover: #f1f5f9;
+
+  // Borders
+  --border-subtle: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --border-highlight: rgba(217, 119, 6, 0.35);
+
+  // Typography
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #526176;
+  --text-disabled: var(--text-muted);
+
+  // Primary & Functional Colors
+  --color-primary: var(--mat-sys-primary);
+  --color-primary-hover: color-mix(in srgb, var(--mat-sys-primary) 88%, var(--text-primary));
+  --color-gold: #92400e;
+  --color-gold-bg: #fef3c7;
+  --color-attunement: #92400e;
+  --color-attunement-bg: #fef3c7;
+  --color-attunement-border: rgba(217, 119, 6, 0.25);
+  --color-positive: #047857;
+  --color-positive-bg: #d1fae5;
+  --color-negative: #be123c;
+  --color-negative-bg: #ffe4e6;
+  --color-info: #0369a1;
+  --color-info-bg: #e0f2fe;
+
+  // D&D Item Rarity (Light Mode)
+  --rarity-common: #526176;
+  --rarity-uncommon: #166534;
+  --rarity-rare: #1d4ed8;
+  --rarity-very-rare: #9333ea;
+  --rarity-legendary: #92400e;
+  --rarity-artifact: #b91c1c;
+
+  // Spacing & Radius
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+
+  // Header & Scrollbar
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --scrollbar-track: #f8fafc;
+  --scrollbar-thumb: #cbd5e1;
+
+  // Safe Area Insets (for mobile notches & gesture bars)
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --page-safe-left: var(--safe-area-left);
+  --page-safe-right: var(--safe-area-right);
+
+  // Fonts
+  --font-family-base: 'Inter', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── 風格 B：柔和炭灰深色 (Soft Charcoal Dark) ── */
+body.theme-dark {
+  // Base Surfaces
+  --bg-canvas: #18181b;
+  --bg-surface: #27272a;
+  --bg-surface-elevated: #3f3f46;
+  --bg-surface-hover: #3f3f46;
+
+  // Borders
+  --border-subtle: #3f3f46;
+  --border-medium: #52525b;
+  --border-highlight: rgba(251, 191, 36, 0.35);
+
+  // Typography
+  --text-primary: #f4f4f5;
+  --text-secondary: #d4d4d8;
+  --text-muted: #b4b4be;
+
+  // Primary & Functional Colors
+  --color-primary: var(--mat-sys-primary);
+  --color-primary-hover: color-mix(in srgb, var(--mat-sys-primary) 88%, var(--text-primary));
+  --color-gold: #fbbf24;
+  --color-gold-bg: rgba(251, 191, 36, 0.15);
+  --color-attunement: #fbbf24;
+  --color-attunement-bg: rgba(251, 191, 36, 0.15);
+  --color-attunement-border: rgba(251, 191, 36, 0.3);
+  --color-positive: #34d399;
+  --color-positive-bg: rgba(52, 211, 153, 0.15);
+  --color-negative: #fecdd3;
+  --color-negative-bg: rgba(251, 113, 133, 0.15);
+  --color-info: #38bdf8;
+  --color-info-bg: rgba(56, 189, 248, 0.15);
+
+  // D&D Item Rarity (Dark Mode)
+  --rarity-common: #b4b4be;
+  --rarity-uncommon: #4ade80;
+  --rarity-rare: #60a5fa;
+  --rarity-very-rare: #c084fc;
+  --rarity-legendary: #fde047;
+  --rarity-artifact: #fca5a5;
+
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
+  // Header & Scrollbar
+  --header-bg: rgba(39, 39, 42, 0.88);
+  --scrollbar-track: #18181b;
+  --scrollbar-thumb: #3f3f46;
+}
+
+/* ==========================================================================
+   Material 3 Theming Integration
+   ========================================================================== */
+html {
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+// Light theme by default
+body,
+body.theme-light {
+  color-scheme: light;
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$azure-palette,
+        tertiary: mat.$orange-palette,
+      ),
+      typography: (
+        plain-family: ('Inter', 'Noto Sans TC', sans-serif),
+        brand-family: ('Inter', 'Noto Sans TC', sans-serif),
+      ),
+      density: 0,
+    )
+  );
+}
+
+// Dark theme when body has .theme-dark
+body.theme-dark {
+  color-scheme: dark;
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$violet-palette,
+        tertiary: mat.$yellow-palette,
+      ),
+      typography: (
+        plain-family: ('Inter', 'Noto Sans TC', sans-serif),
+        brand-family: ('Inter', 'Noto Sans TC', sans-serif),
+      ),
+      density: 0,
+    )
+  );
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-family-base);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+img,
+svg {
+  max-inline-size: 100%;
+}
+
+/* ==========================================================================
+   Global Scrollbars
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--scrollbar-track);
+
+  &:hover {
+    background: var(--text-muted);
+  }
+}
+
+/* ==========================================================================
+   Global Utility Classes & Components
+   ========================================================================== */
+
+// 卡片容器
+.clean-card {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+
+  &.clickable {
+    cursor: pointer;
+    &:hover {
+      background: var(--bg-surface-hover) !important;
+      border-color: var(--border-medium) !important;
+      box-shadow: var(--shadow-md);
+    }
+  }
+}
+
+// 原生卡片導覽：主連結涵蓋卡片，獨立操作保留在連結之外。
+.navigation-card {
+  position: relative;
+}
+
+a.navigation-card,
+.card-navigation-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.navigation-card {
+  display: block;
+}
+
+.card-navigation-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.card-independent-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.navigation-card:focus-visible,
+.navigation-card:has(.card-navigation-link:focus-visible) {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: -3px;
+}
+
+.brand-container:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+// 自訂列表控制項：將透明選單／無框輸入的焦點顯示在可見容器。
+:is(app-adventure-list, app-inventory-list) {
+  .search-bar:has(.search-input:focus-visible),
+  .select-section:has(.invisible-native-select:focus-visible),
+  .capsule-section.button-section:focus-visible,
+  .search-clear-btn:focus-visible,
+  .filter-chip:focus-visible,
+  .filter-chip-clear:focus-visible,
+  .link-btn:focus-visible {
+    outline: 3px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  .select-section:has(.invisible-native-select:focus-visible),
+  .capsule-section.button-section:focus-visible,
+  .search-clear-btn:focus-visible {
+    outline-offset: -3px;
+  }
+}
+
+// 數值增減標籤
+.delta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+
+  &.positive {
+    color: var(--color-positive);
+    background-color: var(--color-positive-bg);
+  }
+
+  &.negative {
+    color: var(--color-negative);
+    background-color: var(--color-negative-bg);
+  }
+
+  &.neutral {
+    color: var(--text-secondary);
+  }
+}
+
+// 稀有度標籤 (Rarity Pill)
+.rarity-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid currentColor;
+  background-color: rgba(0, 0, 0, 0.05);
+
+  &.rarity-common { color: var(--rarity-common); }
+  &.rarity-uncommon { color: var(--rarity-uncommon); }
+  &.rarity-rare { color: var(--rarity-rare); }
+  &.rarity-very-rare { color: var(--rarity-very-rare); }
+  &.rarity-legendary { color: var(--rarity-legendary); }
+  &.rarity-artifact { color: var(--rarity-artifact); }
+}
+
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--border-subtle, rgba(148, 163, 184, 0.32));
+  border-radius: var(--radius-full);
+  color: var(--text-secondary, #94a3b8);
+  background: rgba(148, 163, 184, 0.1);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+// 同調標籤 (Attunement Pill)
+.attunement-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--color-attunement, #d97706);
+  background-color: var(--color-attunement-bg, #fef3c7);
+  border: 1px solid var(--color-attunement-border, rgba(217, 119, 6, 0.25));
+
+  svg {
+    display: block;
+    flex-shrink: 0;
+  }
+}
+
+// 狀態徽章 (Badge)
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+
+  .badge-icon {
+    display: block;
+    flex-shrink: 0;
+  }
+}
+
+// 骨架屏載入動效 (Skeleton pulse)
+@keyframes skeleton-pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.25; }
+  100% { opacity: 0.6; }
+}
+
+.skeleton-box {
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .clickable:is(:hover, :active),
+  .char-card:hover,
+  .chronicle-card:hover .chevron-icon,
+  .theme-toggle-btn:hover,
+  .btn-hero-action:hover,
+  .feature-card:hover,
+  .btn-return:hover,
+  .official-policy-btn:hover,
+  .policy-link:hover {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  :is(app-adventure-form, app-inventory-form, app-character-form) {
+    .page-container .form-actions {
+      flex-wrap: wrap;
+      gap: 10px;
+
+      button.mat-mdc-button-base {
+        flex: 1 1 8rem;
+        min-width: min(100%, 8rem);
+        min-height: 48px;
+        height: auto;
+        padding-block: 10px;
+        justify-content: center;
+      }
+    }
+  }
+
+  app-adventure-form {
+    .page-container .form-actions {
+      padding-bottom: max(16px, var(--safe-area-bottom));
+    }
+
+    :is(input, textarea, mat-select) {
+      scroll-margin-block: 80px 16px;
+    }
+  }
+}
+
+/* ==========================================================================
+   Mobile Ergonomics & Responsive Overrides
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+// 觸控點擊微動效反饋
+.clickable {
+  &:active {
+    transform: scale(0.985) !important;
+  }
+}
+
+// 防止 iOS Safari 在輸入框聚焦時強制畫面放大 (字體需 >= 16px)
+@media (max-width: 768px) {
+  .mat-mdc-form-field input,
+  .mat-mdc-form-field textarea,
+  .mat-mdc-select,
+  .search-input {
+    font-size: 16px !important;
+  }
+
+  .mat-mdc-icon-button,
+  .search-clear-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .search-bar {
+    min-height: 48px;
+  }
+
+}
+
+// Dialogs use the visible area, including a keyboard-shortened viewport.
+.cdk-global-overlay-wrapper:has(.mat-mdc-dialog-panel) {
+  top: var(--app-visible-top, 0px);
+  height: var(--app-visible-height, 100dvh);
+  padding: max(8px, var(--safe-area-top)) max(8px, var(--safe-area-right))
+    max(8px, var(--safe-area-bottom)) max(8px, var(--safe-area-left));
+}
+
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  --dialog-width-limit: 80vw;
+  max-width: min(var(--dialog-width-limit), calc(100vw - max(8px, var(--safe-area-left)) - max(8px, var(--safe-area-right)))) !important;
+  max-height: calc(var(--app-visible-height, 100dvh) - max(8px, var(--safe-area-top)) - max(8px, var(--safe-area-bottom))) !important;
+
+  @media (max-width: 768px) { --dialog-width-limit: 94vw; }
+
+  .mat-mdc-dialog-component-host {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+  }
+
+  .mat-mdc-dialog-content { min-height: 0; }
+  .mat-mdc-dialog-actions { flex-shrink: 0; flex-wrap: wrap; }
+}
+
+.full-resource-summary:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+// 操作提示：文字可收縮換行，關閉按鈕及邊距保留在可用視窗內。
+mat-snack-bar-container.mat-mdc-snack-bar-container {
+  min-width: 0;
+  max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+
+  .mat-mdc-snackbar-surface {
+    min-width: min(344px, 100%);
+    max-width: min(672px, 100%);
+  }
+
+  .mat-mdc-snack-bar-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+// 底部安全區域輔助類別
+.safe-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
+// Public M3 overrides keep error/disabled states owned by Angular Material.
+.mat-mdc-form-field.mat-form-field-appearance-outline {
+  @include mat.form-field-overrides((
+    outlined-outline-color: var(--border-medium),
+    outlined-hover-outline-color: var(--text-secondary),
+    outlined-focus-outline-color: var(--color-primary),
+    outlined-error-outline-color: var(--mat-sys-error),
+    outlined-error-focus-outline-color: var(--mat-sys-error),
+    outlined-error-hover-outline-color: var(--mat-sys-error),
+    outlined-outline-width: 1px,
+    outlined-focus-outline-width: 2px,
+  ));
+}
+
+/* ==========================================================================
+   Lucide SVG & Material Component Global Overrides
+   ========================================================================== */
+
+// ─── 1. 通用 Lucide SVG 全局基礎樣式 ────────────────────────────────────────
+//
+// 新版 @lucide/angular (v1.34+) 的每個 icon 是獨立的 standalone component，
+// selector 為 svg[lucideXxx]（如 svg[lucideArrowDown]），
+// 不再有舊版的共用 svg[lucide] attribute。
+//
+// 解決方案：以 svg[fill="none"][viewBox] 作為通用選擇器匹配所有 Lucide SVG。
+//
+// 使用情境分為兩種：
+//   • 行內文字（inline）：inline-block + vertical-align 讓 icon 對齊中文字 baseline
+//   • flex 容器（block） ：display:block 讓父層 align-items:center 正確垂直居中
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1a. 預設：行內文字場景
+//     vertical-align: -0.125em 修正中文字 baseline 偏移（icon 視覺上居中）
+svg[fill="none"][viewBox] {
+  display: inline-block;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+  // Lucide 本身保留足夠的 viewBox 留白，不需要讓筆畫越出 SVG 盒模型。
+  // 設為 hidden 可避免 icon 位於畫面邊緣時製造水平溢出。
+  overflow: hidden;
+}
+
+// 1b. Flex 容器場景
+//     在以下 flex 容器的直接子 SVG 改為 display:block，
+//     讓父層 align-items:center 正確控制垂直居中，
+//     避免 inline-block baseline 造成的上下偏移。
+:is(
+  // 全局排版容器
+  .header-actions,
+  .header-titles,
+  // 排序膠囊
+  .sort-toolbar-capsule,
+  .capsule-section,
+  // 徽章與標籤
+  .badges-row,
+  .delta-badge,
+  .delta-tag,
+  .rarity-pill,
+  .attunement-pill,
+  .stat-badge,
+  .qty-badge,
+  // 冒險列表 meta 區
+  .meta-left,
+  .adv-date,
+  .adv-dm,
+  .adv-created-tag,
+  // 搜尋列
+  .search-bar,
+  .search-clear-btn,
+  // 篩選 chips
+  .filter-chip,
+  .filter-chip-clear,
+  // 物品列表行
+  .row-right-actions,
+  .row-left-main,
+  .row-center-tags,
+  .row-qty-col,
+  .crud-btns,
+  .action-btn,
+  // 其他
+  .empty-state,
+  .tab-icon
+) > svg[fill="none"][viewBox],
+// Material 按鈕內的 icon
+.mat-mdc-button-base svg[fill="none"][viewBox],
+.mdc-button__label svg[fill="none"][viewBox] {
+  display: block;
+}
+
+// ─── 2. Utility classes（手動覆蓋，優先級最高）──────────────────────────────
+// 當全局規則判斷不夠精準時，直接在模板加 class 指定行為
+
+// 強制行內顯示（跟隨文字流）
+svg.icon-inline {
+  display: inline-block !important;
+  vertical-align: -0.125em !important;
+}
+
+// 強制 block 顯示（在 flex 容器中精準居中）
+svg.icon-block {
+  display: block !important;
+  flex-shrink: 0;
+}
+
+// ─── 3. Material 按鈕內部對齊修正 ────────────────────────────────────────────
+// 修正中文字在 Material 按鈕中行高造成的一高一低問題
+.mat-mdc-button-base .mdc-button__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1 !important;
+}
+
+// ─── 4. Material 選單項目 (mat-menu-item) 圖示間距與垂直對齊修正 ─────────────────────────
+.mat-mdc-menu-item .mat-mdc-menu-item-text {
+  display: flex;
+  align-items: center;
+}
+
+.mat-mdc-menu-item svg[fill="none"][viewBox] {
+  display: block;
+  margin-right: 6px;
+}
+
+// 手機列表共用排列；桌機保留原有文字與工具列。
+:is(app-adventure-list, app-inventory-list) .mobile-add-label {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  :is(app-adventure-list, app-inventory-list) .page-container {
+    :is(.list-header, .inventory-header) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .header-titles {
+      gap: 4px 8px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      overflow-wrap: anywhere;
+      min-width: 0;
+    }
+
+    .header-actions {
+      display: contents;
+    }
+
+    .sort-toolbar-capsule {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      height: auto;
+      min-height: 44px;
+      align-items: stretch;
+    }
+
+    .capsule-section {
+      height: auto;
+      min-height: 44px;
+      padding: 6px 8px;
+    }
+
+    .capsule-text {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      overflow-wrap: anywhere;
+      line-height: 1.4;
+    }
+
+    .capsule-divider {
+      align-self: center;
+    }
+
+    :is(.btn-add-adv, .btn-add-item) {
+      grid-column: 2;
+      grid-row: 1;
+      width: auto;
+      height: auto;
+      min-height: 44px;
+      max-width: 100%;
+      padding: 10px 12px;
+      white-space: normal;
+
+      .mdc-button__label {
+        line-height: 1.4 !important;
+      }
+    }
+
+    .desktop-add-label {
+      display: none;
+    }
+
+    .mobile-add-label {
+      display: inline;
+    }
+  }
+
+  app-adventure-list .page-container {
+    .adv-title {
+      font-size: 1rem;
+    }
+
+    :is(.adv-title, .adv-code, .adv-dm) {
+      max-width: 100%;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      line-height: 1.4;
+    }
+  }
+
+  :is(app-character-form, app-adventure-form, app-inventory-form, app-adventure-detail) .page-container {
+    :is(.page-title, .adv-title-hero) {
+      font-size: 1.0625rem;
+    }
+
+    :is(.card-title-flex, .section-title) {
+      font-size: 1rem;
+    }
+  }
+}
+
+:is(app-inventory-list, app-adventure-form) :is(.mobile-filter-toggle, .mobile-section-toggle) {
+  display: none;
+}
+
+app-inventory-list .filter-search-row {
+  display: contents;
+}
+
+@media (max-width: 600px) {
+  app-inventory-list {
+    .filter-search-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-panel .search-bar {
+      flex: 1;
+      padding-right: 0;
+    }
+
+    .filter-panel .search-clear-btn {
+      width: 44px;
+      height: 44px;
+    }
+
+    .mobile-filter-toggle {
+      max-width: 50%;
+      border-radius: var(--radius-full);
+    }
+
+    .filter-chip,
+    .filter-chip-clear {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
+  app-adventure-form {
+    .sub-title-flex,
+    .phase-story-award .card-title-flex,
+    .phase-downtime .card-title-flex {
+      min-width: 0;
+      flex-wrap: wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .sub-items-section .sub-title-flex .mobile-section-toggle,
+    .card-header-between .card-title-flex .mobile-section-toggle {
+      width: auto;
+      max-width: 100%;
+      flex-shrink: 1;
+      justify-content: flex-start;
+      gap: 6px;
+      padding: 6px 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: left;
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+    }
+
+    .sub-items-section .sub-title-flex.mobile-heading-replaced,
+    .card-header-between .card-title-flex.mobile-heading-replaced {
+      > :is(.title-icon, .sub-title-text, .section-heading-label) {
+        display: none;
+      }
+    }
+
+    .section-chevron,
+    .section-count {
+      flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+
+    .section-toggle-title {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .section-count {
+      font-size: 0.875em;
+      font-weight: 500;
+    }
+  }
+
+  :is(app-inventory-list, app-adventure-form) :is(.mobile-filter-toggle, .mobile-section-toggle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-medium);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  app-inventory-list .filter-chips-row.mobile-filter-collapsed,
+  app-adventure-form :is(.gained-items-list, mat-card-content).mobile-section-collapsed {
+    display: none;
+  }
+}
+
+/* Product presentation roles: aliases preserve the approved brand palette. */
+body {
+  --surface-canvas: var(--bg-canvas);
+  --surface-container-low: var(--bg-surface);
+  --surface-container-high: var(--bg-surface-elevated);
+  --on-surface: var(--text-primary);
+  --on-surface-variant: var(--text-secondary);
+  --outline-variant: var(--border-subtle);
+  --type-page-title: 1.35rem;
+  --type-section-title: 1.1rem;
+  --type-body: 1rem;
+  --type-label: .875rem;
+}
+
+.clean-card {
+  background-color: var(--surface-container-low);
+  color: var(--on-surface);
+  border-color: var(--outline-variant);
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+.skip-link {
+  position: fixed; top: max(8px, env(safe-area-inset-top)); left: 8px;
+  z-index: 2000; padding: .75rem 1rem; min-height: 44px; box-sizing: border-box;
+  background: var(--bg-surface); color: var(--text-primary);
+  transform: translateY(-200%);
+  &:focus { transform: none; outline: 3px solid var(--color-primary); }
+}
+
+app-form-feedback button:focus-visible,
+.position-controls button:focus-visible {
+  outline: 3px solid var(--color-primary); outline-offset: 2px;
+}
