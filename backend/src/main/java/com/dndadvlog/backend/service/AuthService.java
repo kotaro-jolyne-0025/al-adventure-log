@@ -72,8 +72,14 @@ public class AuthService {
 
     @Transactional
     public AuthResponse loginOAuth(OAuthLoginRequest request) {
-        User user = oauthService.processOAuthLogin(request);
-        return buildAuthResponse(user);
+        OAuthService.OAuthLoginResult result = oauthService.processOAuthLogin(request);
+        return result.user() != null ? buildAuthResponse(result.user())
+                : AuthResponse.builder().registrationRequired(true).registrationToken(result.registrationToken()).build();
+    }
+
+    @Transactional
+    public AuthResponse registerOAuth(OAuthRegisterRequest request) {
+        return buildAuthResponse(oauthService.completeRegistration(request.getRegistrationToken(), request.getDisplayName()));
     }
 
     public UserProfileResponse getCurrentUserProfile(UUID userId) {

@@ -19,9 +19,9 @@
           <p class="sr-only" role="status">{{ isLoading() ? '正在處理，請稍候。' : '' }}</p>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>顯示名稱 (玩家暱稱)</mat-label>
-          <input matInput formControlName="displayName" autocomplete="name" />
+          <input matInput formControlName="displayName" autocomplete="nickname" />
 
-          @if (registerForm.get('displayName')?.hasError('required')) {
+          @if (registerForm.get('displayName')?.hasError('required') || registerForm.get('displayName')?.hasError('pattern')) {
             <mat-error>請輸入顯示名稱</mat-error>
           }
           @if (registerForm.get('displayName')?.hasError('maxlength')) {

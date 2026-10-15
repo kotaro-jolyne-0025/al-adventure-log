@@ -45,7 +45,7 @@ export class RegisterComponent {
   readonly errorMessage = signal<string | null>(null);
 
   readonly registerForm: FormGroup = this.fb.group({
-    displayName: ['', [Validators.required, Validators.maxLength(100)]],
+    displayName: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(100)]],
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(8)]],
   });

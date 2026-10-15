@@ -60,7 +60,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadableMessage(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
-        log.warn("Unreadable request body on [{}]: {}", request.getRequestURI(), ex.getMessage());
+        // Parser diagnostics can include request values such as OAuth registration proofs.
+        log.warn("Unreadable request body on [{}]", request.getRequestURI());
         return buildResponse(HttpStatus.BAD_REQUEST, "請求內容包含無效或不允許的欄位", request.getRequestURI());
     }
 

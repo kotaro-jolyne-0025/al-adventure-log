@@ -6,10 +6,18 @@ export interface User {
 }
 
 export interface AuthResponse {
+  registrationRequired?: false;
   token: string;
   tokenType: string;
   user: User;
 }
+
+export interface OAuthRegistrationRequired {
+  registrationRequired: true;
+  registrationToken: string;
+}
+
+export type OAuthLoginResponse = AuthResponse | OAuthRegistrationRequired;
 
 export interface LoginCredentials {
   email: string;

@@ -2,7 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { defer, EMPTY, Observable, Subject, takeUntil, tap } from 'rxjs';
-import { AuthResponse, LoginCredentials, OAuthLoginRequest, RegisterCredentials, User } from '../models/auth.model';
+import { AuthResponse, LoginCredentials, OAuthLoginRequest, OAuthLoginResponse, RegisterCredentials, User } from '../models/auth.model';
 import { environment } from '../../../environments/environment';
 import { CharacterService } from './character.service';
 import { AdventureService } from './adventure.service';
@@ -119,8 +119,14 @@ export class AuthService {
     );
   }
 
-  loginOAuth(request: OAuthLoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API_URL}/oauth`, request).pipe(
+  loginOAuth(request: OAuthLoginRequest): Observable<OAuthLoginResponse> {
+    return this.http.post<OAuthLoginResponse>(`${this.API_URL}/oauth`, request).pipe(
+      tap((res) => { if (!res.registrationRequired) this.handleAuthSuccess(res); })
+    );
+  }
+
+  registerOAuth(registrationToken: string, displayName: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.API_URL}/oauth/register`, { registrationToken, displayName }).pipe(
       tap((res) => this.handleAuthSuccess(res))
     );
   }
