@@ -1,13 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../../core/services/auth.service';
-import { AuthResponse } from '../../../core/models/auth.model';
+import { AuthResponse, OAuthLoginResponse } from '../../../core/models/auth.model';
 
 describe('Google sign-in callback', () => {
-  let response: Subject<AuthResponse>;
+  let response: Subject<OAuthLoginResponse>;
+  let confirmation: Subject<AuthResponse | undefined>;
+  let openDialog: ReturnType<typeof vi.fn>;
   let loginOAuth: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.fn>;
   let initialize: ReturnType<typeof vi.fn>;
@@ -17,6 +20,7 @@ describe('Google sign-in callback', () => {
 
   beforeEach(() => {
     response = new Subject(); loginOAuth = vi.fn(() => response); navigateByUrl = vi.fn();
+    confirmation = new Subject(); openDialog = vi.fn(() => ({ afterClosed: () => confirmation }));
     initialize = vi.fn(); renderButton = vi.fn(); queryParams = { returnUrl: '/characters/c/inventory' };
     vi.stubGlobal('google', { accounts: { id: { initialize, renderButton } } });
     const container = document.createElement('div'); container.id = 'google-btn-container';
@@ -26,6 +30,7 @@ describe('Google sign-in callback', () => {
       { provide: Router, useValue: { navigateByUrl } },
       { provide: ActivatedRoute, useValue: { snapshot: { queryParams } } },
       { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      { provide: MatDialog, useValue: { open: openDialog } },
     ] });
     component = TestBed.runInInjectionContext(() => new LoginComponent());
   });
@@ -59,5 +64,26 @@ describe('Google sign-in callback', () => {
   it('does not submit an empty credential', () => {
     component.ngAfterViewInit(); initialize.mock.calls[0][0].callback({ credential:'' });
     expect(loginOAuth).not.toHaveBeenCalled(); expect(component.errorMessage()).toBeTruthy();
+  });
+
+  it('waits for a new player to confirm a nickname before navigating to the safe return URL', () => {
+    component.ngAfterViewInit(); initialize.mock.calls[0][0].callback({ credential: 'test-id-token' });
+    response.next({ registrationRequired: true, registrationToken: 'pending-proof' });
+    expect(openDialog.mock.calls[0][1].data).toEqual({ registrationToken: 'pending-proof' });
+    expect(navigateByUrl).not.toHaveBeenCalled();
+    confirmation.next({ token: 'app-token', tokenType: 'Bearer', user: { id: 'qa', email: 'qa@example.invalid', displayName: '自選暱稱' } });
+    expect(navigateByUrl).toHaveBeenCalledWith('/characters/c/inventory');
+    expect(component.isLoading()).toBe(false);
+  });
+
+  it('allows cancelling nickname registration and trying Google again', () => {
+    component.ngAfterViewInit(); const callback = initialize.mock.calls[0][0].callback;
+    callback({ credential: 'test-id-token' });
+    response.next({ registrationRequired: true, registrationToken: 'pending-proof' });
+    confirmation.next(undefined);
+    expect(navigateByUrl).not.toHaveBeenCalled();
+    expect(component.isLoading()).toBe(false);
+    callback({ credential: 'another-fixture' });
+    expect(loginOAuth).toHaveBeenCalledTimes(2);
   });
 });

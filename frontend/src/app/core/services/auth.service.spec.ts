@@ -81,6 +81,24 @@ describe('Daily account confirmation', () => {
     http.expectNone(`${api}/login`);
   });
 
+  it('stores no session or pending proof until a new OAuth player confirms a nickname', async () => {
+    const service = await start();
+    service.loginOAuth({ provider: 'GOOGLE', tokenOrCode: 'provider-fixture' }).subscribe();
+    http.expectOne(`${api}/oauth`).flush({ registrationRequired: true, registrationToken: 'pending-proof' });
+    expect(service.isAuthenticated()).toBe(false);
+    expect(localStorage.getItem('dnd_auth_token')).toBeNull();
+    expect(localStorage.getItem('dnd_auth_user')).toBeNull();
+    expect(JSON.stringify(localStorage)).not.toContain('pending-proof');
+    service.registerOAuth('pending-proof', '自選暱稱').subscribe();
+    const request = http.expectOne(`${api}/oauth/register`);
+    expect(request.request.body).toEqual({ registrationToken: 'pending-proof', displayName: '自選暱稱' });
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    request.flush({ token: token(), tokenType: 'Bearer', user: { ...user, displayName: '自選暱稱' } });
+    expect(service.isAuthenticated()).toBe(true);
+    expect(service.currentUser()?.displayName).toBe('自選暱稱');
+    expect(localStorage.getItem('dnd_auth_token')).toBe(token());
+  });
+
   it('uses the stored account on reload and repeated navigation within 24 hours', async () => {
     storedSession({ userId: user.id, checkedAt: now - day + 1 });
     const service = await start();

@@ -1,4 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatDialog } from '@angular/material/dialog';
+import { AuthResponse } from '../../../core/models/auth.model';
+import { OAuthRegisterDialogComponent } from '../oauth-register-dialog/oauth-register-dialog.component';
 
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
@@ -32,7 +36,7 @@ import { LucideCircleAlert } from '@lucide/angular';
 
         @if (errorMessage()) {
           <div class="error-state">
-            <svg lucideAlertCircle [size]="20" color="warn" class="error-icon"></svg>
+            <svg lucideCircleAlert [size]="20" color="warn" class="error-icon"></svg>
             <h3>第三方登入失敗</h3>
             <p>{{ errorMessage() }}</p>
             <button mat-raised-button color="primary" routerLink="/login">返回登入頁</button>
@@ -77,6 +81,8 @@ export class OAuthCallbackComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly isLoading = signal(true);
   readonly errorMessage = signal<string | null>(null);
@@ -101,7 +107,7 @@ export class OAuthCallbackComponent implements OnInit {
       const receivedState = queryParams['state'];
       sessionStorage.removeItem('oauth_state_discord');
 
-      if (expectedState && receivedState !== expectedState) {
+      if (!expectedState || receivedState !== expectedState) {
         this.handleError('登入安全性校驗失敗 (CSRF State 不符)，請重新登入');
         return;
       }
@@ -120,8 +126,20 @@ export class OAuthCallbackComponent implements OnInit {
         tokenOrCode,
         redirectUri,
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (res.registrationRequired) {
+            this.dialog.open(OAuthRegisterDialogComponent, {
+              width: '440px', maxWidth: 'calc(100vw - 32px)',
+              data: { registrationToken: res.registrationToken },
+            }).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((registered: AuthResponse | undefined) => {
+              this.isLoading.set(false);
+              if (registered) this.snackBar.open(`註冊成功，歡迎 ${registered.user.displayName}！`, '關閉', { duration: 3000 });
+              this.router.navigate([registered ? '/characters' : '/login']);
+            });
+            return;
+          }
           this.isLoading.set(false);
           this.snackBar.open(`登入成功，歡迎 ${res.user.displayName}！`, '關閉', {
             duration: 3000,

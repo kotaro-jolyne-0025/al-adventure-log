@@ -1,6 +1,7 @@
 package com.dndadvlog.backend.service;
 
 import com.dndadvlog.backend.dto.auth.OAuthLoginRequest;
+import com.dndadvlog.backend.config.JwtTokenProvider;
 import com.dndadvlog.backend.entity.User;
 import com.dndadvlog.backend.entity.UserOAuthAccount;
 import com.dndadvlog.backend.exception.BusinessException;
@@ -13,6 +14,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.server.ResponseStatusException;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -21,6 +27,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.util.UUID;
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -29,6 +36,7 @@ public class OAuthService {
 
     private final UserMapper userMapper;
     private final UserOAuthAccountMapper oauthAccountMapper;
+    private final JwtTokenProvider tokenProvider;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestClient restClient = RestClient.create();
 
@@ -44,20 +52,57 @@ public class OAuthService {
     @Value("${app.oauth.discord.redirect-uri:http://localhost:4200/auth/callback/discord}")
     private String discordDefaultRedirectUri;
 
-    public record OAuthUserInfo(String provider, String providerUserId, String email, String displayName, String avatarUrl, boolean emailVerified) {}
+    public record OAuthUserInfo(String provider, String providerUserId, String email, String avatarUrl, boolean emailVerified) {}
+    public record OAuthLoginResult(User user, String registrationToken) {}
 
     @Transactional
-    public User processOAuthLogin(OAuthLoginRequest request) {
+    public OAuthLoginResult processOAuthLogin(OAuthLoginRequest request) {
         OAuthUserInfo userInfo = resolveOAuthUserInfo(request);
+        validateProviderEmail(userInfo.email(), userInfo.emailVerified());
         User existingUser = findAndSyncExistingUser(userInfo);
         if (existingUser != null) {
-            return existingUser;
+            return new OAuthLoginResult(existingUser, null);
         }
-        return createNewUserWithOAuth(userInfo);
+        return new OAuthLoginResult(null, tokenProvider.generateOAuthRegistrationToken(
+                userInfo.provider(), userInfo.providerUserId(), userInfo.email(), userInfo.avatarUrl()));
+    }
+
+    @Transactional
+    public User completeRegistration(String registrationToken, String displayName) {
+        Claims claims;
+        try {
+            claims = tokenProvider.getOAuthRegistrationClaims(registrationToken);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.GONE, "第三方註冊驗證已失效，請重新登入");
+        }
+        String provider = claims.get("provider", String.class);
+        String subject = claims.getSubject();
+        if (!("GOOGLE".equals(provider) || "DISCORD".equals(provider)) || subject == null || subject.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.GONE, "第三方註冊驗證已失效，請重新登入");
+        }
+        if (displayName == null || displayName.isBlank() || displayName.length() > 100) {
+            throw new BusinessException("請輸入非空白且最多 100 字元的本站暱稱");
+        }
+        OAuthUserInfo userInfo = new OAuthUserInfo(provider, subject,
+                claims.get("email", String.class), claims.get("avatarUrl", String.class), true);
+        if (oauthAccountMapper.findByProviderAndProviderUserId(provider, subject) != null
+                || (userInfo.email() != null && userMapper.findByEmail(userInfo.email()) != null)) {
+            throw registrationConflict();
+        }
+        try {
+            return createNewUserWithOAuth(userInfo, displayName.trim());
+        } catch (DataIntegrityViolationException e) {
+            // Unique constraints arbitrate simultaneous confirmations; roll back both inserts.
+            throw registrationConflict();
+        }
+    }
+
+    private ResponseStatusException registrationConflict() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "此身分或 Email 已完成註冊，請重新登入或使用原本的登入方式");
     }
 
     private OAuthUserInfo resolveOAuthUserInfo(OAuthLoginRequest request) {
-        String provider = request.getProvider().toUpperCase();
+        String provider = request.getProvider().toUpperCase(Locale.ROOT);
         if ("GOOGLE".equals(provider)) {
             return verifyGoogleToken(request.getTokenOrCode());
         }
@@ -114,16 +159,12 @@ public class OAuthService {
         oauthAccountMapper.insert(newOAuth);
     }
 
-    private User createNewUserWithOAuth(OAuthUserInfo userInfo) {
+    private User createNewUserWithOAuth(OAuthUserInfo userInfo, String displayName) {
         validateProviderEmail(userInfo.email(), userInfo.emailVerified());
         UUID newUserId = UUID.randomUUID();
         String fallbackEmail = (userInfo.email() != null && !userInfo.email().isBlank())
-                ? userInfo.email()
-                : userInfo.provider().toLowerCase() + "_" + userInfo.providerUserId() + "@dndadvlog.internal";
-
-        String displayName = (userInfo.displayName() != null && !userInfo.displayName().isBlank())
-                ? userInfo.displayName()
-                : "冒險者";
+                ? userInfo.email().trim().toLowerCase(Locale.ROOT)
+                : userInfo.provider().toLowerCase(Locale.ROOT) + "_" + userInfo.providerUserId() + "@dndadvlog.internal";
 
         User newUser = User.builder()
                 .id(newUserId)
@@ -164,10 +205,9 @@ public class OAuthService {
 
             String sub = root.path("sub").asText();
             String email = root.path("email").asText(null);
-            String name = root.path("name").asText(root.path("given_name").asText("Google 玩家"));
             String picture = root.path("picture").asText(null);
 
-            return new OAuthUserInfo("GOOGLE", sub, email, name, picture, true);
+            return new OAuthUserInfo("GOOGLE", sub, email, picture, true);
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientException | JsonProcessingException e) {
@@ -223,7 +263,9 @@ public class OAuthService {
 
             JsonNode userJson = objectMapper.readTree(userResponse);
             String discordId = userJson.path("id").asText();
-            String username = userJson.path("global_name").asText(userJson.path("username").asText("Discord 玩家"));
+            if (discordId.isBlank()) {
+                throw new BusinessException("Discord 登入身分無效，請重新登入");
+            }
             String email = userJson.path("email").asText(null);
             boolean emailVerified = userJson.path("verified").asBoolean(false);
             String avatarHash = userJson.path("avatar").asText(null);
@@ -237,7 +279,7 @@ public class OAuthService {
             revokeDiscordToken(accessToken);
 
             validateProviderEmail(email, emailVerified);
-            return new OAuthUserInfo("DISCORD", discordId, email, username, avatarUrl, emailVerified);
+            return new OAuthUserInfo("DISCORD", discordId, email, avatarUrl, emailVerified);
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientException | JsonProcessingException e) {

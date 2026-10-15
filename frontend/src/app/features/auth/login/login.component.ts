@@ -16,6 +16,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AuthResponse } from '../../../core/models/auth.model';
+import { OAuthRegisterDialogComponent } from '../oauth-register-dialog/oauth-register-dialog.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 import {
@@ -53,6 +57,7 @@ export class LoginComponent implements AfterViewInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly ngZone = inject(NgZone);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   readonly hidePassword = signal(true);
   readonly isLoading = signal(false);
@@ -123,8 +128,21 @@ export class LoginComponent implements AfterViewInit {
         provider: 'GOOGLE',
         tokenOrCode: response.credential,
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (res.registrationRequired) {
+            this.dialog.open(OAuthRegisterDialogComponent, {
+              width: '440px', maxWidth: 'calc(100vw - 32px)',
+              data: { registrationToken: res.registrationToken },
+            }).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((registered: AuthResponse | undefined) => {
+              this.isLoading.set(false);
+              if (!registered) return;
+              this.snackBar.open(`註冊成功，歡迎 ${registered.user.displayName}！`, '關閉', { duration: 3000 });
+              this.router.navigateByUrl(this.returnUrl);
+            });
+            return;
+          }
           this.isLoading.set(false);
           this.snackBar.open(`歡迎回來，${res.user.displayName}！`, '關閉', { duration: 3000 });
           this.router.navigateByUrl(this.returnUrl);

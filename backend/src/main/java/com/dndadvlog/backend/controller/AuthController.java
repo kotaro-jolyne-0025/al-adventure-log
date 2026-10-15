@@ -44,6 +44,11 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/oauth/register")
+    public ResponseEntity<AuthResponse> oauthRegister(@Valid @RequestBody OAuthRegisterRequest request) {
+        return ResponseEntity.ok(authService.registerOAuth(request));
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<java.util.Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest httpRequest) {
         log.info("收到忘記密碼申請。");
