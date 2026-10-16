@@ -38,14 +38,16 @@ public class AuthController {
     }
 
     @PostMapping("/oauth")
-    public ResponseEntity<AuthResponse> oauthLogin(@Valid @RequestBody OAuthLoginRequest request) {
+    public ResponseEntity<AuthResponse> oauthLogin(@Valid @RequestBody OAuthLoginRequest request, HttpServletRequest httpRequest) {
         log.info("📢 [POST /api/auth/oauth] 收到第三方登入請求, provider={}", request.getProvider());
+        rateLimitService.checkSource("oauth", httpRequest);
         AuthResponse response = authService.loginOAuth(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/oauth/register")
-    public ResponseEntity<AuthResponse> oauthRegister(@Valid @RequestBody OAuthRegisterRequest request) {
+    public ResponseEntity<AuthResponse> oauthRegister(@Valid @RequestBody OAuthRegisterRequest request, HttpServletRequest httpRequest) {
+        rateLimitService.checkSource("oauth-register", httpRequest);
         return ResponseEntity.ok(authService.registerOAuth(request));
     }
 

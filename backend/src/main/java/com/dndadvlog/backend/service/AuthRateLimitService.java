@@ -35,15 +35,29 @@ public class AuthRateLimitService {
             case "forgot-password" -> 3;
             default -> throw new IllegalArgumentException("Unsupported limited endpoint");
         };
-        int sourceLimit = switch (endpoint) {
-            case "login" -> 40;
-            case "register" -> 15;
-            case "forgot-password" -> 10;
-            default -> throw new IllegalArgumentException("Unsupported limited endpoint");
-        };
+        int sourceLimit = sourceLimit(endpoint);
 
         OffsetDateTime blockedUntil = consume(endpoint + ":account:" + normalize(email), accountLimit);
         OffsetDateTime sourceBlockedUntil = consume(endpoint + ":source:" + sourceAddress(request), sourceLimit);
+        checkBlocked(blockedUntil, sourceBlockedUntil);
+    }
+
+    public void checkSource(String endpoint, HttpServletRequest request) {
+        OffsetDateTime sourceBlockedUntil = consume(endpoint + ":source:" + sourceAddress(request), sourceLimit(endpoint));
+        checkBlocked(null, sourceBlockedUntil);
+    }
+
+    private int sourceLimit(String endpoint) {
+        return switch (endpoint) {
+            case "login" -> 40;
+            case "register" -> 15;
+            case "forgot-password" -> 10;
+            case "oauth", "oauth-register" -> 60;
+            default -> throw new IllegalArgumentException("Unsupported limited endpoint");
+        };
+    }
+
+    private void checkBlocked(OffsetDateTime blockedUntil, OffsetDateTime sourceBlockedUntil) {
         if (cleanupCounter.incrementAndGet() % 128 == 0) mapper.deleteExpiredBatch();
 
         OffsetDateTime latestBlock = blockedUntil;

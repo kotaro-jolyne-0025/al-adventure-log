@@ -14,6 +14,7 @@ describe('Discord callback registration', () => {
   let navigate: ReturnType<typeof vi.fn>;
   let open: ReturnType<typeof vi.fn>;
   let queryParams: Record<string, string>;
+  let paramMap: ReturnType<typeof convertToParamMap>;
   let component: OAuthCallbackComponent;
 
   beforeEach(() => {
@@ -21,17 +22,27 @@ describe('Discord callback registration', () => {
     loginOAuth = vi.fn(() => response); navigate = vi.fn();
     open = vi.fn(() => ({ afterClosed: () => confirmation }));
     queryParams = { code: 'one-use-code', state: 'expected-state' };
+    paramMap = convertToParamMap({ provider: 'discord' });
     sessionStorage.setItem('oauth_state_discord', 'expected-state');
     TestBed.configureTestingModule({ providers: [
       { provide: AuthService, useValue: { loginOAuth } },
       { provide: Router, useValue: { navigate } },
       { provide: MatDialog, useValue: { open } },
       { provide: MatSnackBar, useValue: { open: vi.fn() } },
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ provider: 'discord' }), queryParams } } },
+      { provide: ActivatedRoute, useValue: { snapshot: { get paramMap() { return paramMap; }, queryParams } } },
     ] });
     component = TestBed.runInInjectionContext(() => new OAuthCallbackComponent());
   });
   afterEach(() => sessionStorage.clear());
+
+  it.each(['google', 'unknown'])('rejects the unsupported %s code callback without submitting credentials', provider => {
+    paramMap = convertToParamMap({ provider });
+    component.ngOnInit();
+    expect(loginOAuth).not.toHaveBeenCalled();
+    expect(component.errorMessage()).toBe('不支援的第三方認證來源');
+    expect(component.isLoading()).toBe(false);
+    expect(sessionStorage.getItem('oauth_state_discord')).toBe('expected-state');
+  });
 
   it('exchanges the code once and waits for the shared nickname dialog', () => {
     component.ngOnInit();

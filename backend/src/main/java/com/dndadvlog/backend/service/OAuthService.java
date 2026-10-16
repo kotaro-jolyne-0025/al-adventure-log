@@ -7,11 +7,18 @@ import com.dndadvlog.backend.entity.UserOAuthAccount;
 import com.dndadvlog.backend.exception.BusinessException;
 import com.dndadvlog.backend.mapper.UserMapper;
 import com.dndadvlog.backend.mapper.UserOAuthAccountMapper;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.googleapis.auth.oauth2.GooglePublicKeysManager;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.Data;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
@@ -25,9 +32,12 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
 import java.util.UUID;
 import java.util.Locale;
+import java.util.List;
+import java.time.Duration;
 
 @Slf4j
 @Service
@@ -37,8 +47,10 @@ public class OAuthService {
     private final UserMapper userMapper;
     private final UserOAuthAccountMapper oauthAccountMapper;
     private final JwtTokenProvider tokenProvider;
+    private final OAuthAccountService oauthAccountService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient = createRestClient();
+    private GoogleIdTokenVerifier googleIdTokenVerifier;
 
     @Value("${app.oauth.google.client-id:}")
     private String googleClientId;
@@ -52,19 +64,45 @@ public class OAuthService {
     @Value("${app.oauth.discord.redirect-uri:http://localhost:4200/auth/callback/discord}")
     private String discordDefaultRedirectUri;
 
+    @PostConstruct
+    void initializeGoogleIdTokenVerifier() {
+        if (Boolean.parseBoolean(System.getenv("OAUTH_CLIENT_SKIP_SIGNATURE"))) {
+            throw new IllegalStateException("Google ID token signature verification must remain enabled");
+        }
+        if (googleClientId != null && !googleClientId.isBlank()) {
+            NetHttpTransport transport = new NetHttpTransport();
+            GooglePublicKeysManager publicKeys = new GooglePublicKeysManager(transport, GsonFactory.getDefaultInstance());
+            googleIdTokenVerifier = new GoogleIdTokenVerifier.Builder(publicKeys)
+                    .setIssuers(List.of("accounts.google.com", "https://accounts.google.com"))
+                    .setAudience(List.of(googleClientId))
+                    .build();
+        }
+    }
+
     public record OAuthUserInfo(String provider, String providerUserId, String email, String avatarUrl, boolean emailVerified) {}
     public record OAuthLoginResult(User user, String registrationToken) {}
 
-    @Transactional
+    private static RestClient createRestClient() {
+        SimpleClientHttpRequestFactory requests = new SimpleClientHttpRequestFactory();
+        requests.setConnectTimeout(Duration.ofSeconds(5));
+        requests.setReadTimeout(Duration.ofSeconds(5));
+        return RestClient.builder().requestFactory(requests).build();
+    }
+
     public OAuthLoginResult processOAuthLogin(OAuthLoginRequest request) {
         OAuthUserInfo userInfo = resolveOAuthUserInfo(request);
         validateProviderEmail(userInfo.email(), userInfo.emailVerified());
-        User existingUser = findAndSyncExistingUser(userInfo);
+        User existingUser = oauthAccountService.findAndSyncExistingUser(userInfo);
         if (existingUser != null) {
             return new OAuthLoginResult(existingUser, null);
         }
         return new OAuthLoginResult(null, tokenProvider.generateOAuthRegistrationToken(
                 userInfo.provider(), userInfo.providerUserId(), userInfo.email(), userInfo.avatarUrl()));
+    }
+
+    public boolean hasGoogleBinding(UUID userId) {
+        return oauthAccountMapper.findByUserId(userId).stream()
+                .anyMatch(account -> "GOOGLE".equalsIgnoreCase(account.getProvider()));
     }
 
     @Transactional
@@ -107,45 +145,14 @@ public class OAuthService {
             return verifyGoogleToken(request.getTokenOrCode());
         }
         if ("DISCORD".equals(provider)) {
+            if (discordClientId == null || discordClientId.isBlank()
+                    || discordClientSecret == null || discordClientSecret.isBlank()) {
+                throw new BusinessException("Discord 登入尚未完成設定，請聯絡管理者");
+            }
             String redirectUri = request.getRedirectUri() != null ? request.getRedirectUri() : discordDefaultRedirectUri;
             return exchangeDiscordCode(request.getTokenOrCode(), redirectUri);
         }
         throw new BusinessException("不支援的第三方登入提供者: " + provider);
-    }
-
-    private User findAndSyncExistingUser(OAuthUserInfo userInfo) {
-        // 1. 查詢是否已有綁定此 provider + providerUserId
-        UserOAuthAccount existingOAuth = oauthAccountMapper.findByProviderAndProviderUserId(userInfo.provider(), userInfo.providerUserId());
-        if (existingOAuth != null) {
-            User user = userMapper.findById(existingOAuth.getUserId());
-            if (user == null || Boolean.FALSE.equals(user.getIsActive())) {
-                throw new BusinessException("此帳號目前無法登入，請聯繫管理員");
-            }
-            if ("GOOGLE".equals(userInfo.provider()) && user.getPasswordHash() != null) {
-                userMapper.updatePassword(user.getId(), null);
-                user.setPasswordHash(null);
-            }
-            updateAvatarIfPresent(user, userInfo.avatarUrl());
-            return user;
-        }
-
-        // 2. 檢查 email 是否已註冊過
-        if (userInfo.email() != null && !userInfo.email().isBlank()) {
-            User emailUser = userMapper.findByEmail(userInfo.email());
-            if (emailUser != null) {
-                // Never attach an unbound provider subject using email alone.
-                throw new BusinessException("此登入方式尚未連結，請先使用原本的登入方式");
-            }
-        }
-
-        return null;
-    }
-
-    private void updateAvatarIfPresent(User user, String newAvatarUrl) {
-        if (user.getAvatarUrl() == null && newAvatarUrl != null) {
-            user.setAvatarUrl(newAvatarUrl);
-            userMapper.update(user);
-        }
     }
 
     private void bindOAuthAccount(UUID userId, OAuthUserInfo userInfo) {
@@ -187,21 +194,21 @@ public class OAuthService {
     }
 
     private OAuthUserInfo verifyGoogleToken(String tokenOrCode) {
-        if (googleClientId == null || googleClientId.isBlank()) {
+        if (googleClientId == null || googleClientId.isBlank() || googleIdTokenVerifier == null) {
             throw new BusinessException("Google 登入尚未完成設定，請聯絡管理者");
         }
         try {
-            // Google ID Token tokeninfo 端點
-            String responseBody = restClient.get()
-                    .uri("https://oauth2.googleapis.com/tokeninfo?id_token={token}", tokenOrCode)
-                    .retrieve()
-                    .body(String.class);
-
-            JsonNode root = objectMapper.readTree(responseBody);
-            if (root.has("error_description")) {
+            GoogleIdToken idToken = GoogleIdToken.parse(GsonFactory.getDefaultInstance(), tokenOrCode);
+            // The library expects iat/exp to exist; reject malformed claims before verification.
+            Long issuedAt = idToken.getPayload().getIssuedAtTimeSeconds();
+            if (issuedAt == null || Data.isNull(issuedAt)) {
                 throw new BusinessException("Google 登入憑證無效，請重新登入");
             }
-            validateGoogleClaims(root);
+            JsonNode root = objectMapper.valueToTree(idToken.getPayload());
+            validateGoogleIdentityClaims(root);
+            if (!googleIdTokenVerifier.verify(idToken)) {
+                throw new BusinessException("Google 登入憑證無效，請重新登入");
+            }
 
             String sub = root.path("sub").asText();
             String email = root.path("email").asText(null);
@@ -210,21 +217,23 @@ public class OAuthService {
             return new OAuthUserInfo("GOOGLE", sub, email, picture, true);
         } catch (BusinessException e) {
             throw e;
-        } catch (RestClientException | JsonProcessingException e) {
-            // HTTP exceptions may contain the token-bearing request URI.
-            log.warn("Google OAuth 憑證驗證請求失敗");
+        } catch (IllegalArgumentException e) {
+            // Parser diagnostics may contain credential data; never propagate or log them.
+            throw new BusinessException("Google 登入憑證格式無效，請重新登入");
+        } catch (java.io.IOException | java.security.GeneralSecurityException e) {
+            log.warn("Google OAuth 憑證簽章驗證失敗或 Google 公鑰暫時無法取得");
             throw new BusinessException("Google 登入驗證失敗，請重新登入或稍後再試");
         }
     }
 
-    void validateGoogleClaims(JsonNode root) {
+    void validateGoogleIdentityClaims(JsonNode root) {
         String issuer = root.path("iss").asText();
         if (googleClientId == null || googleClientId.isBlank()
                 || !googleClientId.equals(root.path("aud").asText())
                 || !("accounts.google.com".equals(issuer) || "https://accounts.google.com".equals(issuer))
                 || root.path("exp").asLong(0) <= java.time.Instant.now().getEpochSecond()
-                || root.path("sub").asText().isBlank()
-                || root.path("email").asText().isBlank()
+                || !root.path("sub").isTextual() || root.path("sub").asText().isBlank()
+                || !root.path("email").isTextual() || root.path("email").asText().isBlank()
                 || !"true".equalsIgnoreCase(root.path("email_verified").asText())) {
             throw new BusinessException("Google 登入憑證無效或已過期，請重新登入");
         }

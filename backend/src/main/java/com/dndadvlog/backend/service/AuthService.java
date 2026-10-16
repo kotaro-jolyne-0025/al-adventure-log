@@ -70,7 +70,6 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
-    @Transactional
     public AuthResponse loginOAuth(OAuthLoginRequest request) {
         OAuthService.OAuthLoginResult result = oauthService.processOAuthLogin(request);
         return result.user() != null ? buildAuthResponse(result.user())
@@ -113,6 +112,9 @@ public class AuthService {
         // 安全考量：無論使用者是否存在，皆不向前端洩漏帳號是否存在
         if (user == null) {
             log.info("忘記密碼申請已處理；若帳號存在，將寄送重設信件。");
+            return;
+        }
+        if (oauthService.hasGoogleBinding(user.getId())) {
             return;
         }
 
@@ -161,6 +163,7 @@ public class AuthService {
         if (user == null) {
             throw new BusinessException("找不到此 Token 對應之使用者資料");
         }
+        ensurePasswordResetAllowed(user);
 
         // 更新密碼
         userMapper.updatePassword(user.getId(), passwordEncoder.encode(request.getNewPassword()));
@@ -186,6 +189,17 @@ public class AuthService {
 
         if (LocalDateTime.now().isAfter(resetToken.getExpiryTime())) {
             throw new BusinessException("此重設密碼連結已過期（有效時間 15 分鐘），請重新申請");
+        }
+        User user = userMapper.findById(resetToken.getUserId());
+        if (user == null) {
+            throw new BusinessException("無效或不存在的重設密碼連結");
+        }
+        ensurePasswordResetAllowed(user);
+    }
+
+    private void ensurePasswordResetAllowed(User user) {
+        if (oauthService.hasGoogleBinding(user.getId())) {
+            throw new BusinessException("此重設連結無效或已不再適用，請使用 Google 登入");
         }
     }
 

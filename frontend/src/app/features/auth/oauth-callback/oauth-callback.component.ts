@@ -88,29 +88,26 @@ export class OAuthCallbackComponent implements OnInit {
   readonly errorMessage = signal<string | null>(null);
 
   ngOnInit(): void {
-    const providerParam = (this.route.snapshot.paramMap.get('provider') || '').toUpperCase();
-    const provider =
-      providerParam === 'GOOGLE' || providerParam === 'DISCORD' ? providerParam : null;
+    const provider = (this.route.snapshot.paramMap.get('provider') || '').toUpperCase();
 
-    if (!provider) {
+    // Google GIS returns an ID token to the login page, never an authorization code here.
+    if (provider !== 'DISCORD') {
       this.handleError('不支援的第三方認證來源');
       return;
     }
 
     // 1. 檢查 Query Params 中的 code 與 state
     const queryParams = this.route.snapshot.queryParams;
-    let tokenOrCode = queryParams['code'];
+    const tokenOrCode = queryParams['code'];
 
     // 驗證 Discord OAuth 的 state 參數 (CSRF 防護)
-    if (provider === 'DISCORD') {
-      const expectedState = sessionStorage.getItem('oauth_state_discord');
-      const receivedState = queryParams['state'];
-      sessionStorage.removeItem('oauth_state_discord');
+    const expectedState = sessionStorage.getItem('oauth_state_discord');
+    const receivedState = queryParams['state'];
+    sessionStorage.removeItem('oauth_state_discord');
 
-      if (!expectedState || receivedState !== expectedState) {
-        this.handleError('登入安全性校驗失敗 (CSRF State 不符)，請重新登入');
-        return;
-      }
+    if (!expectedState || receivedState !== expectedState) {
+      this.handleError('登入安全性校驗失敗 (CSRF State 不符)，請重新登入');
+      return;
     }
 
     if (!tokenOrCode) {

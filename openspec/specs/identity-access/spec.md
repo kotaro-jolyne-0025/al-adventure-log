@@ -25,7 +25,7 @@
 - **THEN** 系統不發放登入憑證並顯示共用錯誤提示
 
 ### Requirement: Password reset lifecycle
-系統 SHALL 提供忘記密碼申請、15 分鐘效期的重設連結與至少 8 字元的新密碼設定；已使用或過期憑證 MUST NOT 再次重設密碼。成功後 SHALL 引導重新登入。忘記密碼回應 MUST NOT 揭露 Email 是否存在。密碼重設憑證及完整重設 URL MUST NOT 寫入應用程式日誌或錯誤回應。
+系統 SHALL 提供忘記密碼申請、15 分鐘效期的重設連結與至少 8 字元的新密碼設定；已使用或過期憑證 MUST NOT 再次重設密碼。成功後 SHALL 引導重新登入。忘記密碼回應 MUST NOT 揭露 Email 是否存在。密碼重設憑證及完整重設 URL MUST NOT 寫入應用程式日誌或錯誤回應。有 Google 身分綁定的帳號 MUST NOT 透過此流程建立本機密碼；連結核發後新增 Google 綁定時，驗證與重設仍須重新檢查綁定狀態。
 
 #### Scenario: 忘記密碼申請不揭露帳號
 - **WHEN** Email 存在或不存在的玩家提出忘記密碼申請
@@ -42,6 +42,10 @@
 #### Scenario: 寄信設定缺失或失敗
 - **WHEN** 玩家要求重設密碼但 SMTP 未設定或寄送失敗
 - **THEN** 系統不把憑證、連結或 Email 寫入日誌或錯誤回應，維運端留下不含個資及憑證的送達狀態
+
+#### Scenario: Google 綁定帳號使用密碼復原
+- **WHEN** Google 綁定帳號申請、驗證或使用密碼重設連結
+- **THEN** 系統不寄送或接受本機密碼重設；先前核發的連結也不能重新建立密碼，對外回應仍不揭露 Email 是否存在
 
 ### Requirement: Third-party identity binding
 系統 SHALL 只以已驗證的第三方身分及 provider subject 登入已綁定帳號。第三方身分尚未綁定時，系統 MUST NOT 僅因 Email 相同而自動綁定既有密碼帳號；SHALL 提示使用者以既有方式登入。使用已驗證 Google Email 登入相符帳號時，系統 SHALL 停用未經該登入流程證明的既有密碼憑證。第三方回傳 Email 時，系統 SHALL 驗證該 Email 已由 provider 驗證；帳號停用時 MUST 拒絕登入。
@@ -63,7 +67,7 @@
 - **THEN** 系統拒絕使用該 Email 登入或建立帳號
 
 ### Requirement: Public authentication endpoint throttling
-系統 SHALL 對登入、註冊及忘記密碼請求套用跨服務執行個體共用的頻率限制。超過限制時 SHALL 回傳 429 及 Retry-After，且不執行認證、建立帳號或寄送郵件。限制狀態 MUST 使用不可逆的識別鍵，不得儲存明文 Email 或完整 IP。
+系統 SHALL 對登入、註冊、忘記密碼及第三方登入／註冊請求套用跨服務執行個體共用的頻率限制。OAuth 請求至少依來源套用限制，不依賴每次都不同的 provider token 作為帳號識別。超過限制時 SHALL 回傳 429 及 Retry-After，且不執行認證、第三方驗證、建立帳號或寄送郵件。限制狀態 MUST 使用不可逆的識別鍵，不得儲存明文 Email 或完整 IP。OAuth provider、憑證及 redirect URI SHALL 設定長度上限並在外部呼叫前拒絕超限輸入。
 
 #### Scenario: 短時間重複登入失敗
 - **WHEN** 同一來源對同一帳號超過登入嘗試上限
@@ -76,6 +80,25 @@
 #### Scenario: 忘記密碼寄信受到限制
 - **WHEN** 同一目標或來源超過密碼重設申請上限
 - **THEN** 系統回傳不揭露帳號存在狀態的限流結果，且不再產生或寄出新憑證
+
+#### Scenario: OAuth 請求受到來源限制
+- **WHEN** 同一來源超過第三方登入或註冊上限
+- **THEN** 系統回傳 429 與 Retry-After，且不執行 provider 驗證或註冊 proof 查詢
+
+#### Scenario: OAuth 本體超過位元組限制
+- **WHEN** 第三方登入或註冊請求本體超過 64 KiB，包含沒有 Content-Length 的請求
+- **THEN** 系統在 JSON 解析前以有界讀取拒絕請求並回傳 413，不執行來源限流查詢、第三方驗證或帳號寫入；原有欄位長度限制仍適用
+
+### Requirement: Third-party verification transaction boundaries
+系統 MUST 在 Google 公鑰取得／簽章驗證及 Discord 網路請求期間不持有資料庫交易或連線。provider 身分成功解析後，帳號查找與變更 SHALL 在短交易內完成並保留原子性。Google 驗簽公鑰 SHALL 由官方 Google verifier／public key manager 管理，且依 Google 回應的 `Cache-Control` 時效刷新。
+
+#### Scenario: provider 服務延遲
+- **WHEN** Google 公鑰或 Discord OAuth 服務延遲
+- **THEN** 外部等待期間不開啟資料庫交易；成功後帳號查找及變更在原子交易中完成
+
+#### Scenario: Google 公鑰快取到期
+- **WHEN** Google 公鑰回應中的快取時效到期
+- **THEN** verifier 依該回應的快取政策更新公鑰後驗證 token
 
 ### Requirement: Owner scoped access
 系統 SHALL 要求受保護資料請求具有效身分憑證，並驗證角色及其冒險、物品、活動、故事獎勵屬於當前玩家。未登入的受保護頁面 SHALL 導向登入頁。
