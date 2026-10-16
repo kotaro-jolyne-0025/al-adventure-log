@@ -6,6 +6,7 @@ import { Subject } from 'rxjs';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthResponse, OAuthLoginResponse } from '../../../core/models/auth.model';
+import { environment } from '../../../../environments/environment';
 
 describe('Google sign-in callback', () => {
   let response: Subject<OAuthLoginResponse>;
@@ -17,8 +18,14 @@ describe('Google sign-in callback', () => {
   let renderButton: ReturnType<typeof vi.fn>;
   let queryParams: Record<string,string>;
   let component: LoginComponent;
+  let originalGoogleClientId: string;
+  let originalDiscordClientId: string;
 
   beforeEach(() => {
+    originalGoogleClientId = environment.googleClientId;
+    originalDiscordClientId = environment.discordClientId;
+    environment.googleClientId = 'google-test-client';
+    environment.discordClientId = 'discord-test-client';
     response = new Subject(); loginOAuth = vi.fn(() => response); navigateByUrl = vi.fn();
     confirmation = new Subject(); openDialog = vi.fn(() => ({ afterClosed: () => confirmation }));
     initialize = vi.fn(); renderButton = vi.fn(); queryParams = { returnUrl: '/characters/c/inventory' };
@@ -34,7 +41,21 @@ describe('Google sign-in callback', () => {
     ] });
     component = TestBed.runInInjectionContext(() => new LoginComponent());
   });
-  afterEach(() => { document.getElementById('google-btn-container')?.remove(); vi.unstubAllGlobals(); });
+  afterEach(() => {
+    environment.googleClientId = originalGoogleClientId;
+    environment.discordClientId = originalDiscordClientId;
+    document.getElementById('google-btn-container')?.remove(); vi.unstubAllGlobals();
+  });
+
+  it('does not initialize third-party login when local client IDs are absent', () => {
+    environment.googleClientId = '';
+    environment.discordClientId = '';
+    component = TestBed.runInInjectionContext(() => new LoginComponent());
+    component.ngAfterViewInit();
+    expect(initialize).not.toHaveBeenCalled();
+    component.loginWithDiscord();
+    expect(component.errorMessage()).toContain('尚未設定 Discord OAuth');
+  });
 
   it('uses popup ID tokens, caps button width and prevents concurrent callback requests', () => {
     component.ngAfterViewInit();

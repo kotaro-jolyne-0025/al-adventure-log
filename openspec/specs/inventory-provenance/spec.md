@@ -60,6 +60,17 @@
 - **WHEN** 玩家改為取得時間由舊到新，離開後再次開啟倉庫
 - **THEN** 倉庫使用已保存的排序選擇
 
+### Requirement: Manual consumable quantity adjustment
+玩家 SHALL 透過編輯倉庫物品手動調整消耗品數量；倉庫清單 MUST NOT 提供「使用 -1」快速扣減操作。需要從倉庫移除物品時，玩家 SHALL 使用明確的刪除操作。日常數量調整或刪除 MUST NOT 改寫來源冒險記錄的歷史獲得快照。
+
+#### Scenario: 手動調整消耗品數量
+- **WHEN** 玩家編輯倉庫中的消耗品並儲存新的數量
+- **THEN** 倉庫顯示更新後的數量，來源冒險的歷史獲得數量保持不變
+
+#### Scenario: 明確刪除消耗品
+- **WHEN** 玩家使用刪除操作移除倉庫中的消耗品
+- **THEN** 該物品自倉庫移除，來源冒險的歷史獲得快照保持不變
+
 ### Requirement: Editable historical loot
 系統 SHALL 允許更正既有冒險戰利品的名稱、備註及消耗品獲得數量；既有快照 MUST NOT 僅因為是歷史項目而被鎖定為只能追加。更正歷史時，倉庫同步 SHALL 遵守下列差額與不補貨規則。
 

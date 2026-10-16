@@ -39,6 +39,110 @@
         <result property="updatedAt"               column="updated_at"/>
     </resultMap>
 
+    <resultMap id="entrySnapshotMap" type="com.dndadvlog.backend.entity.AdventureEntry" extends="entryMap">
+        <result property="characterId" column="owner_character_id"/>
+        <collection property="downtimeActivities" columnPrefix="child_" notNullColumn="activity_marker"
+                    resultMap="com.dndadvlog.backend.mapper.DowntimeActivityMapper.activityMap"/>
+        <collection property="storyAwards" columnPrefix="child_" notNullColumn="award_marker"
+                    resultMap="com.dndadvlog.backend.mapper.StoryAwardMapper.awardMap"/>
+    </resultMap>
+
+    <resultMap id="detailSnapshotMap" type="com.dndadvlog.backend.entity.AdventureEntrySnapshot" extends="entrySnapshotMap">
+        <association property="nextEntry" columnPrefix="next_" notNullColumn="id" resultMap="entryMap"/>
+        <collection property="gainedItems" columnPrefix="child_" notNullColumn="gained_marker"
+                    resultMap="com.dndadvlog.backend.mapper.AdventureGainedItemMapper.gainedItemMap"/>
+        <collection property="legacyItems" columnPrefix="child_" notNullColumn="inventory_marker"
+                    resultMap="com.dndadvlog.backend.mapper.InventoryItemMapper.itemMap"/>
+    </resultMap>
+
+    <!-- Each child is an independent row, so multiple collections never multiply one another. -->
+    <sql id="snapshotChildColumns">
+        CASE WHEN child.kind = 'activity' THEN 1 END AS child_activity_marker,
+        CASE WHEN child.kind = 'award' THEN 1 END AS child_award_marker,
+        CASE WHEN child.kind = 'gained' THEN 1 END AS child_gained_marker,
+        CASE WHEN child.kind = 'inventory' THEN 1 END AS child_inventory_marker,
+        (child.data-&gt;&gt;'id')::uuid AS child_id,
+        (child.data-&gt;&gt;'adventure_entry_id')::uuid AS child_adventure_entry_id,
+        (child.data-&gt;&gt;'character_id')::uuid AS child_character_id,
+        (child.data-&gt;&gt;'adventure_gained_item_id')::uuid AS child_adventure_gained_item_id,
+        child.data-&gt;&gt;'description' AS child_description,
+        child.data-&gt;&gt;'award_name' AS child_award_name,
+        child.data-&gt;&gt;'item_name' AS child_item_name,
+        child.data-&gt;&gt;'item_type' AS child_item_type,
+        child.data-&gt;&gt;'rarity' AS child_rarity,
+        child.data-&gt;&gt;'item_category' AS child_item_category,
+        (child.data-&gt;&gt;'requires_attunement')::boolean AS child_requires_attunement,
+        (child.data-&gt;&gt;'is_soul_coin')::boolean AS child_is_soul_coin,
+        (child.data-&gt;&gt;'quantity')::integer AS child_quantity,
+        child.data-&gt;&gt;'acquisition_source' AS child_acquisition_source,
+        (child.data-&gt;&gt;'needs_details')::boolean AS child_needs_details,
+        child.data-&gt;&gt;'source' AS child_source,
+        child.data-&gt;&gt;'notes' AS child_notes,
+        (child.data-&gt;&gt;'created_at')::timestamp AS child_created_at,
+        (child.data-&gt;&gt;'updated_at')::timestamp AS child_updated_at
+    </sql>
+
+    <sql id="entryActivityAndAwardRows">
+        SELECT 'activity' AS kind, to_jsonb(d) AS data
+        FROM downtime_activity d WHERE d.adventure_entry_id = ae.id
+        UNION ALL
+        SELECT 'award', to_jsonb(s)
+        FROM adventure_story_award s WHERE s.adventure_entry_id = ae.id
+    </sql>
+
+    <select id="findListSnapshot" resultMap="entrySnapshotMap" resultOrdered="true">
+        SELECT ae.*, c.id AS owner_character_id, <include refid="snapshotChildColumns"/>
+        FROM "character" c
+        LEFT JOIN adventure_entry ae ON ae.character_id = c.id
+        LEFT JOIN LATERAL (<include refid="entryActivityAndAwardRows"/>) child ON TRUE
+        WHERE c.id = #{characterId}::uuid AND c.user_id = #{userId}::uuid
+        ORDER BY ae.play_date ASC NULLS LAST, ae.created_at ASC, ae.id ASC,
+                 (child.data-&gt;&gt;'created_at')::timestamp ASC, child.data-&gt;&gt;'id' ASC
+    </select>
+
+    <select id="findDetailSnapshot" resultMap="detailSnapshotMap">
+        SELECT ae.*, c.id AS owner_character_id,
+               following.id AS next_id,
+               following.starting_classes_string AS next_starting_classes_string,
+               following.starting_gold AS next_starting_gold,
+               following.starting_downtime AS next_starting_downtime,
+               following.starting_magic_items AS next_starting_magic_items,
+               <include refid="snapshotChildColumns"/>
+        FROM adventure_entry ae
+        INNER JOIN "character" c ON c.id = ae.character_id
+        LEFT JOIN LATERAL (
+            SELECT n.id, n.starting_classes_string, n.starting_gold, n.starting_downtime, n.starting_magic_items
+            FROM adventure_entry n
+            WHERE n.character_id = ae.character_id AND n.id != ae.id AND n.play_date IS NOT NULL
+              AND (n.play_date &gt; ae.play_date OR
+                   (n.play_date = ae.play_date AND (n.created_at, n.id) &gt; (ae.created_at, ae.id)))
+            ORDER BY n.play_date ASC, n.created_at ASC, n.id ASC LIMIT 1
+        ) following ON TRUE
+        LEFT JOIN LATERAL (
+            <include refid="entryActivityAndAwardRows"/>
+            UNION ALL
+            SELECT 'gained', to_jsonb(g)
+            FROM adventure_gained_item g WHERE g.adventure_entry_id = ae.id
+            UNION ALL
+            SELECT 'inventory', to_jsonb(i)
+            FROM inventory_item i
+            WHERE i.character_id = ae.character_id
+              AND NOT EXISTS (SELECT 1 FROM adventure_gained_item g WHERE g.adventure_entry_id = ae.id)
+        ) child ON TRUE
+        WHERE ae.id = #{id}::uuid AND c.user_id = #{userId}::uuid
+        ORDER BY (child.data-&gt;&gt;'created_at')::timestamp ASC, child.data-&gt;&gt;'id' ASC
+    </select>
+
+    <select id="findDefaultsSnapshot" resultType="com.dndadvlog.backend.dto.EntryDefaultsResponse">
+        SELECT c.updated_at AS character_updated_at, c.current_classes_string AS starting_classes_string,
+               COALESCE(c.current_gold, 0) AS starting_gold,
+               COALESCE(c.current_downtime, 0) AS starting_downtime,
+               COALESCE((SELECT SUM(i.quantity) FROM inventory_item i
+                         WHERE i.character_id = c.id AND i.item_type = 'PERMANENT'::item_type), 0) AS starting_magic_items
+        FROM "character" c
+        WHERE c.id = #{characterId}::uuid AND c.user_id = #{userId}::uuid
+    </select>
+
     <select id="findByCharacterIdOrderByPlayDateAsc" resultMap="entryMap">
         SELECT * FROM adventure_entry
         WHERE character_id = #{characterId}::uuid

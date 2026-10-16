@@ -1,6 +1,8 @@
 package com.dndadvlog.backend.mapper;
 
 import com.dndadvlog.backend.entity.AdventureEntry;
+import com.dndadvlog.backend.entity.AdventureEntrySnapshot;
+import com.dndadvlog.backend.dto.EntryDefaultsResponse;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -12,6 +14,12 @@ import java.util.UUID;
 
 @Mapper
 public interface AdventureEntryMapper {
+
+    List<AdventureEntry> findListSnapshot(@Param("characterId") UUID characterId, @Param("userId") UUID userId);
+
+    AdventureEntrySnapshot findDetailSnapshot(@Param("id") UUID id, @Param("userId") UUID userId);
+
+    EntryDefaultsResponse findDefaultsSnapshot(@Param("characterId") UUID characterId, @Param("userId") UUID userId);
 
     List<AdventureEntry> findByCharacterIdOrderByPlayDateAsc(@Param("characterId") UUID characterId);
 

@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "後端：啟動本機暫存資料庫",
+            "type": "shell",
+            "command": ".\\mvnw.cmd",
+            "args": [
+                "-Plocal-dev",
+                "clean",
+                "test-compile",
+                "exec:java"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}\\backend"
+            },
+            "icon": {
+                "id": "play",
+                "color": "charts.green"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            },
+            "runOptions": {
+                "instanceLimit": 1
+            }
+        }
+    ]
+}

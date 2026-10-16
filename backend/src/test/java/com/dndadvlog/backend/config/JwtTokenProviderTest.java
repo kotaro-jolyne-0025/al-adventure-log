@@ -42,6 +42,14 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    void developmentJwtCannotAuthenticateAgainstASeparateProductionKey() {
+        String localToken = provider.generateToken(UUID.randomUUID(), "player@example.invalid", "冒險者", null);
+        var productionProvider = new JwtTokenProvider("separate-production-test-key-at-least-32-bytes", 3600000);
+        assertTrue(provider.validateToken(localToken));
+        assertFalse(productionProvider.validateToken(localToken));
+    }
+
+    @Test
     void rejectsExpiredTamperedAndWrongPurposeProofs() {
         String expired = Jwts.builder().subject("subject").claim("purpose", "oauth-registration")
                 .expiration(Date.from(Instant.now().minusSeconds(10)))

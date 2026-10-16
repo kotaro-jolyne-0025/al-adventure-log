@@ -58,54 +58,31 @@ public class AdventureEntryService {
     private final CharacterService characterService;
     private final InventoryItemMapper inventoryItemMapper;
 
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<AdventureEntryResponse> getEntriesByCharacter(UUID characterId, UUID userId) {
-        characterService.findCharacter(characterId, userId);
-        List<AdventureEntry> entries = entryMapper.findByCharacterIdOrderByPlayDateAsc(characterId);
-
+        List<AdventureEntry> entries = entryMapper.findListSnapshot(characterId, userId);
         if (entries.isEmpty()) {
-            return List.of();
+            throw new ResourceNotFoundException("找不到角色 ID：" + characterId);
         }
-
-        List<UUID> entryIds = entries.stream().map(AdventureEntry::getId).toList();
-        Map<UUID, List<DowntimeActivity>> activitiesByEntry = downtimeActivityMapper.findByEntryIds(entryIds)
-                .stream()
-                .collect(Collectors.groupingBy(DowntimeActivity::getAdventureEntryId));
-        Map<UUID, List<StoryAward>> awardsByEntry = storyAwardMapper.findByAdventureEntryIds(entryIds)
-                .stream()
-                .collect(Collectors.groupingBy(StoryAward::getAdventureEntryId));
-
-        entries.forEach(entry -> {
-            entry.setDowntimeActivities(activitiesByEntry.getOrDefault(entry.getId(), List.of()));
-            entry.setStoryAwards(awardsByEntry.getOrDefault(entry.getId(), List.of()));
-        });
-        return entries.stream().map(this::toResponse).toList();
+        // An owned character with no entries has one null-ID row from the LEFT JOIN.
+        return entries.stream().filter(entry -> entry.getId() != null).map(this::toResponse).toList();
     }
 
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public AdventureEntryResponse getEntry(UUID entryId, UUID userId) {
-        AdventureEntryResponse response = toResponseWithContinuityWarning(findEntryAndVerifyOwner(entryId, userId));
-        response.setGainedItems(gainedItemMapper.findByAdventureEntryId(entryId)
+        var snapshot = entryMapper.findDetailSnapshot(entryId, userId);
+        if (snapshot == null) throw new ResourceNotFoundException("找不到冒險記錄 ID：" + entryId);
+        AdventureEntryResponse response = toResponseWithContinuityWarning(snapshot, snapshot.getNextEntry());
+        response.setGainedItems(snapshot.getGainedItems()
                 .stream().map(this::toGainedItemResponse).toList());
-        response.setLegacyItems(response.getGainedItems().isEmpty()
-                ? inventoryItemMapper.findByCharacterId(response.getCharacterId()).stream().map(InventoryItemService::toResponse).toList()
-                : List.of());
+        response.setLegacyItems(snapshot.getLegacyItems().stream().map(InventoryItemService::toResponse).toList());
         return response;
     }
 
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public EntryDefaultsResponse getDefaults(UUID characterId, UUID userId) {
-        EntryDefaultsResponse defaults = new EntryDefaultsResponse();
-        Character character = characterService.findCharacter(characterId, userId);
-        defaults.setCharacterUpdatedAt(character.getUpdatedAt());
+        EntryDefaultsResponse defaults = entryMapper.findDefaultsSnapshot(characterId, userId);
+        if (defaults == null) throw new ResourceNotFoundException("找不到角色 ID：" + characterId);
         defaults.setStartingClassesString(DndClassNames.serialize(
-                DndClassNames.parse(character.getCurrentClassesString()), character.getCurrentClassesString()));
-        defaults.setStartingLevel(parseTotalLevelFromClassesString(character.getCurrentClassesString()));
-        defaults.setStartingGold(orZero(character.getCurrentGold()));
-        defaults.setStartingDowntime(orZero(character.getCurrentDowntime()));
-        defaults.setStartingMagicItems(inventoryItemMapper.sumQuantityByCharacterIdAndItemType(
-                characterId, InventoryItem.ItemType.PERMANENT.name()));
-
+                DndClassNames.parse(defaults.getStartingClassesString()), defaults.getStartingClassesString()));
+        defaults.setStartingLevel(parseTotalLevelFromClassesString(defaults.getStartingClassesString()));
         return defaults;
     }
 
@@ -906,6 +883,13 @@ public class AdventureEntryService {
     }
 
     private AdventureEntryResponse toResponseWithContinuityWarning(AdventureEntry entry) {
+        AdventureEntry next = entry.getPlayDate() == null || entry.getCreatedAt() == null ? null
+                : entryMapper.findNextForExisting(
+                        entry.getCharacterId(), entry.getPlayDate(), entry.getCreatedAt(), entry.getId());
+        return toResponseWithContinuityWarning(entry, next);
+    }
+
+    private AdventureEntryResponse toResponseWithContinuityWarning(AdventureEntry entry, AdventureEntry next) {
         AdventureEntryResponse response = toResponse(entry);
         List<String> warnings = new ArrayList<>();
         int reducedMagicItems = -(orZero(entry.getMagicItemsLost()) + orZero(entry.getMagicItemsDowntimeLost()));
@@ -916,8 +900,6 @@ public class AdventureEntryService {
             response.setWarnings(warnings);
             return response;
         }
-        AdventureEntry next = entryMapper.findNextForExisting(
-                entry.getCharacterId(), entry.getPlayDate(), entry.getCreatedAt(), entry.getId());
         if (next != null && isDiscontinuous(entry, next)) {
             warnings.add("此紀錄與下一筆歷史快照不連續；後續快照未自動改寫");
         }
@@ -939,13 +921,6 @@ public class AdventureEntryService {
     private AdventureEntry findEntry(UUID entryId) {
         AdventureEntry entry = entryMapper.findById(entryId);
         if (entry == null) throw new ResourceNotFoundException("找不到冒險記錄 ID：" + entryId);
-        entry.setDowntimeActivities(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entryId));
-        entry.setStoryAwards(storyAwardMapper.findByAdventureEntryId(entryId));
-        return entry;
-    }
-
-    private AdventureEntry findEntryAndVerifyOwner(UUID entryId, UUID userId) {
-        AdventureEntry entry = findOwnedEntry(entryId, userId);
         entry.setDowntimeActivities(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entryId));
         entry.setStoryAwards(storyAwardMapper.findByAdventureEntryId(entryId));
         return entry;

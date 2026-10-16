@@ -54,60 +54,17 @@
 
 本專案為非官方同好內容，未經威世智（Wizards of the Coast）核准或贊助。所使用的部分材料為威世智之財產。© Wizards of the Coast LLC。相關聲明見 [NOTICE](NOTICE) 與[威世智同好內容政策](https://company.wizards.com/zh-Hant/legal/fancontentpolicy)。
 
-## 給開發者
+## 技術與開發概況
 
-### 架構與環境
+本專案由個人維護。前端使用 Angular 22／PWA，後端使用 Spring Boot 4.1／Java 17，資料庫為 PostgreSQL；正式環境使用 Firebase Hosting、Cloud Run 與 Supabase。
 
-| 層級   | 技術                                                | 正式環境                  |
-| ------ | --------------------------------------------------- | ------------------------- |
-| 前端   | Angular 22、Standalone Components、Signals、PWA     | Firebase Hosting          |
-| 後端   | Spring Boot 4.1、Java 17、MyBatis、Flyway、REST API | GCP Cloud Run             |
-| 資料庫 | PostgreSQL                                          | Supabase                  |
-| 備份   | GitHub Actions、OIDC、`pg_dump`／`pg_restore`       | 私有 Google Cloud Storage |
+本機需 Node.js 22.22.3+（22.x）或 24.15.0+（24.x），以及 JDK 17。
 
-本機需要 Node.js 22.22.3+（22.x）或 24.15.0+（24.x）、JDK 17，以及獨立的 PostgreSQL 開發資料庫。
+| 工作目錄 | 啟動方式 |
+| --- | --- |
+| `frontend/` | 首次執行 `npm ci`，再執行 `npm start` |
+| `backend/` | `./mvnw -Plocal-dev clean test-compile exec:java`（Windows 使用 `mvnw.cmd`） |
 
-### 本機設定與指令
+前端位於 `http://localhost:4200`，後端位於 `http://localhost:8080`。本機後端使用隔離的暫存資料庫，停止後清除資料；OAuth 使用開發專用設定。正式部署由既有 CI/CD 觸發。
 
-在 `backend/src/main/resources/application-local.properties` 設定資料庫及 JWT 金鑰；此檔案已加入 `.gitignore`，`local` 是預設 profile：
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/dnd_adventure_log
-spring.datasource.username=<開發資料庫帳號>
-spring.datasource.password=<開發資料庫密碼>
-app.jwt.secret=<自行產生的隨機簽章金鑰，至少 32 bytes>
-```
-
-後端啟動時會執行 Flyway migration。OAuth 與 SMTP 選填設定見 [application.properties](backend/src/main/resources/application.properties)；使用第三方登入或重設密碼郵件前，需配置對應服務。
-
-| 工作目錄    | 啟動                                  | 建置                         | 測試                        |
-| ----------- | ------------------------------------- | ---------------------------- | --------------------------- |
-| `frontend/` | 首次執行 `npm ci`，再執行 `npm start` | `npm run build`              | `npm test -- --watch=false` |
-| `backend/`  | `./mvnw spring-boot:run`              | `./mvnw package -DskipTests` | `./mvnw test`               |
-
-Windows 使用 `./mvnw.cmd`。前端預設為 `http://localhost:4200`，後端為 `http://localhost:8080`；Angular CLI 與 Maven Wrapper 已隨專案提供。
-
-前端的 API 網址與 OAuth Client ID 位於 [environment.ts](frontend/src/environments/environment.ts) 和 [environment.prod.ts](frontend/src/environments/environment.prod.ts)。本機預設呼叫 `http://localhost:8080/api`，正式站以 Firebase Hosting 將 `/api/**` 轉送至 Cloud Run。自行架設時需調整這些設定及後端允許的來源網址。
-
-### 開發與維運文件
-
-| 文件                                                       | 用途                             |
-| ---------------------------------------------------------- | -------------------------------- |
-| [系統需求規格書](system-requirements-spec.md)              | 欄位、業務規則與介面行為         |
-| [資料庫綱要](database-schema.md)                           | 表結構與 migration 說明          |
-| [OpenSpec](openspec/)                                      | 主規格、變更設計與任務追蹤       |
-| [備份與復原規格](openspec/specs/database-recovery/spec.md) | 備份範圍、隔離還原與啟用驗證要求 |
-| [VERSIONING.md](VERSIONING.md)                             | 版本同步、PR、部署確認與發布流程 |
-
-### 部署與備份
-
-| 流程       | 入口與觸發方式                                                                                                                             |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| 前端部署   | [`deploy-frontend.yml`](.github/workflows/deploy-frontend.yml)：`main` 的 `frontend/**` 變更觸發 Firebase Hosting 部署                     |
-| 後端部署   | GCP Cloud Build Trigger：`main` 的 `backend/**` 變更觸發 Cloud Run 部署                                                                    |
-| 資料庫備份 | [`database-backup.yml`](.github/workflows/database-backup.yml)：每日 UTC 03:17（台灣 11:17），也支援手動執行                               |
-| 隔離還原   | [`database-restore-drill.yml`](.github/workflows/database-restore-drill.yml)：手動指定備份物件，在無網路的臨時 PostgreSQL 容器中還原與檢查 |
-
-備份匯出本應用程式的 `public` schema。自行啟用時，在只允許 `main` 分支的 `database-backups` GitHub environment 設定 `GCP_BACKUP_BUCKET`、`GCP_WORKLOAD_IDENTITY_PROVIDER`、`GCP_BACKUP_SERVICE_ACCOUNT` 三個 Variables，以及 `DB_BACKUP_URL` Secret；另需配置私有 bucket、到期刪除規則及 OIDC 信任關係。
-
-連線憑證與正式環境私人設定由各平台管理。建立新部署後，須成功執行一次備份與隔離還原，才能確認復原流程可用。
+詳細內容見[系統需求](system-requirements-spec.md)、[資料庫綱要](database-schema.md)、[OpenSpec](openspec/)與[版本發布規範](VERSIONING.md)。

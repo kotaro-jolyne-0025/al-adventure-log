@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pr-frontend:
+    name: pr-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test -- --watch=false
+      - name: Build production frontend
+        working-directory: frontend
+        run: npm run build
+
+  pr-backend:
+    name: pr-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Find latest published migration boundary
+        env:
+          BOUNDARY_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+        run: |
+          python .github/scripts/migration_boundary.py --base "$BOUNDARY_SHA" >> "$GITHUB_ENV"
+      - name: Capture released character mapper for compatibility check
+        run: |
+          mapper="$RUNNER_TEMP/released-CharacterMapper.xml"
+          git show "${MIGRATION_BASE_TAG}:backend/src/main/resources/mapper/CharacterMapper.xml" > "$mapper"
+          echo "MIGRATION_BASE_CHARACTER_MAPPER=$mapper" >> "$GITHUB_ENV"
+      - name: Run backend verification and PostgreSQL integration tests
+        working-directory: backend
+        run: ./mvnw --batch-mode --no-transfer-progress clean verify
+      - name: Check production artifact isolation
+        run: |
+          for jar in backend/target/*.jar; do
+            python .github/scripts/check_backend_artifact.py "$jar"
+          done
+
+  pr-policy:
+    name: pr-policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned OpenSpec CLI
+        run: npm install --global @fission-ai/openspec@1.13.1
+      - name: Test policy checks
+        run: python -m unittest discover -s .github/scripts -p 'test_*.py' -v
+      - name: Validate PR policy and affected OpenSpec changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+          HEAD_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python .github/scripts/check_pr_policy.py --base "$BASE_SHA" --head "$HEAD_SHA" --event "$EVENT_NAME"

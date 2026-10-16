@@ -353,7 +353,7 @@ class MutationGuardIntegrationTest {
         ExecutorService writer = Executors.newSingleThreadExecutor();
         try {
             doAnswer(call -> {
-                var old = actualEntries.findByIdAndUserId(entryId, userId); // Establish the read snapshot, then commit on another connection.
+                var old = actualEntries.findDetailSnapshot(entryId, userId); // Complete the statement snapshot, then commit before returning it.
                 writer.submit(() -> guard.mutate(ENTRY, entryId, userId, token, () -> {
                     jdbc.update("UPDATE adventure_entry SET adventure_name='New' WHERE id=?", entryId);
                     jdbc.update("UPDATE adventure_gained_item SET item_name='New sword' WHERE adventure_entry_id=?", entryId);
@@ -362,14 +362,15 @@ class MutationGuardIntegrationTest {
                     return null;
                 })).get(5, TimeUnit.SECONDS);
                 return old;
-            }).when(entries).findByIdAndUserId(entryId, userId);
+            }).when(entries).findDetailSnapshot(entryId, userId);
             var snapshot = adventures.getEntry(entryId, userId);
             assertEquals("Before", snapshot.getAdventureName());
             assertEquals(token, snapshot.getUpdatedAt().toString());
             assertEquals("Sword", snapshot.getGainedItems().get(0).getItemName());
             assertEquals("Old rest", snapshot.getDowntimeActivities().get(0).getDescription());
             assertEquals("Old award", snapshot.getStoryAwards().get(0).getAwardName());
-            verify(entries).findByIdAndUserId(entryId, userId);
+            verify(entries).findDetailSnapshot(entryId, userId);
+            verifyNoMoreInteractions(entries);
             reset(entries);
             var current = adventures.getEntry(entryId, userId);
             assertEquals("New", current.getAdventureName());
@@ -384,17 +385,111 @@ class MutationGuardIntegrationTest {
         ExecutorService writer = Executors.newSingleThreadExecutor();
         try {
             doAnswer(call -> {
-                var old = actualCharacters.findByIdAndUserId(characterId, userId);
+                var old = actualEntries.findDefaultsSnapshot(characterId, userId);
                 writer.submit(() -> guard.createItem(characterId, userId, () -> insertItem(null))).get(5, TimeUnit.SECONDS);
                 return old;
-            }).when(characterMapper).findByIdAndUserId(characterId, userId);
+            }).when(entries).findDefaultsSnapshot(characterId, userId);
             var snapshot = adventures.getDefaults(characterId, userId);
             assertEquals(token, snapshot.getCharacterUpdatedAt());
             assertEquals(0, snapshot.getStartingMagicItems());
-            reset(characterMapper);
+            verify(entries).findDefaultsSnapshot(characterId, userId);
+            verifyNoMoreInteractions(entries);
+            reset(entries);
             var current = adventures.getDefaults(characterId, userId);
             assertEquals(1, current.getStartingMagicItems());
             assertTrue(current.getCharacterUpdatedAt().isAfter(token));
+        } finally { writer.shutdownNow(); }
+    }
+
+    @Test
+    void readSnapshotsKeepEmptyOwnershipBoundariesAndAllIndependentChildren() {
+        UUID empty = UUID.randomUUID();
+        jdbc.update("INSERT INTO \"character\"(id,user_id,character_name,race,initial_classes_string) VALUES (?,?,'Empty','Human','Fighter1')", empty, userId);
+        assertTrue(adventures.getEntriesByCharacter(empty, userId).isEmpty());
+        assertThrows(ResourceNotFoundException.class, () -> adventures.getEntriesByCharacter(characterId, UUID.randomUUID()));
+        assertThrows(ResourceNotFoundException.class, () -> adventures.getEntriesByCharacter(UUID.randomUUID(), userId));
+        assertThrows(ResourceNotFoundException.class, () -> adventures.getEntry(entryId, UUID.randomUUID()));
+        assertThrows(ResourceNotFoundException.class, () -> adventures.getDefaults(characterId, UUID.randomUUID()));
+
+        for (int index = 0; index < 2; index++) {
+            jdbc.update("INSERT INTO downtime_activity(id,adventure_entry_id,description) VALUES (?,?,?)", UUID.randomUUID(), entryId, "Rest " + index);
+        }
+        for (int index = 0; index < 3; index++) {
+            jdbc.update("INSERT INTO adventure_story_award(id,adventure_entry_id,award_name) VALUES (?,?,?)", UUID.randomUUID(), entryId, "Award " + index);
+        }
+        jdbc.update("""
+                INSERT INTO adventure_gained_item(id,adventure_entry_id,item_name,item_type,rarity,quantity,
+                                                  is_soul_coin,requires_attunement,acquisition_source,needs_details)
+                VALUES (?,?,'Coins','CONSUMABLE','RARE',3,TRUE,TRUE,'DOWNTIME',FALSE)
+                """, UUID.randomUUID(), entryId);
+        UUID unrelated = UUID.randomUUID(); insertEntry(unrelated, false);
+        var list = adventures.getEntriesByCharacter(characterId, userId);
+        assertEquals(2, list.size());
+        var listed = list.stream().filter(e -> e.getId().equals(entryId)).findFirst().orElseThrow();
+        assertEquals(2, listed.getDowntimeActivities().size());
+        assertEquals(3, listed.getStoryAwards().size());
+        assertEquals(time("adventure_entry", entryId), listed.getUpdatedAt());
+        var detail = adventures.getEntry(entryId, userId);
+        assertEquals(2, detail.getDowntimeActivities().size());
+        assertEquals(3, detail.getStoryAwards().size());
+        assertEquals(2, detail.getGainedItems().size());
+        var coins = detail.getGainedItems().stream().filter(i -> i.getItemName().equals("Coins")).findFirst().orElseThrow();
+        assertEquals("CONSUMABLE", coins.getItemType());
+        assertEquals("RARE", coins.getRarity());
+        assertEquals(com.dndadvlog.backend.entity.AcquisitionSource.DOWNTIME, coins.getAcquisitionSource());
+        assertTrue(coins.getIsSoulCoin());
+        assertTrue(coins.getRequiresAttunement());
+        assertFalse(coins.getNeedsDetails());
+        assertEquals(3, coins.getQuantity());
+        assertEquals(time("adventure_entry", entryId), detail.getUpdatedAt());
+        assertEquals(0, detail.getUpdatedAt().getNano() % 1000);
+        assertTrue(detail.getLegacyItems().isEmpty());
+        assertEquals(0, adventures.getEntry(unrelated, userId).getDowntimeActivities().size());
+        assertEquals(0, adventures.getEntry(unrelated, userId).getStoryAwards().size());
+    }
+
+    @Test
+    void detailSnapshotKeepsLegacyInventoryAndNextRecordWarnings() {
+        UUID legacy = UUID.randomUUID(); insertEntry(legacy, false);
+        UUID inventory = insertItem(null);
+        jdbc.update("UPDATE adventure_entry SET play_date='2026-10-01', ending_classes_string='Fighter1', gold_total=10 WHERE id=?", legacy);
+        jdbc.update("UPDATE adventure_entry SET play_date='2026-10-02', starting_classes_string='Fighter1', starting_gold=20 WHERE id=?", entryId);
+        var snapshot = adventures.getEntry(legacy, userId);
+        assertTrue(snapshot.getGainedItems().isEmpty());
+        assertEquals(1, snapshot.getLegacyItems().size());
+        assertEquals(inventory, snapshot.getLegacyItems().get(0).getId());
+        assertEquals(time("inventory_item", inventory), snapshot.getLegacyItems().get(0).getUpdatedAt());
+        assertTrue(snapshot.getWarnings().stream().anyMatch(w -> w.contains("不連續")));
+        assertTrue(adventures.getEntry(entryId, userId).getLegacyItems().isEmpty());
+    }
+
+    @Test
+    void listSnapshotCannotMixMainAndChildrenWhenAnotherConnectionCommits() throws Exception {
+        UUID award = UUID.randomUUID();
+        jdbc.update("INSERT INTO adventure_story_award(id,adventure_entry_id,award_name) VALUES (?,?,'Old award')", award, entryId);
+        String token = time("adventure_entry", entryId).toString();
+        ExecutorService writer = Executors.newSingleThreadExecutor();
+        try {
+            doAnswer(call -> {
+                var old = actualEntries.findListSnapshot(characterId, userId);
+                writer.submit(() -> guard.mutate(ENTRY, entryId, userId, token, () -> {
+                    jdbc.update("UPDATE adventure_entry SET adventure_name='New' WHERE id=?", entryId);
+                    jdbc.update("UPDATE adventure_story_award SET award_name='New award' WHERE id=?", award);
+                    return null;
+                })).get(5, TimeUnit.SECONDS);
+                return old;
+            }).when(entries).findListSnapshot(characterId, userId);
+            var old = adventures.getEntriesByCharacter(characterId, userId).get(0);
+            assertEquals("Before", old.getAdventureName());
+            assertEquals("Old award", old.getStoryAwards().get(0).getAwardName());
+            assertEquals(token, old.getUpdatedAt().toString());
+            verify(entries).findListSnapshot(characterId, userId);
+            verifyNoMoreInteractions(entries);
+            reset(entries);
+            var current = adventures.getEntriesByCharacter(characterId, userId).get(0);
+            assertEquals("New", current.getAdventureName());
+            assertEquals("New award", current.getStoryAwards().get(0).getAwardName());
+            assertTrue(current.getUpdatedAt().isAfter(old.getUpdatedAt()));
         } finally { writer.shutdownNow(); }
     }
 

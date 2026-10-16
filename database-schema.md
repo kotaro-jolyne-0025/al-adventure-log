@@ -6,7 +6,7 @@
 - 前端原樣回傳讀取時的時間戳；共用寫入交易先取得所屬角色的短暫列鎖，再執行帶 `WHERE updated_at = expected` 的條件更新，衝突全部回滾。
 - 更新時間使用 `GREATEST(clock_timestamp()::timestamp, updated_at + INTERVAL '1 microsecond')`，避免同交易 NOW 相同或時鐘回退造成標記不變。子項目修改推進父冒險時間戳；倉庫異動使使用舊庫存相容資料的空快照冒險標記失效。
 - 既有 `update_updated_at_column()` 也必須使用 `GREATEST(clock_timestamp()::timestamp, OLD.updated_at + INTERVAL '1 microsecond')`。原先觸發器的 `NOW()` 會覆蓋 UPDATE 指定的時間；V28 必須隨後端套用，不能只更新應用 SQL。
-- 新增冒險使用 defaults 回應的 `characterUpdatedAt` 檢查角色基準。完整冒險的主紀錄、子清單及相容庫存使用同一 REPEATABLE READ 快照。
+- 新增冒險使用 defaults 回應的 `characterUpdatedAt` 檢查角色基準。完整冒險的主紀錄、子清單及相容庫存使用同一資料庫讀取快照；單一 SELECT 使用 statement snapshot，多次查詢則須使用 REPEATABLE READ 或等效保護。
 - 此規則由業務 API 執行；直接 SQL 或後續背景寫入也必須維持相同鎖順序與時間戳失效規則，不得跳過主紀錄標記。
 
 ## Migration 29（認證限流操作紀錄）
