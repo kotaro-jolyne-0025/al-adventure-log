@@ -4,6 +4,7 @@ import com.dndadvlog.backend.dto.AdventureEntryResponse;
 import com.dndadvlog.backend.dto.AdventureGainedItemResponse;
 import com.dndadvlog.backend.entity.AcquisitionSource;
 import com.dndadvlog.backend.entity.AdventureEntry;
+import com.dndadvlog.backend.entity.AdventureEntrySnapshot;
 import com.dndadvlog.backend.entity.AdventureGainedItem;
 import com.dndadvlog.backend.entity.DowntimeActivity;
 import com.dndadvlog.backend.entity.StoryAward;
@@ -27,6 +28,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AdventureEntryServiceTest {
@@ -50,22 +53,21 @@ class AdventureEntryServiceTest {
     private AdventureEntryService service;
 
     @Test
-    void getEntriesByCharacterLoadsChildrenInTwoBatchQueries() {
+    void getEntriesByCharacterUsesOneCompleteOwnedSnapshot() {
         UUID characterId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         AdventureEntry first = entry(UUID.randomUUID());
         AdventureEntry second = entry(UUID.randomUUID());
-        List<UUID> entryIds = List.of(first.getId(), second.getId());
 
         DowntimeActivity activity = new DowntimeActivity();
         activity.setAdventureEntryId(first.getId());
         StoryAward award = new StoryAward();
         award.setAdventureEntryId(second.getId());
 
-        when(entryMapper.findByCharacterIdOrderByPlayDateAsc(characterId))
+        first.setDowntimeActivities(List.of(activity));
+        second.setStoryAwards(List.of(award));
+        when(entryMapper.findListSnapshot(characterId, userId))
                 .thenReturn(List.of(first, second));
-        when(downtimeActivityMapper.findByEntryIds(entryIds)).thenReturn(List.of(activity));
-        when(storyAwardMapper.findByAdventureEntryIds(entryIds)).thenReturn(List.of(award));
 
         List<AdventureEntryResponse> responses = service.getEntriesByCharacter(characterId, userId);
 
@@ -74,19 +76,16 @@ class AdventureEntryServiceTest {
         assertEquals(0, responses.get(0).getStoryAwards().size());
         assertEquals(0, responses.get(1).getDowntimeActivities().size());
         assertEquals(1, responses.get(1).getStoryAwards().size());
-        verify(downtimeActivityMapper).findByEntryIds(entryIds);
-        verify(storyAwardMapper).findByAdventureEntryIds(entryIds);
-        verify(downtimeActivityMapper, never()).findByEntryIdOrderByCreatedAtAsc(first.getId());
-        verify(downtimeActivityMapper, never()).findByEntryIdOrderByCreatedAtAsc(second.getId());
-        verify(storyAwardMapper, never()).findByAdventureEntryId(first.getId());
-        verify(storyAwardMapper, never()).findByAdventureEntryId(second.getId());
+        verify(entryMapper).findListSnapshot(characterId, userId);
+        verifyNoMoreInteractions(entryMapper);
+        verifyNoInteractions(characterService, downtimeActivityMapper, storyAwardMapper);
     }
 
     @Test
     void getEntriesByCharacterSkipsChildQueriesWhenThereAreNoEntries() {
         UUID characterId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        when(entryMapper.findByCharacterIdOrderByPlayDateAsc(characterId)).thenReturn(List.of());
+        when(entryMapper.findListSnapshot(characterId, userId)).thenReturn(List.of(new AdventureEntry()));
 
         List<AdventureEntryResponse> responses = service.getEntriesByCharacter(characterId, userId);
 
@@ -101,9 +100,11 @@ class AdventureEntryServiceTest {
         UUID entryId = UUID.randomUUID();
         AdventureEntry entry = entry(entryId);
         entry.setRecordingModelVersion(2);
+        AdventureEntrySnapshot snapshot = new AdventureEntrySnapshot();
+        snapshot.setId(entryId);
+        snapshot.setRecordingModelVersion(2);
+        when(entryMapper.findDetailSnapshot(entryId, userId)).thenReturn(snapshot);
         when(entryMapper.findByIdAndUserId(entryId, userId)).thenReturn(entry);
-        when(downtimeActivityMapper.findByEntryIdOrderByCreatedAtAsc(entryId)).thenReturn(List.of());
-        when(storyAwardMapper.findByAdventureEntryId(entryId)).thenReturn(List.of());
 
         AdventureEntryResponse entryResponse = service.getEntry(entryId, userId);
         assertEquals(2, entryResponse.getRecordingModelVersion());
