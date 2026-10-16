@@ -1,0 +1,40 @@
+name: 問題回報
+description: 回報使用上的問題
+body:
+  - type: markdown
+    attributes:
+      value: |
+        涉及帳號、安全或私人資料時，請改用網站「聯絡我」。請勿公開 Email、密碼、Token、玩家資料或資料庫備份；截圖請先遮住個人資訊。
+  - type: input
+    id: version
+    attributes:
+      label: 網頁版本
+      description: 可在網站頁尾查看。
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 裝置與瀏覽器
+      placeholder: 例如 Android／Samsung Internet，或 Windows／Edge；是否從主畫面開啟
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 操作步驟
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 預期結果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 實際結果
+      description: 可補充錯誤文字與已遮蔽個人資訊的截圖。
+    validations:
+      required: true
