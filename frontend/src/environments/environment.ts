@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:8080/api',
-  googleClientId: '837209916237-0r5sjm5577p8hebvmlfuji8r9g9d5lbq.apps.googleusercontent.com',
-  discordClientId: '1538498217518563359',
+  googleClientId: '686150105517-s7h24vvm0utfiik299832ll3s4tpvd2r.apps.googleusercontent.com',
+  discordClientId: '',
 };
 

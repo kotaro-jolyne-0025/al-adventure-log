@@ -148,6 +148,13 @@
   }
 }
 
+.oauth-unavailable {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-label);
+  text-align: center;
+}
+
 .divider-with-text {
   display: flex;
   align-items: center;

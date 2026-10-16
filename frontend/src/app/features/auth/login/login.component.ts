@@ -62,6 +62,8 @@ export class LoginComponent implements AfterViewInit {
   readonly hidePassword = signal(true);
   readonly isLoading = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly googleLoginEnabled = Boolean(environment.googleClientId);
+  readonly discordLoginEnabled = Boolean(environment.discordClientId);
 
   readonly loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -79,7 +81,7 @@ export class LoginComponent implements AfterViewInit {
   }
 
   private async initGoogleSignIn(): Promise<void> {
-    if (typeof window === 'undefined') return;
+    if (!this.googleLoginEnabled || typeof window === 'undefined') return;
     try {
       if (typeof google === 'undefined') {
         const script = document.createElement('script');
@@ -179,6 +181,10 @@ export class LoginComponent implements AfterViewInit {
 
   loginWithDiscord(): void {
     const clientId = environment.discordClientId;
+    if (!clientId) {
+      this.errorMessage.set('本機尚未設定 Discord OAuth，請使用電子郵件與密碼登入');
+      return;
+    }
     const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback/discord`);
     const stateArray = new Uint8Array(24);
     crypto.getRandomValues(stateArray);

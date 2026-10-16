@@ -95,7 +95,7 @@ Google 與 Discord 僅接受 provider 已驗證的 Email；尚未綁定的第三
 
 | 功能 | 說明 |
 | --- | --- |
-| 帳號密碼註冊 | 輸入 Email、密碼（>=8字元）、顯示名稱註冊並自動登入 |
+| 帳號密碼註冊 | 輸入 Email、密碼（>=8字元）、顯示名稱註冊並自動登入；不寄送註冊信箱驗證信 |
 | 帳號密碼登入 | 輸入 Email 與密碼進行身分校驗，發放 JWT Token |
 | 忘記密碼申請 | 輸入已註冊 Email，系統生成 15 分鐘內有效之安全 Token 並寄送重設信件 |
 | 重設密碼確認 | 透過 Token 驗證身分，輸入新密碼（>=8字元）完成重設並引導登入 |
@@ -241,7 +241,7 @@ Google 與 Discord 僅接受 provider 已驗證的 Email；尚未綁定的第三
 | 雙向排序 | 頂部提供一體化膠囊排序按鈕，支援依「取得時間」進行「由新到舊 (最新在先)」與「由舊到新 (最舊在先)」雙向即時切換，並自動持久化記憶於 `localStorage` |
 | 新增物品 | 從對應 Tab 新增，類型自動帶入；可選擇單一物品分類；手動新增之物品其 `adventure_entry_id` 為 NULL |
 | 編輯物品 | 修改物品資料（含數量、稀有度、物品分類、來源、備註）；分類可清除 |
-| 消耗物品 | 點擊「使用 ( -1 )」快速扣減消耗品數量，用盡時自倉庫移除；**倉庫道具之日常消耗不影響來源冒險記錄的歷史快照** |
+| 消耗物品 | 玩家透過編輯物品手動調整消耗品數量；需要移除物品時使用刪除操作。倉庫日常數量調整或刪除不影響來源冒險記錄的歷史快照 |
 | 刪除物品 | 刪除單筆物品；僅自倉庫背包移除，**來源冒險記錄之獲得快照維持不變** |
 
 ---
@@ -555,10 +555,12 @@ Google 與 Discord 僅接受 provider 已驗證的 Email；尚未綁定的第三
 
 | 環境 | 前端 URL | 後端 URL |
 | --- | --- | --- |
-| 開發 | <http://localhost:4200> | <http://localhost:8080> |
+| 開發 | <http://localhost:4200> | <http://localhost:8080>，只連線至啟動工具建立的本機暫存 PostgreSQL |
 | 正式 | https://aladvlog.com | Cloud Run service `dnd-adv-backend`，由 Firebase Hosting `/api/**` rewrite 轉送 |
 
 正式部署由 GitHub Actions（Firebase Hosting）與 GCP Cloud Build trigger（Cloud Run）分別處理。含 Project ID、IAM 和 trigger inline 設定的本機操作手冊不納入公開 SRS。
+
+本機後端使用明確的 `dev` profile；啟動工具管理的資料庫目標須在 Flyway 執行前通過驗證，其他本機或遠端目標均拒絕。開發資料、fixture 與隨機 JWT 金鑰只在該次程序期間有效，停止後重建；開發前端使用開發專用第三方 client ID，未設定時不載入對應登入，亦不回退呼叫正式 API。正式服務明確使用 `prod` profile，保留既有 migration 啟動行為。CI 使用每次工作專屬的暫存 PostgreSQL 與合成認證資料。
 
 ### 8.2 環境變數清單（後端）
 
@@ -568,6 +570,10 @@ Google 與 Discord 僅接受 provider 已驗證的 Email；尚未綁定的第三
 | `DB_USERNAME` | 資料庫帳號 |
 | `DB_PASSWORD` | 資料庫密碼 |
 | `CORS_ALLOWED_ORIGIN` | 允許的前端 URL（正式環境） |
+| `SPRING_PROFILES_ACTIVE` | 執行模式；本機工具指定 `dev`，正式 Cloud Run 明確指定 `prod` |
+| `GOOGLE_CLIENT_ID` | 後端驗證 Google ID token 的 audience；本機須使用與開發前端一致的 client ID |
+| `DISCORD_CLIENT_ID` | 後端驗證 Discord OAuth 的開發或正式 client ID |
+| `JWT_SECRET` | 簽署網站 token 的金鑰；本機啟動器每次產生獨立隨機值，正式值由平台管理 |
 
 ---
 
