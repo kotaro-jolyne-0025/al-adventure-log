@@ -6,6 +6,8 @@ import com.dndadvlog.backend.service.AuthRateLimitService;
 import com.dndadvlog.backend.service.AuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -22,7 +24,7 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(new AuthController(auth, limits))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+                .setControllerAdvice(new GlobalExceptionHandler(), new OAuthRequestBodyAdvice()).build();
     }
 
     @Test
@@ -63,5 +65,76 @@ class AuthControllerTest {
 
         verify(limits).check(eq("forgot-password"), eq("player@example.invalid"), any());
         verify(auth, never()).forgotPassword(any());
+    }
+
+    @Test
+    void rateLimitsOAuthBeforeProviderVerification() throws Exception {
+        doThrow(new RateLimitException(42)).when(limits).checkSource(eq("oauth"), any());
+
+        mvc.perform(post("/api/auth/oauth").contentType("application/json")
+                        .content("{\"provider\":\"GOOGLE\",\"tokenOrCode\":\"synthetic-token\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "42"));
+
+        verify(limits).checkSource(eq("oauth"), any());
+        verify(auth, never()).loginOAuth(any());
+    }
+
+    @Test
+    void rejectsOAuthCredentialOverSizeLimit() throws Exception {
+        String token = "x".repeat(8193);
+        mvc.perform(post("/api/auth/oauth").contentType("application/json")
+                        .content("{\"provider\":\"GOOGLE\",\"tokenOrCode\":\"" + token + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(limits, never()).checkSource(anyString(), any());
+        verify(auth, never()).loginOAuth(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/auth/oauth", "/api/auth/oauth/register"})
+    void rejectsOversizedBodyBeforeJsonParsing(String path) throws Exception {
+        mvc.perform(post(path).contentType("application/json").content("x".repeat(65537)))
+                .andExpect(status().is(413))
+                .andExpect(jsonPath("$.message").value("第三方登入請求內容過大"));
+
+        verifyNoInteractions(auth, limits);
+    }
+
+    @Test
+    void boundsActualReadsWhenContentLengthIsMissing() {
+        var stream = new java.io.ByteArrayInputStream(new byte[131072]);
+        var message = new org.springframework.mock.http.MockHttpInputMessage(stream);
+
+        var error = org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> new OAuthRequestBodyAdvice().beforeBodyRead(message, null, null, null));
+
+        org.junit.jupiter.api.Assertions.assertEquals(413, error.getStatusCode().value());
+        org.junit.jupiter.api.Assertions.assertEquals(65535, stream.available());
+    }
+
+    @Test
+    void acceptsBodyAtByteLimitAndPreservesUnicode() throws Exception {
+        String body = "{\"registrationToken\":\"synthetic-proof\",\"displayName\":\"玩家\"}";
+        int padding = 65536 - body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        mvc.perform(post("/api/auth/oauth/register").contentType("application/json")
+                        .content(body + " ".repeat(padding)))
+                .andExpect(status().isOk());
+
+        verify(auth).registerOAuth(argThat(request -> "玩家".equals(request.getDisplayName())));
+    }
+
+    @Test
+    void rateLimitsOAuthRegistrationBeforeCheckingRegistrationProof() throws Exception {
+        doThrow(new RateLimitException(42)).when(limits).checkSource(eq("oauth-register"), any());
+
+        mvc.perform(post("/api/auth/oauth/register").contentType("application/json")
+                        .content("{\"registrationToken\":\"synthetic-proof\",\"displayName\":\"Player\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "42"));
+
+        verify(limits).checkSource(eq("oauth-register"), any());
+        verify(auth, never()).registerOAuth(any());
     }
 }

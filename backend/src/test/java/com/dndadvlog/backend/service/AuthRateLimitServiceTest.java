@@ -34,4 +34,18 @@ class AuthRateLimitServiceTest {
         assertTrue(keys.getAllValues().stream().allMatch(key -> key.matches("[0-9a-f]{64}")));
         assertFalse(keys.getAllValues().contains("Player@example.invalid"));
     }
+
+    @Test
+    void oauthSourceLimitUsesSharedHashedCounterWithoutTokenIdentity() {
+        AuthRateLimitMapper mapper = mock(AuthRateLimitMapper.class);
+        when(mapper.consume(anyString(), anyInt(), anyInt(), anyInt())).thenReturn(new AuthRateLimitState());
+        AuthRateLimitService service = new AuthRateLimitService(mapper);
+        ReflectionTestUtils.setField(service, "hmacSecret", "unit-test-secret");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("203.0.113.7");
+
+        service.checkSource("oauth", request);
+
+        verify(mapper).consume(matches("[0-9a-f]{64}"), eq(60), eq(900), eq(900));
+    }
 }

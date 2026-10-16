@@ -65,6 +65,6 @@
 | `frontend/` | 首次執行 `npm ci`，再執行 `npm start` |
 | `backend/` | `./mvnw -Plocal-dev clean test-compile exec:java`（Windows 使用 `mvnw.cmd`） |
 
-前端位於 `http://localhost:4200`，後端位於 `http://localhost:8080`。本機後端使用隔離的暫存資料庫，停止後清除資料；OAuth 使用開發專用設定。正式部署由既有 CI/CD 觸發。
+前端位於 `http://localhost:4200`，後端位於 `http://localhost:8080`。本機使用隔離的暫存資料庫，停止後清除資料；OAuth 使用開發專用設定，Discord Secret 放在不進版控的 `backend/.env.local`。正式部署由 CI/CD 執行。
 
 詳細內容見[系統需求](system-requirements-spec.md)、[資料庫綱要](database-schema.md)、[OpenSpec](openspec/)與[版本發布規範](VERSIONING.md)。

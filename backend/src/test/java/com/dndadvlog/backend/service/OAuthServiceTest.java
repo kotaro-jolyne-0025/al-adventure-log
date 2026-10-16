@@ -8,6 +8,8 @@ import com.dndadvlog.backend.mapper.UserOAuthAccountMapper;
 import com.dndadvlog.backend.config.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.dndadvlog.backend.dto.auth.OAuthLoginRequest;
@@ -27,7 +29,8 @@ class OAuthServiceTest {
     private final UserMapper users = mock(UserMapper.class);
     private final UserOAuthAccountMapper accounts = mock(UserOAuthAccountMapper.class);
     private final JwtTokenProvider tokens = new JwtTokenProvider("synthetic-test-key-at-least-32-bytes-long", 3600000);
-    private final OAuthService service = new OAuthService(users, accounts, tokens);
+    private final OAuthAccountService accountService = new OAuthAccountService(users, accounts);
+    private final OAuthService service = new OAuthService(users, accounts, tokens, accountService);
 
     @Test
     void validatesAudienceIssuerExpiryIdentityAndVerifiedEmail() {
@@ -36,18 +39,18 @@ class OAuthServiceTest {
                 .put("aud", "example-client").put("iss", "https://accounts.google.com")
                 .put("exp", Instant.now().plusSeconds(300).getEpochSecond())
                 .put("sub", "example-user").put("email", "player@example.invalid").put("email_verified", true);
-        assertDoesNotThrow(() -> service.validateGoogleClaims(claims));
+        assertDoesNotThrow(() -> service.validateGoogleIdentityClaims(claims));
         for (String field : new String[]{"aud", "iss", "exp", "sub", "email", "email_verified"}) {
             ObjectNode invalid = claims.deepCopy();
             invalid.remove(field);
-            assertThrows(BusinessException.class, () -> service.validateGoogleClaims(invalid), field);
+            assertThrows(BusinessException.class, () -> service.validateGoogleIdentityClaims(invalid), field);
         }
-        assertThrows(BusinessException.class, () -> service.validateGoogleClaims(claims.deepCopy().put("aud", "another-client")));
-        assertThrows(BusinessException.class, () -> service.validateGoogleClaims(claims.deepCopy().put("iss", "https://example.invalid")));
-        assertThrows(BusinessException.class, () -> service.validateGoogleClaims(claims.deepCopy().put("exp", Instant.now().minusSeconds(1).getEpochSecond())));
-        assertThrows(BusinessException.class, () -> service.validateGoogleClaims(claims.deepCopy().put("email_verified", false)));
+        assertThrows(BusinessException.class, () -> service.validateGoogleIdentityClaims(claims.deepCopy().put("aud", "another-client")));
+        assertThrows(BusinessException.class, () -> service.validateGoogleIdentityClaims(claims.deepCopy().put("iss", "https://example.invalid")));
+        assertThrows(BusinessException.class, () -> service.validateGoogleIdentityClaims(claims.deepCopy().put("exp", Instant.now().minusSeconds(1).getEpochSecond())));
+        assertThrows(BusinessException.class, () -> service.validateGoogleIdentityClaims(claims.deepCopy().put("email_verified", false)));
         ReflectionTestUtils.setField(service, "googleClientId", "");
-        assertThrows(BusinessException.class, () -> service.validateGoogleClaims(claims));
+        assertThrows(BusinessException.class, () -> service.validateGoogleIdentityClaims(claims));
     }
 
     @Test
@@ -56,7 +59,7 @@ class OAuthServiceTest {
         when(users.findByEmail("player@example.invalid")).thenReturn(existing);
 
         BusinessException error = assertThrows(BusinessException.class, () ->
-                ReflectionTestUtils.invokeMethod(service, "findAndSyncExistingUser",
+                accountService.findAndSyncExistingUser(
                         new OAuthService.OAuthUserInfo("GOOGLE", "new-subject", existing.getEmail(), null, true)));
 
         assertTrue(error.getMessage().contains("尚未連結"));
@@ -73,7 +76,7 @@ class OAuthServiceTest {
         when(accounts.findByProviderAndProviderUserId("GOOGLE", "subject")).thenReturn(binding);
         when(users.findById(userId)).thenReturn(existing);
 
-        User result = ReflectionTestUtils.invokeMethod(service, "findAndSyncExistingUser",
+        User result = accountService.findAndSyncExistingUser(
                 new OAuthService.OAuthUserInfo("GOOGLE", "subject", "verified@example.invalid", null, true));
 
         assertSame(existing, result);
@@ -89,8 +92,8 @@ class OAuthServiceTest {
         when(accounts.findByProviderAndProviderUserId("GOOGLE", "subject")).thenReturn(binding);
         when(users.findById(userId)).thenReturn(User.builder().id(userId).isActive(false).build());
 
-        assertThrows(BusinessException.class, () -> ReflectionTestUtils.invokeMethod(service,
-                "findAndSyncExistingUser", new OAuthService.OAuthUserInfo("GOOGLE", "subject", "a@example.invalid", null, true)));
+        assertThrows(BusinessException.class, () -> accountService.findAndSyncExistingUser(
+                new OAuthService.OAuthUserInfo("GOOGLE", "subject", "a@example.invalid", null, true)));
         verify(users, never()).updatePassword(any(), any());
     }
 
@@ -102,19 +105,18 @@ class OAuthServiceTest {
     }
 
     @Test
-    void newGoogleIdentityWaitsForChosenNicknameWithoutImportingProviderName() {
-        var builder = RestClient.builder();
-        var server = MockRestServiceServer.bindTo(builder).build();
-        ReflectionTestUtils.setField(service, "restClient", builder.build());
+    void newGoogleIdentityWaitsForChosenNicknameWithoutImportingProviderName() throws Exception {
         ReflectionTestUtils.setField(service, "googleClientId", "example-client");
-        server.expect(requestTo("https://oauth2.googleapis.com/tokeninfo?id_token=google-fixture"))
-                .andRespond(withSuccess("""
-                        {"aud":"example-client","iss":"accounts.google.com","sub":"google-subject",
-                        "email":"new@example.invalid","email_verified":true,"name":"Provider private name","exp":%d}
-                        """.formatted(Instant.now().plusSeconds(300).getEpochSecond()), MediaType.APPLICATION_JSON));
+        GoogleIdTokenVerifier verifier = mock(GoogleIdTokenVerifier.class);
+        ReflectionTestUtils.setField(service, "googleIdTokenVerifier", verifier);
+        when(verifier.verify(any(GoogleIdToken.class))).thenReturn(true);
         var request = new OAuthLoginRequest();
         request.setProvider("GOOGLE");
-        request.setTokenOrCode("google-fixture");
+        request.setTokenOrCode(testJwt("""
+                {"iss":"accounts.google.com","aud":"example-client","sub":"google-subject",
+                 "exp":%d,"iat":%d,"email":"new@example.invalid","email_verified":true,
+                 "name":"Provider private name"}
+                """.formatted(Instant.now().plusSeconds(300).getEpochSecond(), Instant.now().getEpochSecond())));
 
         var result = service.processOAuthLogin(request);
 
@@ -127,7 +129,32 @@ class OAuthServiceTest {
         assertNull(created.getPasswordHash());
         verify(users).insert(created);
         verify(accounts).insert(argThat(binding -> binding.getUserId().equals(created.getId())));
-        server.verify();
+        verify(verifier, times(1)).verify(any(GoogleIdToken.class));
+    }
+
+    @Test
+    void rejectsGoogleIdTokenWhenSignatureVerifierRejectsIt() throws Exception {
+        ReflectionTestUtils.setField(service, "googleClientId", "example-client");
+        GoogleIdTokenVerifier verifier = mock(GoogleIdTokenVerifier.class);
+        ReflectionTestUtils.setField(service, "googleIdTokenVerifier", verifier);
+        when(verifier.verify(any(GoogleIdToken.class))).thenReturn(false);
+        var request = new OAuthLoginRequest();
+        request.setProvider("GOOGLE");
+        request.setTokenOrCode(testJwt("""
+                {"iss":"accounts.google.com","aud":"example-client","sub":"google-subject",
+                 "exp":%d,"iat":%d,"email":"new@example.invalid","email_verified":true}
+                """.formatted(Instant.now().plusSeconds(300).getEpochSecond(), Instant.now().getEpochSecond())));
+
+        assertThrows(BusinessException.class, () -> service.processOAuthLogin(request));
+        verifyNoInteractions(users, accounts);
+    }
+
+    private static String testJwt(String claims) {
+        String header = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("{\"alg\":\"RS256\",\"kid\":\"test-key\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(claims.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return header + "." + payload + ".c2lnbmF0dXJl";
     }
 
     @Test
@@ -154,6 +181,24 @@ class OAuthServiceTest {
         User created = service.completeRegistration(result.registrationToken(), "Discord 自選暱稱");
         assertEquals("Discord 自選暱稱", created.getDisplayName());
         assertEquals("discord_discord-subject@dndadvlog.internal", created.getEmail());
+        server.verify();
+    }
+
+    @Test
+    void missingDiscordSecretRejectsLoginBeforeHttpOrAccountAccess() {
+        var builder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(builder).build();
+        ReflectionTestUtils.setField(service, "restClient", builder.build());
+        ReflectionTestUtils.setField(service, "discordClientId", "test-client");
+        ReflectionTestUtils.setField(service, "discordClientSecret", "");
+        var request = new OAuthLoginRequest();
+        request.setProvider("DISCORD");
+        request.setTokenOrCode("synthetic-code");
+
+        var error = assertThrows(BusinessException.class, () -> service.processOAuthLogin(request));
+
+        assertEquals("Discord 登入尚未完成設定，請聯絡管理者", error.getMessage());
+        verifyNoInteractions(users, accounts);
         server.verify();
     }
 

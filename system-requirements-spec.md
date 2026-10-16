@@ -64,11 +64,13 @@
 | avatar_url | 文字（最多 500 字） | ❌ | 大頭貼 URL（OAuth 自動帶入） |
 | is_active | 布林值 | ✅ | 帳號狀態（預設 TRUE） |
 
-Google 與 Discord 僅接受 provider 已驗證的 Email；尚未綁定的第三方 subject 即使 Email 相同，也不得自動綁定既有密碼帳號，須由玩家先用原登入方式登入。已綁定 Google 登入成功時清除該帳號殘留的本機密碼，停用帳號不得透過第三方登入。忘記密碼回應不得揭露帳號是否存在，重設憑證與完整連結不得出現在日誌或錯誤回應。
+Google 與 Discord 僅接受 provider 已驗證的 Email；尚未綁定的第三方 subject 即使 Email 相同，也不得自動綁定既有密碼帳號，須由玩家先用原登入方式登入。已綁定 Google 登入成功時清除該帳號殘留的本機密碼，且 Google 綁定帳號不得透過忘記密碼、重設連結驗證或密碼重設建立本站密碼；即使重設連結在 Google 綁定前核發，使用時仍須重查綁定狀態。忘記密碼回應不得揭露帳號是否存在，重設憑證與完整連結不得出現在日誌或錯誤回應。停用帳號不得透過第三方登入。
 
 新 Google／Discord 身分驗證成功後，先顯示空白的本站暱稱表單；玩家確認非空白、最多 100 字元的暱稱後，才在同一交易建立帳號與綁定並登入。第三方名稱不預填或保存為本站暱稱。已綁定玩家直接登入，保留既有暱稱。取消或重新整理不建立帳號；錯誤保留目前輸入。承接驗證結果的註冊憑證限定註冊用途、10 分鐘到期，只留在瀏覽器記憶體，不得作為登入憑證，也不得寫入 URL、持久儲存或日誌；過期／衝突引導重新登入。完成時重新檢查身分及 Email，唯一約束與交易避免並行確認留下重複或孤立帳號。
 
-登入、註冊及忘記密碼由 PostgreSQL 共用限流計數器跨後端執行個體限制；Email 與來源 IP 以伺服器端 HMAC 識別，不保存原始值。超過上限回傳 HTTP 429 及 `Retry-After`，並在驗證密碼、建立帳號或寄信前拒絕請求。
+登入、註冊及忘記密碼由 PostgreSQL 共用限流計數器跨後端執行個體限制；Email 與來源 IP 以伺服器端 HMAC 識別，不保存原始值。Google／Discord 登入及第三方註冊亦依來源套用相同共享計數器限制（每 15 分鐘 60 次），不使用每次變動的 provider 憑證作帳號識別。超過上限回傳 HTTP 429 及 `Retry-After`，並在驗證密碼、provider 憑證、建立帳號或寄信前拒絕請求。OAuth DTO 限制 provider 最多 16 字元、token/code 最多 8,192 字元、redirect URI 最多 2,048 字元。
+
+Google ID token 依 Google 官方 `GoogleIdTokenVerifier`／`GooglePublicKeysManager` 驗簽，公鑰快取依 Google 回應的 `Cache-Control`／`Age` 更新。Google HTTP client 連線與讀取逾時維持 library 設定（目前依賴預設為各 20 秒）；Discord token、使用者資料及 token revoke HTTP 連線與讀取逾時各為 5 秒。Google／Discord 外部驗證期間不得持有資料庫交易或連線；成功解析 provider 身分後，帳號查找與變更須在短交易內完成並保留原子性。
 
 #### 2.0.2 第三方綁定欄位 (user_oauth_accounts)
 
@@ -724,7 +726,7 @@ Google 與 Discord 僅接受 provider 已驗證的 Email；尚未綁定的第三
 - 同一冒險允許多筆靈魂幣明細，總量加總已標記消耗品的 `quantity`（例如兩筆 1、2 合計 3），不計筆數或冒險次數。冒險詳情顯示歷史取得總量，頂部角色 HUD 顯示所有來源剩餘總量，倉庫清單不重複顯示總量，使用不改歷史。
 - 舊角色 `soulCoins` 正數由 V26 一次轉入未關聯冒險的消耗品；轉移標記避免刪除／用完後重跑補貨；V27 將舊 SOUL_COIN 分類轉成獨立標記並清除舊分類值，不預設奇物或非普通，保留數量、來源、稀有度、備註與自訂名稱。移除角色獨立欄位；相容回應由庫存加總，角色寫入此欄位回傳驗證錯誤。
 - 角色、冒險與物品表單的必填、明細、資源不足與 API 失敗提示顯示於儲存操作區，保留輸入並提供欄位定位，避免重複 alert。
-- Google 採 GIS popup callback 回傳 ID token，後端向 Google tokeninfo 驗證並檢查 audience、issuer、有效期、sub 及已驗證 Email；不將此流程誤當 authorization code exchange。GIS 正式 origin 需在 Google Console 設定；三星帳號選擇寄信跳轉仍待 S26 Ultra 實機確認。
+- OAuth 登入及註冊請求本體上限為 64 KiB，JSON 解析前以有界讀取檢查，沒有 Content-Length 時仍適用，超限回傳 413；欄位長度及來源限流另行適用。Google 採 GIS popup callback 回傳 ID token，後端使用 Google API Client Library 的 `GoogleIdTokenVerifier.verify(GoogleIdToken)` 驗證簽章、audience、issuer 及時間，並要求有效 sub 與已驗證 Email；不將此流程誤當 authorization code exchange。此路徑只需 Google client ID，不設定未使用的 Google client secret。前端 `/auth/callback/:provider` 僅接受 Discord authorization code 及 state；Google／未知 provider 不提交 API，顯示可返回登入頁的錯誤。格式破損、缺漏／null 必要欄位或驗證失敗時拒絕登入，不建立帳號、不洩漏憑證，也不因解析例外回傳 500。正式環境不使用僅供開發除錯的 `tokeninfo` endpoint。GIS 正式 origin 需在 Google Console 設定；三星帳號選擇寄信跳轉已見使用者錄影，根因未定位，依使用者決定延期追蹤。
 
 冒險表單不顯示「永久性魔法物品」資源卡，包含該卡的數量／減少輸入及自動計算摘要；實際「獲得永久性魔法物品」明細保留。歷史減少數在編輯儲存時仍保留，不因移除畫面欄位清零。
 

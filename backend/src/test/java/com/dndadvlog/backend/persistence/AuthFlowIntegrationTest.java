@@ -2,6 +2,7 @@ package com.dndadvlog.backend.persistence;
 
 import com.dndadvlog.backend.config.*;
 import com.dndadvlog.backend.controller.AuthController;
+import com.dndadvlog.backend.controller.OAuthRequestBodyAdvice;
 import com.dndadvlog.backend.dto.auth.OAuthRegisterRequest;
 import com.dndadvlog.backend.entity.User;
 import com.dndadvlog.backend.exception.GlobalExceptionHandler;
@@ -9,6 +10,8 @@ import com.dndadvlog.backend.mapper.*;
 import com.dndadvlog.backend.service.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
@@ -37,12 +40,11 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
-import org.springframework.web.client.RestClient;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -55,8 +57,6 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -80,13 +80,16 @@ class AuthFlowIntegrationTest {
     @Configuration
     @EnableWebMvc
     @EnableTransactionManagement
-    @Import(SecurityConfig.class)
+    @Import({SecurityConfig.class, OAuthRequestBodyAdvice.class})
     static class TestConfig {
         @Bean DataSourceTransactionManager transactionManager() { return new DataSourceTransactionManager(source); }
         @Bean JwtTokenProvider tokenProvider() { return new JwtTokenProvider(SECRET, 3600000); }
         @Bean JwtAuthenticationFilter jwtFilter(JwtTokenProvider tokens) { return new JwtAuthenticationFilter(tokens); }
-        @Bean OAuthService oauth(JwtTokenProvider tokens) {
-            rawOAuth = new OAuthService(users, sql.getMapper(UserOAuthAccountMapper.class), tokens);
+        @Bean OAuthAccountService oauthAccounts() {
+            return new OAuthAccountService(users, sql.getMapper(UserOAuthAccountMapper.class));
+        }
+        @Bean OAuthService oauth(JwtTokenProvider tokens, OAuthAccountService oauthAccounts) {
+            rawOAuth = new OAuthService(users, sql.getMapper(UserOAuthAccountMapper.class), tokens, oauthAccounts);
             return rawOAuth;
         }
         @Bean JavaMailSender mailSender() {
@@ -208,11 +211,15 @@ class AuthFlowIntegrationTest {
     }
 
     private String requestReset() throws Exception {
-        postJson("forgot-password", Map.of("email", "player@example.invalid")).andExpect(status().isOk());
+        return requestResetFor("player@example.invalid");
+    }
+
+    private String requestResetFor(String email) throws Exception {
+        postJson("forgot-password", Map.of("email", email)).andExpect(status().isOk());
         int count = smtp.getReceivedMessages().length;
         assertTrue(count > 0, "EmailService must transmit a message to the isolated SMTP server");
         var message = smtp.getReceivedMessages()[count - 1];
-        assertEquals("player@example.invalid", message.getAllRecipients()[0].toString());
+        assertEquals(email, message.getAllRecipients()[0].toString());
         assertTrue(message.getSubject().contains("重設"));
         Multipart outer = (Multipart) message.getContent();
         Multipart content = (Multipart) outer.getBodyPart(0).getContent();
@@ -257,16 +264,37 @@ class AuthFlowIntegrationTest {
     }
 
     @Test
+    void previouslyIssuedResetLinkCannotRestorePasswordAfterGoogleBinding() throws Exception {
+        JsonNode registered = register("google-reset-player@example.invalid");
+        String proof = requestResetFor("google-reset-player@example.invalid");
+        UUID userId = UUID.fromString(registered.path("user").path("id").asText());
+        jdbc.update("INSERT INTO user_oauth_accounts (user_id, provider, provider_user_id, email) VALUES (?, 'GOOGLE', 'reset-subject', ?)",
+                userId, "google-reset-player@example.invalid");
+        jdbc.update("UPDATE users SET password_hash=NULL WHERE id=?", userId);
+        int messageCount = smtp.getReceivedMessages().length;
+        int tokenCount = jdbc.queryForObject("SELECT count(*) FROM password_reset_tokens", Integer.class);
+
+        postJson("forgot-password", Map.of("email", "google-reset-player@example.invalid")).andExpect(status().isOk());
+        mvc.perform(get("/api/auth/verify-reset-token").param("token", proof)).andExpect(status().isBadRequest());
+        postJson("reset-password", Map.of("token", proof, "newPassword", "synthetic-new-password"))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(messageCount, smtp.getReceivedMessages().length);
+        assertEquals(tokenCount, jdbc.queryForObject("SELECT count(*) FROM password_reset_tokens", Integer.class));
+        assertNull(jdbc.queryForObject("SELECT password_hash FROM users WHERE id=?", String.class, userId));
+    }
+
+    @Test
     void googleWaitsForNicknameThenCreatesOneAccountAndPreservesItOnRelogin() throws Exception {
-        var builder = RestClient.builder();
-        var server = MockRestServiceServer.bindTo(builder).build();
-        ReflectionTestUtils.setField(rawOAuth, "restClient", builder.build());
-        for (int i = 0; i < 2; i++) server.expect(requestTo("https://oauth2.googleapis.com/tokeninfo?id_token=fixture"))
-                .andRespond(withSuccess("""
-                        {"aud":"test-client","iss":"accounts.google.com","sub":"subject","email":"player@example.invalid",
-                        "email_verified":true,"name":"Provider private name","exp":%d}
-                        """.formatted(Instant.now().plusSeconds(300).getEpochSecond()), MediaType.APPLICATION_JSON));
-        var login = Map.of("provider", "GOOGLE", "tokenOrCode", "fixture");
+        GoogleIdTokenVerifier verifier = mock(GoogleIdTokenVerifier.class);
+        ReflectionTestUtils.setField(rawOAuth, "googleClientId", "test-client");
+        ReflectionTestUtils.setField(rawOAuth, "googleIdTokenVerifier", verifier);
+        when(verifier.verify(any(GoogleIdToken.class))).thenReturn(true);
+        String fixture = jwtFixture("""
+                {"aud":"test-client","iss":"accounts.google.com","sub":"subject","email":"player@example.invalid",
+                 "email_verified":true,"name":"Provider private name","exp":%d,"iat":%d}
+                """.formatted(Instant.now().plusSeconds(300).getEpochSecond(), Instant.now().getEpochSecond()));
+        var login = Map.of("provider", "GOOGLE", "tokenOrCode", fixture);
         JsonNode pending = body(postJson("oauth", login).andExpect(status().isOk())
                 .andExpect(jsonPath("$.registrationRequired").value(true)).andExpect(jsonPath("$.token").doesNotExist())
                 .andExpect(jsonPath("$.user").doesNotExist()));
@@ -284,7 +312,54 @@ class AuthFlowIntegrationTest {
         assertEquals(registered.path("user").path("id"), returning.path("user").path("id"));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM users", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM user_oauth_accounts", Integer.class));
-        server.verify();
+        verify(verifier, times(2)).verify(any(GoogleIdToken.class));
+    }
+
+    @Test
+    void invalidGoogleCredentialsReturn400WithoutCreatingAccounts() throws Exception {
+        ReflectionTestUtils.invokeMethod(rawOAuth, "initializeGoogleIdTokenVerifier");
+        for (String credential : List.of("not-a-jwt", "e30.e30.c2lnbmF0dXJl", jwtFixture("""
+                {"aud":"test-client","iss":"accounts.google.com","sub":"subject",
+                 "email":"player@example.invalid","email_verified":true,"exp":%d}
+                """.formatted(Instant.now().plusSeconds(300).getEpochSecond())))) {
+            JsonNode error = body(postJson("oauth", Map.of("provider", "GOOGLE", "tokenOrCode", credential))
+                    .andExpect(status().isBadRequest()));
+            assertFalse(error.toString().contains(credential));
+        }
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM users", Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM user_oauth_accounts", Integer.class));
+    }
+
+    @Test
+    void providerVerificationRunsOutsideDatabaseTransactionAndLookupRunsInsideShortTransaction() throws Exception {
+        GoogleIdTokenVerifier verifier = mock(GoogleIdTokenVerifier.class);
+        ReflectionTestUtils.setField(rawOAuth, "googleClientId", "test-client");
+        ReflectionTestUtils.setField(rawOAuth, "googleIdTokenVerifier", verifier);
+        when(verifier.verify(any(GoogleIdToken.class))).thenAnswer(invocation -> {
+            assertFalse(TransactionSynchronizationManager.isActualTransactionActive());
+            return true;
+        });
+        String email = "transaction-boundary@example.invalid";
+        doAnswer(invocation -> {
+            assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
+            return invocation.callRealMethod();
+        }).when(users).findByEmail(email);
+        String fixture = jwtFixture("""
+                {"aud":"test-client","iss":"accounts.google.com","sub":"transaction-boundary-subject",
+                 "email":"transaction-boundary@example.invalid","email_verified":true,"exp":%d,"iat":%d}
+                """.formatted(Instant.now().plusSeconds(300).getEpochSecond(), Instant.now().getEpochSecond()));
+
+        postJson("oauth", Map.of("provider", "GOOGLE", "tokenOrCode", fixture)).andExpect(status().isOk());
+
+        verify(verifier).verify(any(GoogleIdToken.class));
+    }
+
+    private static String jwtFixture(String claims) {
+        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "{\"alg\":\"RS256\",\"kid\":\"test-key\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                claims.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return header + "." + payload + ".c2lnbmF0dXJl";
     }
 
     @ParameterizedTest

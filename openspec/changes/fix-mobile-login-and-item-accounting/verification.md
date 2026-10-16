@@ -2,12 +2,28 @@
 
 ## Google GIS / OAuth 檢視
 
-- 實際流程為 GIS `accounts.id` popup，callback 取得 ID token，再由 `/api/auth/oauth` 的 GOOGLE 分支送到 Google tokeninfo 驗證，最後發行網站 JWT；此路徑不使用 authorization code、code exchange 或 redirect callback。
-- 已補上缺少 client ID 時拒絕登入，以及 audience、issuer、有效期、sub、Email 與 email_verified 校驗；Google HTTP 錯誤不回傳或記錄帶有 token 的 URI。
+- **認證實作收尾（2026-10-16）**：重新核對前面已完成的 library 驗簽、claims 校驗、錯誤處理及登入頁 GIS callback，補齊通用 OAuth callback 的契約不一致：`/auth/callback/:provider` 現僅接受 Discord authorization code，Google／未知 provider 在提交 API 前拒絕，且不消耗 Discord state。移除未使用的 `app.oauth.google.client-secret` 設定；Google 繼續由登入頁 GIS callback 傳送 ID token，不更換登入協定。新增兩個 callback 拒絕回歸；完整前端 `npm test -- --watch=false` 36 檔／228 項通過，production build 通過（既有 heic2any CommonJS 警告）。後端初次測試因舊 class 產物 `ClassFormatError` 未能啟動；clean rebuild 後 `mvnw.cmd -Dtest=GoogleTokenVerificationTest,OAuthServiceTest,AuthFlowIntegrationTest clean package` 43 項通過，打包成功。SRS、設計及任務同步；這些本機程式修改尚未 commit、push 或部署。
+
+- **USB 真機追蹤（2026-10-16，Samsung Internet 30.0.5.24）**：使用者在已連接 CDP 的手機重現立即點選帳號後跳 Gmail。20:04:32.203 偵測到 Google `/v3/signin/accountchooser` 分頁；Android 於 20:04:32.441 記錄 Samsung Internet 發起 `android.intent.action.VIEW`、URI scheme 為 `mailto:`，目標為 Gmail 外部撰寫 Activity。這兩個時間是分頁偵測與系統啟動紀錄，不能當成畫面顯示至點擊的精確耗時。同期受追蹤網站分頁未見 `/api/auth/oauth` 請求。事後讀取已完成載入的 Google 選帳 DOM，帳號節點為 `DIV role=link`，現有 anchor 均非 `mailto:`；這不能排除初始載入階段的瞬態 DOM 或瀏覽器原生 Email 辨識。已確認切換經由 Samsung 發出的寄信 intent，尚未確認由 Google 頁面腳本、初始 DOM 或 Samsung 內部處理哪一者觸發。沒有蒐集憑證／請求內容，文件不保存帳號、裝置序號或原始私人操作紀錄。此次未變更登入程式或部署；後端驗簽修改不會直接攔截這個跨 App intent，問題仍未修復。
+- **延後重試對照**：為下一次帳號列點擊裝上的追蹤沒有記錄到點擊；使用者回報這次未跳 Gmail，系統前景留在 Samsung Internet，網站同時已有 `/characters` 頁。由於成功路徑沒有觸發預期帳號選單，無法判定上次 `mailto:` 的觸發來源。結果與「首次出現時立刻點才發生」相符，仍需在新鮮選帳畫面上重現並捕捉點擊目標才能定位。
+
+- **使用者真機對照補充（2026-10-16）**：使用者回報同手機 Chrome 快點未遇到問題；Samsung Internet 在 Google 選帳畫面剛出現時立即點頭像、名稱或 Email 都會跳 Gmail，等待後點選正常。這是使用者操作結果，尚無點擊事件／網路追蹤；會降低「只有 Email 文字連結造成」的假說可信度，但不能直接認定為點擊穿透或後端錯誤。
+- **相容性查核**：Google 現行 [GIS API reference](https://developers.google.com/identity/gsi/web/reference/js-reference) 將 `use_fedcm_for_button` 說明為 Chrome desktop M125+／Android M128+，不能當成已確認的 Samsung Internet 修正。官方 [popup／redirect 說明](https://developers.google.com/identity/gsi/web/guides/display-button#credential_handling) 指出 redirect 會將憑證 POST 至 login URI；現有 JavaScript callback API 不可只改 `ux_mode` 就沿用。未找到有文件依據、可控制 Google 選帳頁點擊延遲的 GIS 參數。Samsung Internet 遠端追蹤已確認 Gmail 是由 `mailto:` intent 開啟，觸發來源未定位；依使用者決定，1.2 暫列未來追蹤，未加入固定延遲、跨來源 CSS 或切換登入協定。1.3 已獨立完成正式前端／Console 核對及使用者 Chrome 無痕登入驗證，範圍與限制見下方紀錄。
+
+- GIS `accounts.id` popup callback 取得 ID token，再由 `/api/auth/oauth` 的 GOOGLE 分支驗證後發行網站 JWT；此路徑不使用 authorization code、code exchange 或 redirect callback。工作樹程式已改用 Google API Client Library `IdTokenVerifier.verifyOrThrow()`，以單一 `GOOGLE_CLIENT_ID` 設定 audience，公鑰由 library 管理及快取。
+- 後端明確拒絕缺少 client ID、錯誤 audience／issuer、過期 token、缺漏或 null 時間欄位、空白／null sub 或 Email，以及未驗證 Email。格式及必要欄位先校驗，只有簽章驗證通過才查詢帳號；解析錯誤轉為不含憑證的 400 回應，不落入通用 500 日誌。Google 公鑰取回失敗只記錄固定訊息，不記錄或回傳 token。
 - 前端明確指定 popup，限制 Google 按鈕官方寬度上限，移除依賴 Google 內部 class／iframe 的強制寬度；元件離開後停止重試，阻止同時提交 callback，限制返回網址為站內路徑。
 - 參照 [GIS JavaScript reference](https://developers.google.com/identity/gsi/web/reference/js-reference) 與 [ID token verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)。正式 Google Console 的 authorized JavaScript origins 仍須與實際網站 origin 相符，本次未修改 Console 或正式環境設定。
 - 單元測試覆蓋 callback 成功／失敗、空憑證、重複提交及不安全返回網址；後端覆蓋正常 claims、欄位缺失、過期、錯誤 audience／issuer、未驗證 Email 及缺少 client ID。這是模擬測試，並非真正 Google 帳號登入驗證。
-- **待驗證**：S26 Ultra 三星瀏覽器 Google 帳號選擇畫面偶發寄信跳轉，尚未取得可重現的實機環境。不得將樣式及串接防護修正宣稱為此偶發問題已解決，change 保持未封存。
+- **真機重現（2026-10-16）**：使用者提供的 12.56 秒錄影顯示 S26 Ultra 上的 Samsung Internet 一般瀏覽器分頁（非 PWA）。Google 帳戶選擇頁顯示帳戶名稱及 Email；觸控指示落在 Email 字串附近後，約第 6 秒切到 Gmail 寫信草稿，收件人已填入該帳戶，主旨與內文空白，沒有送出。此片段觀察到 1 次，不能據此估算發生率。
+- **根因判斷仍待驗證**：現有畫面顯示 Email 文字區域的點擊後由 Google 帳戶頁轉到郵件 App，可能是 Samsung Internet／Android 將 Email 點擊交給郵件 App；Google 帳戶選擇頁屬第三方跨來源頁面，錄影無法證明其內部連結標記或瀏覽器命中機制。網站登入頁唯一 `mailto:` 位於「聯絡我」彈窗，與錄影中的登入／Google 選帳頁及收件人不符。尚未完成修正與真機登入驗收，不宣稱問題已解決。
+- **OAuth 串接核對（2026-10-16）**：程式路徑為 `google.accounts.id.initialize` → GIS `credential` callback → `AuthService.loginOAuth` → `POST /api/auth/oauth` → 後端 GOOGLE ID token 驗證與登入回應。前端使用 `ux_mode: 'popup'`，傳回 ID token；此路徑不使用 authorization code exchange 或 Google redirect callback。
+- **使用者正常登入驗證（2026-10-16）**：提供移除正式 Client 兩筆 localhost 設定的操作指引後，使用者回報 Chrome 無痕 Google 登入正常。這是使用者操作結果，未蒐集 token、帳號或網路內容；未再次開啟 Console 獨立核對儲存後的清單。結合正式前端／Console Client 比對、origin 核對及本機無效憑證拒絕測試，1.3 串接檢視完成。本機新版後端仍未部署，其正式登入驗證應在發布後完成；Samsung Internet 快點跳 Gmail 仍依 1.2 延期追蹤。
+- **正式 OAuth 設定唯讀核對（2026-10-16）**：Google Cloud Console 中找到的正式 Web Client ID 與 `environment.prod.ts` 及正式網站目前載入 bundle 相符；`https://aladvlog.com` 已列為 authorized JavaScript origin。該 client 另含 `http://localhost:4200` 測試 origin 及多個 redirect URI；目前 Google GIS JavaScript popup callback 路徑不使用這些 redirect URI。Google 現行 [production OAuth policy](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance?hl=en#use_separate_projects_for_testing_and_production) 要求 production client 不包含測試環境／僅供開發團隊使用的 origins 或 redirect URIs，故 localhost 是設定清理候選；本次只查核，沒有修改 Console。依專案 GCP 工作流程限制，未讀取 Cloud Run 環境變數，因此無法直接比對正式後端的 `GOOGLE_CLIENT_ID`。
+- Google 官方指南建議正式環境使用 client library 驗證 ID token，`tokeninfo` 用於開發除錯。本次保留 `IdTokenVerifier.verifyOrThrow()`，啟動時拒絕 `OAUTH_CLIENT_SKIP_SIGNATURE=true`。更正先前說明：Beta 不等於 deprecated；Google 指南仍以 `GoogleIdTokenVerifier` 示範，不能宣稱此類別即將淘汰。原始碼標記 deprecated 的是基底 `IdTokenVerifier.verify(IdToken)`，不是所有同名 overload。參照 [Google ID token verification guide](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)、[IdTokenVerifier 原始碼](https://github.com/googleapis/google-oauth-java-client/blob/main/google-oauth-client/src/main/java/com/google/api/client/auth/openidconnect/IdTokenVerifier.java) 與 [GoogleIdTokenVerifier 原始碼](https://github.com/googleapis/google-api-java-client/blob/main/google-api-client/src/main/java/com/google/api/client/googleapis/auth/oauth2/GoogleIdTokenVerifier.java)。
+- **重新審視與回歸（2026-10-16）**：新增 `GoogleTokenVerificationTest`，使用動態產生的 RSA 測試金鑰及真實 library 驗簽，只有公鑰 HTTP 回應被替換。修正前 25 個案例中有 9 個失敗，涉及未捕捉的解析／缺欄位例外及 null 欄位；修正後 25 項通過，涵蓋兩種合法 issuer、簽章／payload 竄改、缺漏／null claims、錯誤 audience／issuer、過期、未來 iat、格式破損、公鑰快取及公鑰服務失敗後重試。
+- `mvnw.cmd -Dtest=GoogleTokenVerificationTest,OAuthServiceTest,AuthFlowIntegrationTest package`：43 項通過，打包成功。含隔離 PostgreSQL 的註冊、回登入、密碼登入／重設，以及格式錯誤 Google 憑證回 400 且不建帳號。既有帳號流程測試仍使用 mock verifier；實際密碼學驗證由新增測試負責。前端 login、oauth-callback、AuthService 三個測試檔共 33 項通過。手機第二次選帳後網站分頁清單出現 `/characters`，但當次追蹤未捕捉 GIS callback 或 `/api/auth/oauth` 請求，因此只記為頁面觀察，不視為已完成真實登入端到端驗證。本次沒有 commit、push 或部署。
+- 錄影顯示 Gmail 草稿出現在 Google 帳戶選擇階段，較符合第三方頁面／瀏覽器點擊行為；錄影沒有 callback 或網路追蹤，不能據此斷言後端 API 完全未被呼叫。後端驗簽修正不代表三星跳 Gmail 已解決，1.2 延期追蹤；1.3 依上述獨立串接核對與使用者 Chrome 無痕登入結果完成。
 
 ## 物品與 migration
 
@@ -95,3 +111,100 @@ AuthService 的背景 `/auth/me` 確認改用 24 小時間隔，由啟動與受�
 | 正式儲存、刪除、使用物品及跨裝置同步 | API 與雲端 PostgreSQL，後端交易更新角色資源及歷史／庫存 | 建議維持雲端作為正式資料來源；離線寫入需另外規劃待同步狀態、衝突與防重複，不能把本機成功視為雲端成功 |
 
 較大的結構化草稿／讀取副本適合 [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)，小型偏好可沿用 localStorage。本輪只完成登入確認頻率與盤點，沒有實作新草稿、永久資料快取或離線同步，也未操作正式環境。
+
+## Google OAuth 資安與效能再審查（2026-10-16，修正前檢查點）
+
+本輪為查核，未再變更應用程式。功能測試通過不等於資安或容量驗收完成；下列問題尚未修正，不能將目前候選修改視為已排除安全／效能風險。
+
+| 項目 | 證據及風險 | 建議處理 |
+| --- | --- | --- |
+| 高：Google 身分與密碼復原規則不一致（既有共用流程） | `OAuthService.findAndSyncExistingUser` 清除已綁定 Google 帳號的本機密碼，但 `AuthService.forgotPassword`／`resetPassword` 不檢查 provider 或原本是否有密碼；有效重設憑證可替無密碼帳號建立密碼。本機隔離 probe 已確認後者。若 Google 使用非 Gmail／Workspace Email，該信箱後來易主，新持有人可藉本站密碼復原取得原帳號；這是條件式攻擊路徑，並非已發生入侵。 | 明確決定 Google 綁定帳號的密碼復原政策；若維持 Google 身分登入，忘記密碼、舊重設憑證驗證及實際重設須一致阻止重新建立密碼，保留一般回覆避免洩漏帳號資訊。不能僅修改寄信入口。 |
+| 中高：外部驗證占用資料庫交易，缺少 OAuth 入口資源限制（既有交易結構仍存在） | `AuthService.loginOAuth` 與 `OAuthService.processOAuthLogin` 均有交易註解。以同樣 Spring transaction interceptor／JDBC transaction manager 的隔離 probe 確認，進入 provider 驗證前已取得 DB connection；冷公鑰快取或 Discord HTTP 交換會在此期間持有連線。解析後 Google HTTP client 2.0.0 的預設 connect/read timeout 各為 20 秒，現有程式未覆寫；`/oauth`、`/oauth/register` 未接既有跨執行個體限流，`OAuthLoginRequest.tokenOrCode` 無長度上限。並行等待外部服務時有連線池耗盡風險，尚未做容量／正式壓測。 | 將外部身分驗證移至取得 DB connection 前，僅帳號查詢／異動保留原子交易；設定外部請求 timeout／retry 上限，沿用共用限流機制保護 OAuth 入口並限制憑證長度。 |
+| 中：新增通用 verifier 的快取政策與 Google 指引不同 | 實際解析版本為 google-oauth-client 1.36.0；`IdTokenVerifier` 以 `expireAfterWrite(1, HOURS)` 快取公鑰，並不依回應 `Cache-Control` 計算期限。隔離 probe 讀取實際 verifier 的 cache TTL 為 3,600 秒。這不表示可繞過簽章，但在公鑰有效期／輪替與固定快取期限不一致時，可能暫時拒絕合法登入；目前的重用測試只證明兩次驗證不重抓，沒有驗證輪替。 | 優先評估同一依賴中、Google 官方 Java 指南使用的非 deprecated `GoogleIdTokenVerifier.verify(GoogleIdToken)` overload 與 `GooglePublicKeysManager`，以回應的快取期限管理 Google 公鑰，補公鑰到期／更新及失敗路徑檢查。Beta 標註不能視為淘汰。 |
+
+已確認的防護：Google 簽章、audience、issuer、有效期及必要 claims 驗證在帳號查詢／建立前完成；以 provider + subject 查詢綁定，不以 Email 自動連結既有帳號。註冊 proof 與 access JWT 用途分離、10 分鐘效期、只在前端記憶體承接；整合測試涵蓋 proof 不得存取受保護 API、取消前不建帳號、重複／並行確認僅一筆成功及失敗整包回滾。Discord callback 驗證隨機 state 後交換單次 code，Google 不走該 code callback。Google credential 不送入 URL 或應用日誌，前端不持久保存 Google credential。這些證據不代表已完成全站 XSS／滲透／容量測試。
+
+隔離 probe 使用現有編譯類別、Mockito、Spring transaction interceptor 及模擬 JDBC connection，未使用真實帳號、憑證、資料庫或外部驗證服務。結果：
+
+```text
+password_reset_can_create_password_for_passwordless_user=true
+db_connection_acquired_before_provider_verification=true
+verifier_fixed_cache_ttl_seconds=3600
+```
+
+`mvnw.cmd dependency:tree` 確認本次 Google library 關聯版本；以 OSV query API 核對 google-api-client 2.9.1、google-oauth-client 1.36.0、google-http-client／gson adapter／apache-v2 adapter 2.0.0、Guava 33.1.0-jre、Gson 2.13.2，7 項查詢未回傳已知漏洞。這僅涵蓋列出的套件版本，未宣稱完整供應鏈掃描或不存在尚未公開漏洞。先前前端 228 項、後端認證 43 項測試結果可沿用於未改動的應用程式；這輪新增的是上述隔離 probe 及依賴查核。
+
+依據：
+
+- [Google ID token verification guide](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token?hl=en)：簽章／audience／issuer／有效期、Cache-Control、sub 身分，以及非 Gmail／Workspace Email 所有權限制。
+- [google-oauth-client 1.36.0 IdTokenVerifier](https://github.com/googleapis/google-oauth-java-client/blob/v1.36.0/google-oauth-client/src/main/java/com/google/api/client/auth/openidconnect/IdTokenVerifier.java)：固定一小時快取、固定 Google 公鑰 URL 及 HTTP 重試行為；未依 token 中的 URL 下載公鑰。
+- [google-http-client 2.0.0 HttpRequest](https://github.com/googleapis/google-http-java-client/blob/v2.0.0/google-http-client/src/main/java/com/google/api/client/http/HttpRequest.java)：預設 connect/read timeout。
+- [GoogleIdTokenVerifier 2.9.1](https://github.com/googleapis/google-api-java-client/blob/v2.9.1/google-api-client/src/main/java/com/google/api/client/googleapis/auth/oauth2/GoogleIdTokenVerifier.java)、[GooglePublicKeysManager 2.9.1](https://github.com/googleapis/google-api-java-client/blob/v2.9.1/google-api-client/src/main/java/com/google/api/client/googleapis/auth/oauth2/GooglePublicKeysManager.java)：目前可用的 Google 專用驗證 overload 及依 Cache-Control／Age 計算公鑰期限。
+- [Spring DataSourceTransactionManager](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/jdbc/datasource/DataSourceTransactionManager.html)：交易的 connection 綁定與 lazy connection 行為；[Discord OAuth2](https://docs.discord.com/developers/topics/oauth2)：authorization code／state／redirect URI 的用途。
+- [OSV](https://osv.dev/)／`https://api.osv.dev/v1/query`：上述套件與版本的已知漏洞查詢。
+
+## Google OAuth 風險修正（2026-10-16）
+
+修正前檢查點列出的三項問題已處理：
+
+- **Google 密碼復原**：Google 綁定帳號不再寄送本機密碼重設信；驗證與重設端點都重新查核 Google 綁定，因此既發的 token 也不能建立密碼。一般密碼帳號及 Discord 帳號的密碼重設維持原行為。隔離 PostgreSQL 整合測試驗證綁定後不新增信件／token，且資料庫中的密碼仍為 NULL。
+- **OAuth 資源與交易邊界**：`/oauth` 和 `/oauth/register` 使用既有 PostgreSQL 共享限流，按來源每 15 分鐘 60 次，超限回 429／`Retry-After`。`provider` 最多 16 字元、`tokenOrCode` 最多 8,192 字元、`redirectUri` 最多 2,048 字元。Google／Discord 網路驗證先完成，之後 `OAuthAccountService` 才開啟短交易查找或同步帳號；登入沒有外層交易。Google key fetch 沿用 Google HTTP client 目前 20 秒 connect/read 預設，Discord HTTP connect/read 設為 5 秒。整合測試在 verifier 中斷言交易未啟動，並在帳號查找時斷言交易啟動。
+- **Google key cache**：改用官方文件採用的 `GoogleIdTokenVerifier.verify(GoogleIdToken)` 與 `GooglePublicKeysManager`，由 library 依 Google `Cache-Control: max-age` 與 `Age` 管理期限。保留 audience、issuer、exp、iat、sub、email_verified 及真實 RSA 簽章驗證；無效憑證及 key 服務失敗仍拒絕登入，不記錄 token。
+
+驗證：`backend/./mvnw.cmd clean package` 成功；全後端 **159 項測試通過，0 failure、0 error、0 skipped**，包含 27 項 Google token 檢查、10 項 OAuthService 測試、10 項隔離 PostgreSQL Auth 整合測試，以及限流／密碼復原回歸。Package 建置成功。`openspec validate fix-mobile-login-and-item-accounting --strict`、`openspec validate --specs` 與 `git diff --check` 另外執行確認。
+
+快取測試用 Google library 的 `GooglePublicKeysManager` 解析實際 `Cache-Control`／`Age` 欄位，並以本機 RSA 簽章測試 verifier 在新 key 發布後接受新簽章；未對 Google 公鑰 endpoint 發真實請求，也未完整模擬實際 HTTP 快取逾期下載週期。Google HTTP library 的 key fetch 目前仍用其 20 秒預設 timeout；交易已不跨越該等待，但未做正式流量／連線池壓測。未跑全站滲透測試；未部署、操作正式資料庫、commit 或 push。Samsung Internet 點帳號跳 Gmail 仍照使用者決定列入延期追蹤。
+
+依據：[Google ID token server verification guide](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token?hl=en)、[GoogleIdTokenVerifier v2.9.1](https://github.com/googleapis/google-api-java-client/blob/v2.9.1/google-api-client/src/main/java/com/google/api/client/googleapis/auth/oauth2/GoogleIdTokenVerifier.java)、[GooglePublicKeysManager v2.9.1](https://github.com/googleapis/google-api-java-client/blob/v2.9.1/google-api-client/src/main/java/com/google/api/client/googleapis/auth/oauth2/GooglePublicKeysManager.java)、[Google HTTP request timeout behavior v2.0.0](https://github.com/googleapis/google-http-java-client/blob/v2.0.0/google-http-client/src/main/java/com/google/api/client/http/javanet/NetHttpRequest.java)。
+
+## Ponytail review 修正（2026-10-16）
+
+前面記載 IdTokenVerifier.verifyOrThrow() 的段落為歷史檢查點，已由「Google OAuth 風險修正」段落的 GoogleIdTokenVerifier.verify(GoogleIdToken) 方案取代；SRS 與設計文件同步為目前 API。
+
+OAuth 登入／註冊新增 JSON 解析前的 64 KiB 本體限制，最多讀取上限加 1 byte 後拒絕；不依賴 Content-Length，超限使用既有錯誤格式回傳 413。保留 DTO 欄位長度與共享來源限流。
+
+公鑰測試保留同一 verifier 與 mock key manager，更新其回傳 key 後驗證新簽章可用且舊 key 簽章遭拒。mock 每次取得 key 都照實計數，不再把自行模擬的計數當成快取重用證據。現有 Cache-Control／Age 測試僅涵蓋 library 的期限解析；沒有模擬真實 HTTP 快取到期與重新下載，不宣稱已完整驗證該週期。
+
+驗證：backend/./mvnw.cmd clean package 通過，163 項測試、0 failures、0 errors、0 skipped，包含 10 項 AuthController 測試、27 項 Google token 測試與 10 項隔離資料庫認證整合測試。OpenSpec 本 change strict、13 項主規格及 git diff --check 通過；既有 mobile-pwa 重複 delta 的封存 INFO 提示仍在。這次沒有前端變更，未重跑前端；未操作正式環境或部署。
+
+請求解析前擴充點依據：[Spring RequestBodyAdvice](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/servlet/mvc/method/annotation/RequestBodyAdvice.html)。
+
+## 公鑰 HTTP 快取生命週期驗證（2026-10-16）
+
+本節補足前述未模擬 HTTP 快取到期下載的限制。GoogleTokenVerificationTest 改以綁定 127.0.0.1 隨機 port 的 JDK HTTP server 提供真正 X.509 PEM 憑證，使用 NetHttpTransport、GooglePublicKeysManager 及 GoogleIdTokenVerifier 走實際下載、憑證解析、RSA 驗簽及 OAuthService 登入流程。key manager 與 verifier 在每個情境中均維持同一實例，不 mock HTTP transport、快取或 key manager。
+
+測試以 JDK keytool 在 JUnit 暫存目錄產生兩組 RSA key／憑證；私鑰不寫入 repository，JUnit 結束時清理暫存檔。只推進 key manager 的測試時鐘，token 有效期仍使用實際時間，避免把 token 過期誤當成公鑰更新失敗。原本反射呼叫 library 私有期限解析方法的測試已由 HTTP 行為驗證取代。
+
+| 情境 | 實際結果 |
+| --- | --- |
+| 首次驗簽 | 下載 A 憑證一次並成功；max-age=1200、Age=120，期限為測試時鐘加 1080 秒 |
+| 快取重用 | 經過 779.999 秒後，伺服器雖已改提供 B，A token 仍成功，下載累計維持 1 次 |
+| 提前刷新 | 780.001 秒時進入 library 的到期前五分鐘刷新區間，B token 成功，A token 遭拒；下載累計 2 次 |
+| 已過期刷新 | 獨立情境推進至 1080.001 秒，B token 成功、A token 遭拒，下載累計同為 2 次 |
+| 刷新失敗及恢復 | 首次 A 成功後推進至快取過期，公鑰伺服器回 503，原本成功的 A token 也遭拒且沒有帳號資料操作；伺服器恢復並提供 B 後重試成功，下載累計依序為 1、2、3 次 |
+
+執行 backend/./mvnw.cmd -Dtest=GoogleTokenVerificationTest test：27 項通過，0 failures、0 errors、0 skipped，包含上述 3 個 HTTP 測試案例。OpenSpec change strict 與 git diff --check 通過，保留原有 mobile-pwa 重複 delta 的封存 INFO。這次只調整測試及驗證紀錄，未重跑全後端 package 或前端，未操作正式環境或部署。
+
+依據：[GooglePublicKeysManager v2.9.1 原始碼](https://github.com/googleapis/google-api-java-client/blob/v2.9.1/google-api-client/src/main/java/com/google/api/client/googleapis/auth/oauth2/GooglePublicKeysManager.java)。涵蓋本機真實 HTTP 下載及快取生命週期；沒有呼叫 Google 正式 endpoint，未驗證正式環境的 DNS、TLS、對外連線或 Google 實際 key 發布。
+
+## 本機 Google OAuth 設定補正（2026-10-16）
+
+使用者本機登入收到「Google 登入尚未完成設定」。LocalDevLauncher 固定啟用 dev profile，但原本只有前端 environment.ts 提供 dndadvlog-local 的公開 client ID，後端僅從 GOOGLE_CLIENT_ID 環境變數取值；未設定時，在驗簽前即拒絕。新增 application-dev.properties，將開發 client ID 對齊前端；正式 prod 仍由環境變數提供其 client ID。未載入 application-local.properties，也未改動資料庫隔離或其他本機機密設定。
+
+LocalOAuthConfigurationTest 透過 Spring ConfigData 載入驗證 dev client ID 與前端一致，以及 prod 使用明確的 GOOGLE_CLIENT_ID 設定。執行 backend/./mvnw.cmd -Dtest=LocalOAuthConfigurationTest,GoogleTokenVerificationTest test，29 項通過（0 failures、0 errors、0 skipped）；git diff --check 通過。README 已補充設定來源。既有執行中的後端需重啟才會載入；未替使用者停止暫存資料庫程序，以免清除其目前測試資料。真實 Google 帳號登入待使用者重啟後確認，未操作正式環境。
+
+## Discord 開發環境設定（2026-10-17）
+
+使用者提供開發用 Discord Application ID 後，frontend environment.ts 與 backend application-dev.properties 已對齊。dev profile 透過 Spring 的 optional:file:./.env.local[.properties] 載入 backend 工作目錄的私人設定；建立的空白範本只含 DISCORD_CLIENT_SECRET 欄位及說明，已確認符合 .gitignore，未追蹤且不位於打包資源目錄。也可使用既有同名環境變數。正式 profile 與前端 production Client ID 不變。README 記錄 Secret 填寫方式與 http://localhost:4200/auth/callback/discord 的登記要求。
+
+缺少 Discord client ID 或 Secret 時，OAuthService 在對 Discord 發出 HTTP 請求之前即回覆「Discord 登入尚未完成設定，請聯絡管理者」，不查找或變更帳號。設定測試檢查 Google／Discord 開發 Client ID 與前端一致、prod 仍從其變數讀取，以及 Discord Secret 的 placeholder 解析；服務測試覆蓋未設定 Secret 時沒有 HTTP／帳號操作。
+
+驗證：首次測試使用 VS Code 增量編譯產物時發生 Unresolved compilation problems（Flexible Constructor Bodies source level），執行乾淨重編譯後排除。backend/./mvnw.cmd clean -Dtest=LocalOAuthConfigurationTest,OAuthServiceTest,GoogleTokenVerificationTest test：42 項通過，0 failures、0 errors、0 skipped。前端登入及 callback 兩個測試檔共 16 項通過；git diff --check 與 OpenSpec change strict 通過。未重跑完整後端 package 或前端 production build。
+
+真實 Secret 尚待使用者在本機填入，Discord Portal 的 callback 登記與真實登入仍未驗收；未停止現有暫存資料庫程序，未操作正式環境或部署。配置依據：[Spring Boot ConfigData imports](https://docs.spring.io/spring-boot/reference/features/external-config.html#importing-additional-data)。
+
+後續驗收（2026-10-17）：本機重啟輸出確認 dev profile、隔離 PostgreSQL migration 及 Tomcat 8080 成功啟動；使用者其後確認真實 Discord 帳號登入成功。開發 OAuth 登入已有實際成功結果；首次暱稱註冊與再次登入未分別取得回報，不擴大宣稱全部情境完成。正式環境尚未部署或驗收。
+
+## v2.1.2 發布前驗證（2026-10-17）
+
+前後端產品版號同步為 2.1.2。完整前端 36 檔／228 項測試及 production build 通過；後端 clean package 共 168 項測試通過，無失敗、錯誤或略過。主規格 13 項、本 change strict 與 git diff --check 通過。保留既有 heic2any CommonJS 建置警告及 mobile-pwa 重複 delta 的封存 INFO；本 change 尚有延期真機項目，未封存。本次沒有新增或改寫 migration，schema 與前版程式相容。README 的開發設定說明已精簡；私人 Secret、附件與操作紀錄不納入提交。正式部署結果另外驗收，不以本機測試取代。
