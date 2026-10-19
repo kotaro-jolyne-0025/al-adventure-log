@@ -7,9 +7,19 @@ export interface User {
 
 export interface AuthResponse {
   registrationRequired?: false;
-  token: string;
-  tokenType: string;
   user: User;
+  session: AuthSession;
+}
+
+export interface AuthSession {
+  id: string;
+  issuedAt: string;
+  expiresAt: string;
+}
+
+export interface AuthStateResponse {
+  user: User;
+  session: AuthSession;
 }
 
 export interface OAuthRegistrationRequired {

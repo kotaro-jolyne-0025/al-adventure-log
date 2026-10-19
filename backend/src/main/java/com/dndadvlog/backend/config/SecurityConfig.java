@@ -14,9 +14,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,9 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final SessionBindingFilter sessionBindingFilter;
+    private final RequestOriginFilter requestOriginFilter;
+    private final NoStoreAuthFilter noStoreAuthFilter;
 
     @Value("${cors.allowed-origin:http://localhost:4200}")
     private String allowedOrigin;
@@ -46,18 +52,27 @@ public class SecurityConfig {
     }
 
     @Bean
-    @SuppressWarnings("java:S4502") // 無狀態 JWT 架構，無需 CSRF 防護
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, SignedCsrfTokenRepository csrfTokenRepository) {
         try {
             http
                     .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                    .csrf(csrf -> csrf.disable())
+                    .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository)
+                            // Stateless JWT requests are not new logins; controllers rotate CSRF explicitly.
+                            .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy())
+                            .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .exceptionHandling(exceptions -> exceptions
                             .authenticationEntryPoint((request, response, authException) -> {
                                 response.setContentType("application/json;charset=UTF-8");
                                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                                 response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"尚未登入或 Token 已失效\"}");
+                            })
+                            .accessDeniedHandler((request, response, exception) -> {
+                                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                                if (exception instanceof org.springframework.security.web.csrf.CsrfException) {
+                                    response.setContentType("application/json;charset=UTF-8");
+                                    response.getWriter().write("{\"code\":\"CSRF_INVALID\",\"message\":\"頁面驗證已過期，請重新提交；若持續失敗，請檢查網站更新\"}");
+                                }
                             })
                     )
                     .authorizeHttpRequests(auth -> auth
@@ -66,7 +81,10 @@ public class SecurityConfig {
                             .requestMatchers("/error").permitAll()
                             .anyRequest().authenticated()
                     )
-                    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                    .addFilterBefore(requestOriginFilter, CorsFilter.class)
+                    .addFilterBefore(noStoreAuthFilter, RequestOriginFilter.class)
+                    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                    .addFilterAfter(sessionBindingFilter, JwtAuthenticationFilter.class);
 
             return http.build();
         } catch (Exception e) {
@@ -77,10 +95,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        List<String> patterns = new java.util.ArrayList<>(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*"
-        ));
+        List<String> patterns = new java.util.ArrayList<>();
         if (allowedOrigin != null && !allowedOrigin.isBlank()) {
             for (String origin : allowedOrigin.split(",")) {
                 String trimmed = origin.trim();
@@ -90,10 +105,11 @@ public class SecurityConfig {
             }
         }
 
-        configuration.setAllowedOriginPatterns(patterns);
+        configuration.setAllowedOrigins(patterns);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "X-Expected-Updated-At", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+        configuration.setAllowedHeaders(List.of("Content-Type", "X-Requested-With", "X-Expected-Updated-At", "X-XSRF-TOKEN", "X-Session-Id", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
         configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(List.of("Content-Disposition"));
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

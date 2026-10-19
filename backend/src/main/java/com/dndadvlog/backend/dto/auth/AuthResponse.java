@@ -12,9 +12,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AuthResponse {
-    private String token;
-    private String tokenType;
     private UserProfileResponse user;
+    private SessionResponse session;
     private Boolean registrationRequired;
     private String registrationToken;
 }

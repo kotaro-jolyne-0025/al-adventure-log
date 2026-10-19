@@ -8,13 +8,14 @@ import { registerLocaleData } from '@angular/common';
 import localeZhTW from '@angular/common/locales/zh-Hant';
 import { provideRouter, withPreloading } from '@angular/router';
 import { IdlePagePreloadingStrategy } from './core/services/idle-page-preloading.strategy';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS } from '@angular/material/snack-bar';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
 import type { MatDateFormats } from '@angular/material/core';
 import { TwDateAdapter } from './core/adapters/tw-date-adapter';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { environment } from '../environments/environment';
 
 import { routes } from './app.routes';
 import { provideServiceWorker } from '@angular/service-worker';
@@ -38,7 +39,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withPreloading(IdlePagePreloadingStrategy)),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withXsrfConfiguration({ cookieName: environment.xsrfCookieName, headerName: 'X-XSRF-TOKEN' }), withInterceptors([authInterceptor])),
     provideAnimationsAsync(),
     {
       provide: MAT_SNACK_BAR_DEFAULT_OPTIONS,

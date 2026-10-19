@@ -4,6 +4,10 @@ import com.dndadvlog.backend.exception.GlobalExceptionHandler;
 import com.dndadvlog.backend.exception.RateLimitException;
 import com.dndadvlog.backend.service.AuthRateLimitService;
 import com.dndadvlog.backend.service.AuthService;
+import com.dndadvlog.backend.config.AuthCookieService;
+import com.dndadvlog.backend.dto.auth.AuthResponse;
+import com.dndadvlog.backend.dto.auth.AuthResult;
+import com.dndadvlog.backend.config.SignedCsrfTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,7 +27,8 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new AuthController(auth, limits))
+        mvc = MockMvcBuilders.standaloneSetup(new AuthController(auth, limits,
+                        new AuthCookieService("aladvlog-session-dev", false), mock(SignedCsrfTokenRepository.class)))
                 .setControllerAdvice(new GlobalExceptionHandler(), new OAuthRequestBodyAdvice()).build();
     }
 
@@ -117,6 +122,7 @@ class AuthControllerTest {
     @Test
     void acceptsBodyAtByteLimitAndPreservesUnicode() throws Exception {
         String body = "{\"registrationToken\":\"synthetic-proof\",\"displayName\":\"玩家\"}";
+        when(auth.registerOAuth(any())).thenReturn(new AuthResult(null, AuthResponse.builder().registrationRequired(true).build()));
         int padding = 65536 - body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
         mvc.perform(post("/api/auth/oauth/register").contentType("application/json")
                         .content(body + " ".repeat(padding)))
