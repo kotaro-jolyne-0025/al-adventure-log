@@ -74,12 +74,14 @@ class OAuthServiceTest {
         UserOAuthAccount binding = UserOAuthAccount.builder().userId(userId).build();
         User existing = User.builder().id(userId).displayName("本站暱稱").passwordHash("old-hash").isActive(true).build();
         when(accounts.findByProviderAndProviderUserId("GOOGLE", "subject")).thenReturn(binding);
-        when(users.findById(userId)).thenReturn(existing);
+        User refreshed = User.builder().id(userId).displayName("本站暱稱").isActive(true).tokenVersion(1).build();
+        when(users.findById(userId)).thenReturn(existing, refreshed);
 
         User result = accountService.findAndSyncExistingUser(
                 new OAuthService.OAuthUserInfo("GOOGLE", "subject", "verified@example.invalid", null, true));
 
-        assertSame(existing, result);
+        assertSame(refreshed, result);
+        assertEquals(1, result.getTokenVersion());
         assertNull(result.getPasswordHash());
         assertEquals("本站暱稱", result.getDisplayName());
         verify(users).updatePassword(userId, null);
@@ -224,7 +226,7 @@ class OAuthServiceTest {
                 "synthetic-test-key-at-least-32-bytes-long".getBytes(java.nio.charset.StandardCharsets.UTF_8));
         String expired = io.jsonwebtoken.Jwts.builder().subject("subject").claim("purpose", "oauth-registration")
                 .expiration(java.util.Date.from(Instant.now().minusSeconds(10))).signWith(key).compact();
-        String access = tokens.generateToken(java.util.UUID.randomUUID(), "a@example.invalid", "Player", null);
+        String access = tokens.generateToken(java.util.UUID.randomUUID(), "a@example.invalid", "Player", null, 0);
         for (String invalid : new String[]{"tampered", expired, access}) {
             var error = assertThrows(ResponseStatusException.class, () -> service.completeRegistration(invalid, "暱稱"));
             assertEquals(410, error.getStatusCode().value());

@@ -19,6 +19,7 @@ public class User {
     private String displayName;
     private String avatarUrl;
     private Boolean isActive;
+    private long tokenVersion;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

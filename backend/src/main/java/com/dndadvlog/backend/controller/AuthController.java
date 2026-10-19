@@ -72,6 +72,14 @@ public class AuthController {
         return ResponseEntity.ok(java.util.Map.of("valid", true));
     }
 
+    @PostMapping("/renew")
+    public ResponseEntity<java.util.Map<String, String>> renew(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(java.util.Map.of("token", authService.renewToken(authorization.substring(7))));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) {

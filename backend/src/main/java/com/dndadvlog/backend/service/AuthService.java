@@ -81,6 +81,10 @@ public class AuthService {
         return buildAuthResponse(oauthService.completeRegistration(request.getRegistrationToken(), request.getDisplayName()));
     }
 
+    public String renewToken(String token) {
+        return tokenProvider.renewToken(token);
+    }
+
     public UserProfileResponse getCurrentUserProfile(UUID userId) {
         User user = userMapper.findById(userId);
         if (user == null) {
@@ -208,7 +212,8 @@ public class AuthService {
                 user.getId(),
                 user.getEmail(),
                 user.getDisplayName(),
-                user.getAvatarUrl()
+                user.getAvatarUrl(),
+                user.getTokenVersion()
         );
 
         return AuthResponse.builder()

@@ -26,7 +26,7 @@ public class OAuthAccountService {
             }
             if ("GOOGLE".equals(userInfo.provider()) && user.getPasswordHash() != null) {
                 userMapper.updatePassword(user.getId(), null);
-                user.setPasswordHash(null);
+                user = userMapper.findById(user.getId());
             }
             if (user.getAvatarUrl() == null && userInfo.avatarUrl() != null) {
                 user.setAvatarUrl(userInfo.avatarUrl());

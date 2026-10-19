@@ -84,7 +84,7 @@ class AuthFlowIntegrationTest {
     static class TestConfig {
         @Bean DataSourceTransactionManager transactionManager() { return new DataSourceTransactionManager(source); }
         @Bean JwtTokenProvider tokenProvider() { return new JwtTokenProvider(SECRET, 3600000); }
-        @Bean JwtAuthenticationFilter jwtFilter(JwtTokenProvider tokens) { return new JwtAuthenticationFilter(tokens); }
+        @Bean JwtAuthenticationFilter jwtFilter(JwtTokenProvider tokens) { return new JwtAuthenticationFilter(tokens, users); }
         @Bean OAuthAccountService oauthAccounts() {
             return new OAuthAccountService(users, sql.getMapper(UserOAuthAccountMapper.class));
         }
@@ -101,8 +101,10 @@ class AuthFlowIntegrationTest {
             return sender;
         }
         @Bean EmailService email() { return new EmailService(); }
-        @Bean AuthService auth(EmailService email, PasswordEncoder encoder, JwtTokenProvider tokens, OAuthService oauth) {
-            return new AuthService(users, sql.getMapper(PasswordResetTokenMapper.class), email, encoder, tokens, oauth);
+        @Bean PasswordResetTokenMapper resetTokens() { return spy(sql.getMapper(PasswordResetTokenMapper.class)); }
+        @Bean AuthService auth(EmailService email, PasswordEncoder encoder, JwtTokenProvider tokens, OAuthService oauth,
+                               PasswordResetTokenMapper resetTokens) {
+            return new AuthService(users, resetTokens, email, encoder, tokens, oauth);
         }
         @Bean AuthRateLimitService limits() { return new AuthRateLimitService(sql.getMapper(AuthRateLimitMapper.class)); }
         @Bean AuthController controller(AuthService auth, AuthRateLimitService limits) { return new AuthController(auth, limits); }
@@ -144,6 +146,7 @@ class AuthFlowIntegrationTest {
     @BeforeEach
     void clean() throws Exception {
         reset(users);
+        reset(context.getBean(PasswordResetTokenMapper.class));
         jdbc.update("DELETE FROM user_oauth_accounts");
         jdbc.update("DELETE FROM users");
         jdbc.update("DELETE FROM auth_rate_limits");
@@ -231,14 +234,32 @@ class AuthFlowIntegrationTest {
 
     @Test
     void resetEmailArrivesAndNewPasswordReplacesOldOnlyOnce() throws Exception {
-        register("player@example.invalid");
+        JsonNode registered = register("player@example.invalid");
+        JsonNode other = register("other@example.invalid");
+        UUID id = UUID.fromString(registered.path("user").path("id").asText());
+        String legacy = accessFixture(id, Map.of());
+        JsonNode priorLogin = body(postJson("login", Map.of("email", "player@example.invalid", "password", PASSWORD))
+                .andExpect(status().isOk()));
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + legacy)).andExpect(status().isOk());
         String proof = requestReset();
         mvc.perform(get("/api/auth/verify-reset-token").param("token", proof)).andExpect(status().isOk());
         postJson("reset-password", Map.of("token", proof, "newPassword", "short")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + registered.path("token").asText()))
+                .andExpect(status().isOk());
         postJson("reset-password", Map.of("token", proof, "newPassword", "new-synthetic-password"))
                 .andExpect(status().isOk());
+        assertEquals(1L, actualUsers.findById(id).getTokenVersion());
+        for (String old : List.of(registered.path("token").asText(), priorLogin.path("token").asText(), legacy)) {
+            mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + old)).andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/characters").header("Authorization", "Bearer " + old)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/renew").header("Authorization", "Bearer " + old)).andExpect(status().isUnauthorized());
+        }
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + other.path("token").asText()))
+                .andExpect(status().isOk());
         postJson("login", Map.of("email", "player@example.invalid", "password", PASSWORD)).andExpect(status().isBadRequest());
-        postJson("login", Map.of("email", "player@example.invalid", "password", "new-synthetic-password"))
+        JsonNode newLogin = body(postJson("login", Map.of("email", "player@example.invalid", "password", "new-synthetic-password"))
+                .andExpect(status().isOk()));
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + newLogin.path("token").asText()))
                 .andExpect(status().isOk());
         postJson("reset-password", Map.of("token", proof, "newPassword", "must-not-replace-password"))
                 .andExpect(status().isBadRequest());
@@ -246,6 +267,102 @@ class AuthFlowIntegrationTest {
         JsonNode unknown = body(postJson("forgot-password", Map.of("email", "absent@example.invalid")).andExpect(status().isOk()));
         JsonNode known = body(postJson("forgot-password", Map.of("email", "player@example.invalid")).andExpect(status().isOk()));
         assertEquals(unknown, known);
+    }
+
+    @Test
+    void failedResetRollsBackPasswordAndTokenVersion() throws Exception {
+        JsonNode registered = register("player@example.invalid");
+        String proof = requestReset();
+        var resetTokens = context.getBean(PasswordResetTokenMapper.class);
+        doThrow(new IllegalStateException("synthetic transaction failure"))
+                .when(resetTokens).markAsUsed(any(UUID.class), any(java.time.LocalDateTime.class));
+        postJson("reset-password", Map.of("token", proof, "newPassword", "new-synthetic-password"))
+                .andExpect(status().isInternalServerError());
+        assertEquals(0, actualUsers.findByEmail("player@example.invalid").getTokenVersion());
+        assertNull(resetTokens.findByToken(proof).getUsedAt());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + registered.path("token").asText()))
+                .andExpect(status().isOk());
+        postJson("login", Map.of("email", "player@example.invalid", "password", PASSWORD)).andExpect(status().isOk());
+    }
+
+    @Test
+    void profileUpdatesKeepTokensButDisabledDeletedAndInvalidVersionsCannotAuthenticate() throws Exception {
+        JsonNode registered = register("player@example.invalid");
+        UUID id = UUID.fromString(registered.path("user").path("id").asText());
+        String bearer = "Bearer " + registered.path("token").asText();
+        mvc.perform(put("/api/auth/me").header("Authorization", bearer).contentType("application/json")
+                .content(JSON.writeValueAsBytes(Map.of("displayName", "新的暱稱")))).andExpect(status().isOk());
+        mvc.perform(get("/api/auth/me").header("Authorization", bearer)).andExpect(status().isOk());
+        for (Object invalid : List.of(-1, "invalid", 0.5, 1)) {
+            String token = accessFixture(id, Map.of("tokenVersion", invalid));
+            mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isUnauthorized());
+        }
+        jdbc.update("UPDATE users SET is_active=false WHERE id=?", id);
+        mvc.perform(get("/api/auth/me").header("Authorization", bearer)).andExpect(status().isUnauthorized());
+        jdbc.update("DELETE FROM users WHERE id=?", id);
+        mvc.perform(get("/api/auth/me").header("Authorization", bearer)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void unavailableTokenStateFailsClosedWithoutReportingAnExpiredSession() throws Exception {
+        JsonNode registered = register("player@example.invalid");
+        String bearer = "Bearer " + registered.path("token").asText();
+        doThrow(new org.springframework.dao.DataAccessResourceFailureException("synthetic database outage"))
+                .when(users).isAccessTokenCurrent(any(UUID.class), anyLong());
+        mvc.perform(get("/api/auth/me").header("Authorization", bearer)).andExpect(status().isServiceUnavailable());
+        reset(users);
+        mvc.perform(get("/api/auth/me").header("Authorization", bearer)).andExpect(status().isOk());
+    }
+
+    @Test
+    void renewalRequiresCurrentUnexpiredAccessAndPreservesSession() throws Exception {
+        mvc.perform(post("/api/auth/renew")).andExpect(status().isUnauthorized());
+        JsonNode registered = register("player@example.invalid");
+        String old = registered.path("token").asText();
+        var provider = context.getBean(JwtTokenProvider.class);
+        JsonNode result = body(mvc.perform(post("/api/auth/renew").header("Authorization", "Bearer " + old))
+                .andExpect(status().isOk()));
+        var renewed = provider.getClaimsFromJWT(result.path("token").asText());
+        assertEquals(provider.getClaimsFromJWT(old).get("sessionId"), renewed.get("sessionId"));
+        assertEquals(0L, renewed.get("tokenVersion", Long.class));
+        assertEquals(3600000, renewed.getExpiration().getTime() - renewed.getIssuedAt().getTime());
+        UUID id = UUID.fromString(renewed.getSubject());
+        String expired = io.jsonwebtoken.Jwts.builder().subject(id.toString())
+                .expiration(Date.from(Instant.now().minusSeconds(10)))
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(SECRET.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                .compact();
+        for (String invalid : List.of(expired, "not-a-jwt", provider.generateOAuthRegistrationToken("GOOGLE", "subject", null, null))) {
+            mvc.perform(post("/api/auth/renew").header("Authorization", "Bearer " + invalid))
+                    .andExpect(status().isUnauthorized());
+        }
+        jdbc.update("UPDATE users SET is_active=false WHERE id=?", id);
+        mvc.perform(post("/api/auth/renew").header("Authorization", "Bearer " + old)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void passwordResetRacingAfterAuthenticationCannotResurrectSession() throws Exception {
+        JsonNode registered = register("player@example.invalid");
+        UUID id = UUID.fromString(registered.path("user").path("id").asText());
+        doAnswer(call -> {
+            boolean current = actualUsers.isAccessTokenCurrent(id, 0);
+            actualUsers.updatePassword(id, "synthetic-new-hash");
+            return current;
+        }).when(users).isAccessTokenCurrent(id, 0);
+        JsonNode result = body(mvc.perform(post("/api/auth/renew")
+                .header("Authorization", "Bearer " + registered.path("token").asText())).andExpect(status().isOk()));
+        reset(users);
+        assertEquals(1L, actualUsers.findById(id).getTokenVersion());
+        String renewed = result.path("token").asText();
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + renewed)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/renew").header("Authorization", "Bearer " + renewed)).andExpect(status().isUnauthorized());
+    }
+
+    private String accessFixture(UUID id, Map<String, ?> claims) {
+        return io.jsonwebtoken.Jwts.builder().subject(id.toString()).claims(claims)
+                .expiration(Date.from(Instant.now().plusSeconds(300)))
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(SECRET.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                .compact();
     }
 
     @Test
@@ -310,9 +427,18 @@ class AuthFlowIntegrationTest {
         JsonNode returning = body(postJson("oauth", login).andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.displayName").value("我的暱稱")));
         assertEquals(registered.path("user").path("id"), returning.path("user").path("id"));
+        UUID id = UUID.fromString(registered.path("user").path("id").asText());
+        jdbc.update("UPDATE users SET password_hash='synthetic-old-hash' WHERE id=?", id);
+        JsonNode afterPasswordRemoval = body(postJson("oauth", login).andExpect(status().isOk()));
+        assertEquals(1L, actualUsers.findById(id).getTokenVersion());
+        assertNull(actualUsers.findById(id).getPasswordHash());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + afterPasswordRemoval.path("token").asText()))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + returning.path("token").asText()))
+                .andExpect(status().isUnauthorized());
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM users", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM user_oauth_accounts", Integer.class));
-        verify(verifier, times(2)).verify(any(GoogleIdToken.class));
+        verify(verifier, times(3)).verify(any(GoogleIdToken.class));
     }
 
     @Test
