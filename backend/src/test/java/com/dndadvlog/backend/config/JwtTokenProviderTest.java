@@ -29,7 +29,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void accessTokensCannotCompleteRegistrationAndLegacyAccessStillWorks() {
+    void accessTokensCannotCompleteRegistrationAndLegacyAccessIsRejected() {
         UUID id = UUID.randomUUID();
         String access = provider.generateToken(id, "player@example.invalid", "冒險者", null, 7);
         assertEquals(7L, provider.getClaimsFromJWT(access).get("tokenVersion", Long.class));
@@ -38,21 +38,27 @@ class JwtTokenProviderTest {
         assertThrows(JwtException.class, () -> provider.getOAuthRegistrationClaims(access));
         String legacy = Jwts.builder().subject(id.toString()).expiration(Date.from(Instant.now().plusSeconds(60)))
                 .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();
-        assertTrue(provider.validateToken(legacy));
-        assertEquals(id, provider.getUserIdFromJWT(legacy));
+        assertFalse(provider.validateToken(legacy));
+        assertThrows(JwtException.class, () -> provider.getUserIdFromJWT(legacy));
+        String missingIssuedAt = Jwts.builder().subject(id.toString()).claim("purpose", "access")
+                .claim("transport", "cookie-v1").claim("sessionId", UUID.randomUUID().toString())
+                .claim("tokenVersion", 7).expiration(Date.from(Instant.now().plusSeconds(60)))
+                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();
+        assertFalse(provider.validateToken(missingIssuedAt));
+        assertThrows(JwtException.class, () -> provider.getClaimsFromJWT(missingIssuedAt));
     }
 
     @Test
     void renewalExtendsExpiryWithoutChangingSessionOrRevocationVersion() {
         UUID id = UUID.randomUUID();
         String old = Jwts.builder().subject(id.toString()).claim("purpose", "access")
-                .claim("tokenVersion", 7).claim("sessionId", "synthetic-session")
+                .claim("transport", "cookie-v1").claim("tokenVersion", 7).claim("sessionId", UUID.randomUUID().toString())
                 .issuedAt(Date.from(Instant.now().minusSeconds(1200)))
                 .expiration(Date.from(Instant.now().plusSeconds(60)))
                 .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();
         var renewed = provider.getClaimsFromJWT(provider.renewToken(old));
         assertEquals(id.toString(), renewed.getSubject());
-        assertEquals("synthetic-session", renewed.get("sessionId"));
+        assertEquals(provider.getClaimsFromJWT(old).get("sessionId"), renewed.get("sessionId"));
         assertEquals(7L, renewed.get("tokenVersion", Long.class));
         assertEquals(3600000, renewed.getExpiration().getTime() - renewed.getIssuedAt().getTime());
         assertTrue(renewed.getIssuedAt().after(provider.getClaimsFromJWT(old).getIssuedAt()));

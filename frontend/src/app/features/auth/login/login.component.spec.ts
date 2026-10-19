@@ -64,14 +64,14 @@ describe('Google sign-in callback', () => {
     const callback = initialize.mock.calls[0][0].callback;
     callback({ credential: 'test-id-token' }); callback({ credential: 'test-id-token' });
     expect(loginOAuth).toHaveBeenCalledExactlyOnceWith({ provider: 'GOOGLE', tokenOrCode: 'test-id-token' });
-    response.next({ token:'app-token', user:{ id:'qa',email:'qa@example.invalid',displayName:'QA' } } as AuthResponse);
+    response.next({ user:{ id:'qa',email:'qa@example.invalid',displayName:'QA' }, session:{ id:'s', issuedAt:new Date().toISOString(), expiresAt:new Date(Date.now()+60000).toISOString() } });
     expect(navigateByUrl).toHaveBeenCalledWith('/characters/c/inventory');
   });
 
   it.each(['//example.invalid', '/\\example.invalid', 'https://example.invalid'])('rejects unsafe return URL %s', target => {
     queryParams['returnUrl'] = target; component.ngAfterViewInit();
     initialize.mock.calls[0][0].callback({ credential:'test-id-token' });
-    response.next({ token:'app-token',user:{displayName:'QA'} } as AuthResponse);
+    response.next({ user:{id:'qa', email:'qa@example.invalid', displayName:'QA'}, session:{ id:'s', issuedAt:new Date().toISOString(), expiresAt:new Date(Date.now()+60000).toISOString() } });
     expect(navigateByUrl).toHaveBeenCalledWith('/characters');
   });
 
@@ -92,7 +92,7 @@ describe('Google sign-in callback', () => {
     response.next({ registrationRequired: true, registrationToken: 'pending-proof' });
     expect(openDialog.mock.calls[0][1].data).toEqual({ registrationToken: 'pending-proof' });
     expect(navigateByUrl).not.toHaveBeenCalled();
-    confirmation.next({ token: 'app-token', tokenType: 'Bearer', user: { id: 'qa', email: 'qa@example.invalid', displayName: '自選暱稱' } });
+    confirmation.next({ user: { id: 'qa', email: 'qa@example.invalid', displayName: '自選暱稱' }, session: { id: 's', issuedAt:new Date().toISOString(), expiresAt:new Date(Date.now()+60000).toISOString() } });
     expect(navigateByUrl).toHaveBeenCalledWith('/characters/c/inventory');
     expect(component.isLoading()).toBe(false);
   });

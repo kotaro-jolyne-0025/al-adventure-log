@@ -21,6 +21,10 @@ public class UserPrincipal implements UserDetails {
     private String password;
     private String displayName;
     private String avatarUrl;
+    private String sessionId;
+    private long issuedAt;
+    private long expiresAt;
+    private long tokenVersion;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

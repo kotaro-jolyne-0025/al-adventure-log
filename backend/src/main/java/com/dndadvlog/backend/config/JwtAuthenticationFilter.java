@@ -14,11 +14,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.Arrays;
 
 @Slf4j
 @Component
@@ -27,6 +29,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final UserMapper userMapper;
+    @Value("${app.auth.cookie.name:__session}")
+    private String cookieName;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -38,8 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 Claims claims = tokenProvider.getClaimsFromJWT(jwt);
                 UUID userId = UUID.fromString(claims.getSubject());
-                // Missing versions belong to pre-migration access tokens and only match version 0.
-                Long version = claims.containsKey("tokenVersion") ? claims.get("tokenVersion", Long.class) : 0L;
+                Long version = claims.get("tokenVersion", Long.class);
                 if (version == null || version < 0 || !userMapper.isAccessTokenCurrent(userId, version)) {
                     throw new UnsupportedJwtException("登入憑證已失效");
                 }
@@ -52,6 +55,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .email(email)
                         .displayName(displayName)
                         .avatarUrl(avatarUrl)
+                        .sessionId(claims.get("sessionId", String.class))
+                        .issuedAt(claims.getIssuedAt().getTime())
+                        .expiresAt(claims.getExpiration().getTime())
+                        .tokenVersion(version)
                         .build();
 
                 UsernamePasswordAuthenticationToken authentication =
@@ -73,10 +80,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+        var matches = request.getCookies() == null ? new jakarta.servlet.http.Cookie[0]
+                : Arrays.stream(request.getCookies()).filter(cookie -> cookieName.equals(cookie.getName())).toArray(jakarta.servlet.http.Cookie[]::new);
+        if (matches.length > 1) throw new UnsupportedJwtException("Duplicate authentication cookies");
+        return matches.length == 1 ? matches[0].getValue() : null;
     }
 }

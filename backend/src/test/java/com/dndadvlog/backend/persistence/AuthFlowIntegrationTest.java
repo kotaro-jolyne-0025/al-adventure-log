@@ -17,6 +17,14 @@ import com.icegreen.greenmail.util.ServerSetup;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import jakarta.mail.Multipart;
 import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
@@ -54,6 +62,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.Pattern;
+import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -76,6 +85,10 @@ class AuthFlowIntegrationTest {
     private static OAuthService rawOAuth;
     private static AnnotationConfigWebApplicationContext context;
     private static MockMvc mvc;
+    private static String testAuthCookie;
+    private static String testCsrfCookie;
+    private static final String AUTH_COOKIE = "__session";
+    private static final String CSRF_COOKIE = "__Host-aladvlog-xsrf";
 
     @Configuration
     @EnableWebMvc
@@ -85,6 +98,13 @@ class AuthFlowIntegrationTest {
         @Bean DataSourceTransactionManager transactionManager() { return new DataSourceTransactionManager(source); }
         @Bean JwtTokenProvider tokenProvider() { return new JwtTokenProvider(SECRET, 3600000); }
         @Bean JwtAuthenticationFilter jwtFilter(JwtTokenProvider tokens) { return new JwtAuthenticationFilter(tokens, users); }
+        @Bean SessionBindingFilter sessionBindingFilter() { return new SessionBindingFilter(); }
+        @Bean RequestOriginFilter requestOriginFilter() { return new RequestOriginFilter("http://localhost:4200"); }
+        @Bean NoStoreAuthFilter noStoreAuthFilter() { return new NoStoreAuthFilter(); }
+        @Bean AuthCookieService authCookieService() { return new AuthCookieService(AUTH_COOKIE, false); }
+        @Bean SignedCsrfTokenRepository csrfTokenRepository(JwtTokenProvider tokens, AuthCookieService cookies) {
+            return new SignedCsrfTokenRepository(tokens, cookies, CSRF_COOKIE, false);
+        }
         @Bean OAuthAccountService oauthAccounts() {
             return new OAuthAccountService(users, sql.getMapper(UserOAuthAccountMapper.class));
         }
@@ -107,7 +127,7 @@ class AuthFlowIntegrationTest {
             return new AuthService(users, resetTokens, email, encoder, tokens, oauth);
         }
         @Bean AuthRateLimitService limits() { return new AuthRateLimitService(sql.getMapper(AuthRateLimitMapper.class)); }
-        @Bean AuthController controller(AuthService auth, AuthRateLimitService limits) { return new AuthController(auth, limits); }
+        @Bean AuthController controller(AuthService auth, AuthRateLimitService limits, AuthCookieService cookies, SignedCsrfTokenRepository csrf) { return new AuthController(auth, limits, cookies, csrf); }
         @Bean GlobalExceptionHandler errors() { return new GlobalExceptionHandler(); }
     }
 
@@ -133,14 +153,17 @@ class AuthFlowIntegrationTest {
         smtp = new GreenMail(new ServerSetup(0, "127.0.0.1", ServerSetup.PROTOCOL_SMTP));
         smtp.start();
         context = new AnnotationConfigWebApplicationContext();
-        context.setServletContext(new MockServletContext());
+        MockServletContext servletContext = new MockServletContext();
+        context.setServletContext(servletContext);
         context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("isolated-auth", Map.of(
                 "app.jwt.secret", SECRET, "spring.mail.host", "127.0.0.1", "app.mail.from", "noreply@example.invalid",
-                "app.frontend.url", "https://aladvlog.com", "app.oauth.google.client-id", "test-client")));
+                "app.frontend.url", "https://aladvlog.com", "app.oauth.google.client-id", "test-client",
+                "app.auth.cookie.name", AUTH_COOKIE, "app.auth.csrf-cookie-name", CSRF_COOKIE,
+                "app.auth.cookie.secure", "false", "cors.allowed-origin", "http://localhost:4200")));
         context.register(TestConfig.class);
         context.refresh();
         mvc = MockMvcBuilders.webAppContextSetup(context)
-                .addFilters(context.getBean("springSecurityFilterChain", Filter.class)).build();
+                .addFilters(new TestCookieJarFilter(), context.getBean("springSecurityFilterChain", Filter.class)).build();
     }
 
     @BeforeEach
@@ -151,6 +174,8 @@ class AuthFlowIntegrationTest {
         jdbc.update("DELETE FROM users");
         jdbc.update("DELETE FROM auth_rate_limits");
         smtp.purgeEmailFromAllMailboxes();
+        testAuthCookie = null;
+        testCsrfCookie = context.getBean(JwtTokenProvider.class).generateCsrfToken(null);
     }
 
     @AfterAll
@@ -165,12 +190,179 @@ class AuthFlowIntegrationTest {
     }
 
     private JsonNode body(ResultActions response) throws Exception {
-        return JSON.readTree(response.andReturn().getResponse().getContentAsByteArray());
+        JsonNode result = JSON.readTree(response.andReturn().getResponse().getContentAsByteArray());
+        if (result instanceof com.fasterxml.jackson.databind.node.ObjectNode object && testAuthCookie != null) object.put("token", testAuthCookie);
+        return result;
+    }
+
+    private static final class TestCookieJarFilter implements Filter {
+        @Override public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain) throws IOException, ServletException {
+            HttpServletRequest request = (HttpServletRequest) servletRequest;
+            HttpServletResponse response = (HttpServletResponse) servletResponse;
+            String bearer = request.getHeader("Authorization");
+            String auth = "true".equals(request.getHeader("X-Test-No-Cookie")) ? null
+                    : bearer != null && bearer.startsWith("Bearer ") ? bearer.substring(7) : testAuthCookie;
+            var provider = context.getBean(JwtTokenProvider.class);
+            String csrf = testCsrfCookie;
+            if (!"true".equals(request.getHeader("X-Test-Firebase")) && !provider.validateCsrfToken(csrf, auth)) csrf = provider.generateCsrfToken(auth);
+            final String csrfValue = csrf;
+            Cookie[] base = request.getCookies() == null ? new Cookie[0] : request.getCookies();
+            List<Cookie> cookies = new ArrayList<>(Arrays.asList(base));
+            boolean bypassCsrfFixture = "true".equals(request.getHeader("X-Test-No-Csrf"));
+            if (auth != null && cookies.stream().noneMatch(c -> AUTH_COOKIE.equals(c.getName()))) cookies.add(new Cookie(AUTH_COOKIE, auth));
+            if (!bypassCsrfFixture && csrf != null && !"true".equals(request.getHeader("X-Test-Firebase"))
+                    && cookies.stream().noneMatch(c -> CSRF_COOKIE.equals(c.getName()))) cookies.add(new Cookie(CSRF_COOKIE, csrf));
+            var wrapped = new HttpServletRequestWrapper(request) {
+                @Override public Cookie[] getCookies() { return cookies.toArray(Cookie[]::new); }
+                @Override public String getHeader(String name) {
+                    if ("X-XSRF-TOKEN".equalsIgnoreCase(name) && "true".equals(super.getHeader("X-Test-Wrong-Csrf"))) return "wrong-token";
+                    if ("X-XSRF-TOKEN".equalsIgnoreCase(name) && !bypassCsrfFixture && !Set.of("GET", "HEAD", "OPTIONS").contains(getMethod())) return csrfValue;
+                    if ("X-Session-Id".equalsIgnoreCase(name) && auth != null) {
+                        if ("true".equals(super.getHeader("X-Test-Keep-Session"))) return super.getHeader(name);
+                        try { return JSON.readTree(Base64.getUrlDecoder().decode(auth.split("\\.")[1])).path("sessionId").asText(null); }
+                        catch (Exception ignored) { return super.getHeader(name); }
+                    }
+                    return super.getHeader(name);
+                }
+            };
+            chain.doFilter(wrapped, response);
+            for (String value : response.getHeaders("Set-Cookie")) {
+                String[] parts = value.split(";", 2);
+                String pair = parts[0];
+                if (pair.startsWith(AUTH_COOKIE + "=")) testAuthCookie = pair.substring(AUTH_COOKIE.length() + 1).isEmpty() ? null : pair.substring(AUTH_COOKIE.length() + 1);
+                if (pair.startsWith(CSRF_COOKIE + "=")) testCsrfCookie = pair.substring(CSRF_COOKIE.length() + 1).isEmpty() ? null : pair.substring(CSRF_COOKIE.length() + 1);
+            }
+        }
     }
 
     private JsonNode register(String email) throws Exception {
         return body(postJson("register", Map.of("email", email, "password", PASSWORD, "displayName", "  自選暱稱  "))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.user.displayName").value("自選暱稱")));
+    }
+
+    @Test
+    void csrfBootstrapAndHttpOnlyLoginCookieProtectRegistration() throws Exception {
+        testAuthCookie = null;
+        testCsrfCookie = null;
+        var bootstrap = mvc.perform(get("/api/auth/csrf").header("X-Test-No-Csrf", "true"))
+                .andExpect(status().isNoContent()).andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse();
+        String csrf = bootstrap.getHeaders("Set-Cookie").stream().filter(value -> value.startsWith(CSRF_COOKIE + "="))
+                .findFirst().orElseThrow();
+        assertTrue(csrf.contains("SameSite=Lax"), csrf);
+        assertFalse(csrf.contains("HttpOnly"));
+
+        var response = postJson("register", Map.of("email", "cookie@example.invalid", "password", PASSWORD, "displayName", "Cookie"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.token").doesNotExist())
+                .andExpect(header().string("Cache-Control", "no-store")).andReturn().getResponse();
+        String auth = response.getHeaders("Set-Cookie").stream().filter(value -> value.startsWith(AUTH_COOKIE + "="))
+                .findFirst().orElseThrow();
+        assertTrue(auth.contains("HttpOnly"));
+        assertTrue(auth.contains("SameSite=Lax"));
+        assertFalse(auth.contains("Domain="));
+        assertTrue(auth.contains("Path=/"));
+    }
+
+    @Test
+    void firebaseFilteredCookiesSupportLoginProfileRenewalAndLogout() throws Exception {
+        mvc.perform(post("/api/auth/register").header("X-Test-Firebase", "true").contentType("application/json")
+                        .content(JSON.writeValueAsBytes(Map.of("email", "firebase@example.invalid", "password", PASSWORD, "displayName", "Firebase"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.token").doesNotExist());
+        String sessionId = context.getBean(JwtTokenProvider.class).getClaimsFromJWT(testAuthCookie).get("sessionId", String.class);
+        mvc.perform(get("/api/auth/me").header("X-Test-Firebase", "true"))
+                .andExpect(status().isOk()).andExpect(header().doesNotExist("Set-Cookie"));
+        mvc.perform(put("/api/auth/me").header("X-Test-Firebase", "true").contentType("application/json")
+                        .content("{\"displayName\":\"Updated\"}"))
+                .andExpect(status().isOk()).andExpect(header().doesNotExist("Set-Cookie"));
+        mvc.perform(post("/api/auth/renew").header("X-Test-Firebase", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.session.id").value(sessionId));
+        mvc.perform(post("/api/auth/logout").header("X-Test-Firebase", "true"))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/auth/me").header("X-Test-Firebase", "true"))
+                .andExpect(status().isUnauthorized()).andExpect(header().doesNotExist("Set-Cookie"));
+    }
+
+    @Test
+    void missingCsrfAndBearerOnlyRequestsAreRejectedWithoutBusinessWrites() throws Exception {
+        var missing = mvc.perform(post("/api/auth/register").header("X-Test-No-Csrf", "true")
+                        .contentType("application/json")
+                        .content(JSON.writeValueAsBytes(Map.of("email", "blocked@example.invalid", "password", PASSWORD, "displayName", "Blocked"))))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID")).andReturn().getResponse();
+        assertEquals("no-store", missing.getHeader("Cache-Control"));
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM users", Integer.class));
+
+        JsonNode registered = register("bearer-only@example.invalid");
+        testAuthCookie = null;
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + registered.path("token").asText())
+                        .header("X-Test-No-Cookie", "true"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void duplicateAuthenticationCookiesAreRejected() throws Exception {
+        register("duplicate-cookie@example.invalid");
+        mvc.perform(get("/api/auth/me").cookie(new Cookie(AUTH_COOKIE, testAuthCookie), new Cookie(AUTH_COOKIE, testAuthCookie)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logoutClearsAnAlreadyMissingCookieWithoutAuthentication() throws Exception {
+        testAuthCookie = null;
+        var response = mvc.perform(post("/api/auth/logout"))
+                .andExpect(status().isNoContent()).andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse();
+        String cleared = response.getHeaders("Set-Cookie").stream().filter(value -> value.startsWith(AUTH_COOKIE + "="))
+                .findFirst().orElseThrow();
+        assertTrue(cleared.contains("Max-Age=0"));
+        assertTrue(cleared.contains("HttpOnly"));
+        assertTrue(cleared.contains("Path=/"));
+    }
+
+    @Test
+    void invalidCsrfAndUntrustedOriginAreRejectedBeforeRegistration() throws Exception {
+        for (var marker : List.of("X-Test-Wrong-Csrf", "Origin")) {
+            var request = post("/api/auth/register").contentType("application/json")
+                    .content(JSON.writeValueAsBytes(Map.of("email", "blocked@example.invalid", "password", PASSWORD, "displayName", "Blocked")));
+            if (marker.equals("Origin")) request.header("Origin", "https://attacker.example");
+            else request.header(marker, "true");
+            mvc.perform(request).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));
+        }
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM users", Integer.class));
+    }
+
+    @Test
+    void allAuthWritesRejectMissingWrongAndForeignOriginCsrfWithoutSideEffects() throws Exception {
+        register("csrf-protected@example.invalid");
+        String authBefore = testAuthCookie;
+        String hashBefore = actualUsers.findByEmail("csrf-protected@example.invalid").getPasswordHash();
+        for (String marker : List.of("X-Test-No-Csrf", "X-Test-Wrong-Csrf", "Origin")) {
+            for (String path : List.of("login", "register", "oauth", "oauth/register", "forgot-password", "reset-password", "renew", "logout")) {
+                var request = post("/api/auth/" + path).contentType("application/json").content("{}")
+                        .header(marker, marker.equals("Origin") ? "https://attacker.example" : "true");
+                var response = mvc.perform(request).andExpect(status().isForbidden())
+                        .andExpect(jsonPath("$.code").value("CSRF_INVALID"))
+                        .andExpect(header().string("Cache-Control", "no-store")).andReturn().getResponse();
+                assertTrue(response.getHeaders("Set-Cookie").stream().noneMatch(c -> c.startsWith(AUTH_COOKIE + "=")));
+            }
+            mvc.perform(put("/api/auth/me").contentType("application/json").content("{\"displayName\":\"Stolen\"}")
+                            .header(marker, marker.equals("Origin") ? "https://attacker.example" : "true"))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));
+        }
+        assertEquals(authBefore, testAuthCookie);
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM users", Integer.class));
+        assertEquals(hashBefore, actualUsers.findByEmail("csrf-protected@example.invalid").getPasswordHash());
+        assertEquals("自選暱稱", actualUsers.findByEmail("csrf-protected@example.invalid").getDisplayName());
+        assertEquals(0, smtp.getReceivedMessages().length);
+        assertEquals(0L, actualUsers.findByEmail("csrf-protected@example.invalid").getTokenVersion());
+    }
+
+    @Test
+    void protectedBusinessRequestRejectsAnIntentFromAnotherSession() throws Exception {
+        register("session-bound@example.invalid");
+        mvc.perform(get("/api/characters").header("X-Test-Keep-Session", "true").header("X-Session-Id", "session-from-another-login"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("AUTH_SESSION_CHANGED"));
+        mvc.perform(get("/api/characters").header("X-Test-Keep-Session", "true"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("AUTH_SESSION_CHANGED"));
     }
 
     @Test
@@ -182,8 +374,10 @@ class AuthFlowIntegrationTest {
         assertTrue(context.getBean(PasswordEncoder.class).matches(PASSWORD, account.getPasswordHash()));
         assertFalse(registered.toString().contains("passwordHash"));
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + registered.path("token").asText()))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.displayName").value("自選暱稱"));
-        // Client logout drops the JWT; subsequent requests must not inherit an old SecurityContext.
+                .andExpect(status().isOk()).andExpect(jsonPath("$.user.displayName").value("自選暱稱"))
+                .andExpect(jsonPath("$.token").doesNotExist());
+        // Simulate the browser dropping the HttpOnly cookie on logout.
+        testAuthCookie = null;
         mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
         JsonNode loggedIn = body(postJson("login", Map.of("email", "PLAYER@example.invalid", "password", PASSWORD))
                 .andExpect(status().isOk()));
@@ -240,7 +434,7 @@ class AuthFlowIntegrationTest {
         String legacy = accessFixture(id, Map.of());
         JsonNode priorLogin = body(postJson("login", Map.of("email", "player@example.invalid", "password", PASSWORD))
                 .andExpect(status().isOk()));
-        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + legacy)).andExpect(status().isOk());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + legacy)).andExpect(status().isUnauthorized());
         String proof = requestReset();
         mvc.perform(get("/api/auth/verify-reset-token").param("token", proof)).andExpect(status().isOk());
         postJson("reset-password", Map.of("token", proof, "newPassword", "short")).andExpect(status().isBadRequest());
@@ -359,7 +553,11 @@ class AuthFlowIntegrationTest {
     }
 
     private String accessFixture(UUID id, Map<String, ?> claims) {
-        return io.jsonwebtoken.Jwts.builder().subject(id.toString()).claims(claims)
+        Map<String, Object> defaults = new HashMap<>();
+        defaults.put("purpose", "access"); defaults.put("transport", "cookie-v1");
+        defaults.put("tokenVersion", 0L); defaults.put("sessionId", UUID.randomUUID().toString());
+        defaults.putAll(claims);
+        return io.jsonwebtoken.Jwts.builder().subject(id.toString()).claims(defaults)
                 .expiration(Date.from(Instant.now().plusSeconds(300)))
                 .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(SECRET.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .compact();

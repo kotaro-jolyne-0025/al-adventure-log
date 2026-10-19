@@ -6,7 +6,7 @@ import { AuthResponse } from '../../../core/models/auth.model';
 import { OAuthRegisterDialogComponent } from './oauth-register-dialog.component';
 
 describe('OAuth nickname confirmation', () => {
-  const account: AuthResponse = { token: 'app-token', tokenType: 'Bearer', user: { id: 'qa', email: 'qa@example.invalid', displayName: '自選暱稱' } };
+  const account: AuthResponse = { user: { id: 'qa', email: 'qa@example.invalid', displayName: '自選暱稱' }, session: { id: 's', issuedAt:new Date().toISOString(), expiresAt:new Date(Date.now()+60000).toISOString() } };
   let response: Subject<AuthResponse>;
   let registerOAuth: ReturnType<typeof vi.fn>;
   let dialog: { close: ReturnType<typeof vi.fn>; disableClose: boolean };

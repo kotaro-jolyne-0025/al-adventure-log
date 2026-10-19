@@ -29,7 +29,7 @@ public class AuthService {
     private final OAuthService oauthService;
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResult register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
 
         // 檢查 Email 是否已存在
@@ -51,7 +51,7 @@ public class AuthService {
         return buildAuthResponse(newUser);
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         User user = userMapper.findByEmail(normalizedEmail);
 
@@ -70,19 +70,25 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
-    public AuthResponse loginOAuth(OAuthLoginRequest request) {
+    public AuthResult loginOAuth(OAuthLoginRequest request) {
         OAuthService.OAuthLoginResult result = oauthService.processOAuthLogin(request);
         return result.user() != null ? buildAuthResponse(result.user())
-                : AuthResponse.builder().registrationRequired(true).registrationToken(result.registrationToken()).build();
+                : new AuthResult(null, AuthResponse.builder().registrationRequired(true).registrationToken(result.registrationToken()).build());
     }
 
     @Transactional
-    public AuthResponse registerOAuth(OAuthRegisterRequest request) {
+    public AuthResult registerOAuth(OAuthRegisterRequest request) {
         return buildAuthResponse(oauthService.completeRegistration(request.getRegistrationToken(), request.getDisplayName()));
     }
 
     public String renewToken(String token) {
         return tokenProvider.renewToken(token);
+    }
+
+    public SessionResponse session(String token) {
+        var claims = tokenProvider.getClaimsFromJWT(token);
+        return new SessionResponse(claims.get("sessionId", String.class),
+                claims.getIssuedAt().toInstant(), claims.getExpiration().toInstant());
     }
 
     public UserProfileResponse getCurrentUserProfile(UUID userId) {
@@ -207,7 +213,7 @@ public class AuthService {
         }
     }
 
-    private AuthResponse buildAuthResponse(User user) {
+    private AuthResult buildAuthResponse(User user) {
         String token = tokenProvider.generateToken(
                 user.getId(),
                 user.getEmail(),
@@ -216,11 +222,10 @@ public class AuthService {
                 user.getTokenVersion()
         );
 
-        return AuthResponse.builder()
-                .token(token)
-                .tokenType("Bearer")
-                .user(mapToProfile(user))
-                .build();
+        var claims = tokenProvider.getClaimsFromJWT(token);
+        return new AuthResult(token, AuthResponse.builder().user(mapToProfile(user))
+                .session(new SessionResponse(claims.get("sessionId", String.class),
+                        claims.getIssuedAt().toInstant(), claims.getExpiration().toInstant())).build());
     }
 
     private UserProfileResponse mapToProfile(User user) {

@@ -22,16 +22,19 @@ describe('App', () => {
     snackAction = new Subject<void>();
     openSnack.mockClear();
     // Menu tests control login state; token validation is covered by AuthService tests.
-    const token = signal<string | null>(null);
+    const session = signal<{ id: string; issuedAt: string; expiresAt: string } | null>(null);
     const currentUser = signal<User | null>(null);
+    const logoutPending = signal(false);
+    const lockUnsupported = signal(false);
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
         provideHttpClient(),
         provideRouter([]),
         { provide: AuthService, useValue: {
-          token, currentUser,
-          isAuthenticated: computed(() => !!token() && !!currentUser()),
+          session, currentUser,
+          logoutPending, lockUnsupported,
+          isAuthenticated: computed(() => !!session() && !!currentUser()),
           logout: vi.fn(),
         } },
         { provide: MatSnackBar, useValue: { open: openSnack } },
@@ -74,7 +77,7 @@ describe('App', () => {
     const app = fixture.componentInstance;
     if (loggedIn) {
       app.authService.currentUser.set({ id: 'test-user', displayName: '測試玩家', email: 'player@example.invalid' });
-      app.authService.token.set('test-token');
+      app.authService.session.set({ id: 'test-session', issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60000).toISOString() });
     }
     fixture.detectChanges();
     const trigger = fixture.nativeElement.querySelector(loggedIn ? '.user-pill-btn' : '.more-menu-btn') as HTMLButtonElement;
@@ -106,7 +109,7 @@ describe('App', () => {
     const app = fixture.componentInstance;
     if (loggedIn) {
       app.authService.currentUser.set({ id: 'test-user', displayName: '測試玩家', email: 'player@example.invalid' });
-      app.authService.token.set('test-token');
+      app.authService.session.set({ id: 'test-session', issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60000).toISOString() });
     }
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.app-update-panel')).toBeNull();

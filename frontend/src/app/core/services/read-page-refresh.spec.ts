@@ -32,7 +32,7 @@ describe.each(pages)('Background refresh: $name', page => {
       .mockReturnValue(refresh);
     const snapshot = { paramMap: convertToParamMap({ id: 'c', entryId: 'e' }) };
     TestBed.configureTestingModule({ providers: [
-      { provide: ActivatedRoute, useValue: { snapshot, parent: { snapshot } } },
+      { provide: ActivatedRoute, useValue: { snapshot, paramMap: of(snapshot.paramMap), parent: { snapshot, paramMap: of(snapshot.paramMap) } } },
       { provide: Router, useValue: { url: '/characters/c/adventures', navigate: vi.fn() } },
       { provide: MatDialog, useValue: {} }, { provide: MatSnackBar, useValue: {} },
       { provide: LocalReadCache, useValue: { read } },

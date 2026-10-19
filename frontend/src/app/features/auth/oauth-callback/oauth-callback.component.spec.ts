@@ -49,7 +49,7 @@ describe('Discord callback registration', () => {
     response.next({ registrationRequired: true, registrationToken: 'pending-proof' });
     expect(open.mock.calls[0][1].data).toEqual({ registrationToken: 'pending-proof' });
     expect(navigate).not.toHaveBeenCalled();
-    confirmation.next({ token: 'app-token', tokenType: 'Bearer', user: { id: 'qa', email: 'qa@example.invalid', displayName: '自選暱稱' } });
+    confirmation.next({ user: { id: 'qa', email: 'qa@example.invalid', displayName: '自選暱稱' }, session: { id: 's', issuedAt:new Date().toISOString(), expiresAt:new Date(Date.now()+60000).toISOString() } });
     expect(loginOAuth).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith(['/characters']);
     expect(sessionStorage.getItem('oauth_state_discord')).toBeNull();
@@ -64,7 +64,7 @@ describe('Discord callback registration', () => {
 
   it('logs existing players in directly', () => {
     component.ngOnInit();
-    response.next({ token: 'app-token', tokenType: 'Bearer', user: { id: 'qa', email: 'qa@example.invalid', displayName: '既有暱稱' } });
+    response.next({ user: { id: 'qa', email: 'qa@example.invalid', displayName: '既有暱稱' }, session: { id: 's', issuedAt:new Date().toISOString(), expiresAt:new Date(Date.now()+60000).toISOString() } });
     expect(open).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith(['/characters']);
   });
