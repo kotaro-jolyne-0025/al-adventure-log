@@ -52,6 +52,10 @@ class MigrationUpgradeCompatibilityTest {
 
             Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate();
 
+            assertEquals(0L, jdbc.queryForObject("SELECT token_version FROM users WHERE id = ?", Long.class, userId));
+            jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V30__add_user_token_version.sql")));
+            assertEquals(0L, jdbc.queryForObject("SELECT token_version FROM users WHERE id = ?", Long.class, userId));
+
             assertEquals("migration-fixture@example.invalid",
                     jdbc.queryForObject("SELECT email FROM users WHERE id = ?", String.class, userId));
             assertEquals("Upgrade fixture",

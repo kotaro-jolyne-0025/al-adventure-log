@@ -29,13 +29,15 @@ public class JwtTokenProvider {
         this.jwtExpirationInMs = jwtExpirationInMs;
     }
 
-    public String generateToken(UUID userId, String email, String displayName, String avatarUrl) {
+    public String generateToken(UUID userId, String email, String displayName, String avatarUrl, long tokenVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("purpose", "access")
+                .claim("sessionId", UUID.randomUUID().toString())
+                .claim("tokenVersion", tokenVersion)
                 .claim("email", email)
                 .claim("displayName", displayName)
                 .claim("avatarUrl", avatarUrl)
@@ -43,6 +45,14 @@ public class JwtTokenProvider {
                 .expiration(expiryDate)
                 .signWith(key)
                 .compact();
+    }
+
+    public String renewToken(String token) {
+        Claims claims = getClaimsFromJWT(token);
+        Date now = new Date();
+        // Preserve the authenticated version even if a password reset races with renewal.
+        return Jwts.builder().claims(claims).issuedAt(now)
+                .expiration(new Date(now.getTime() + jwtExpirationInMs)).signWith(key).compact();
     }
 
     public UUID getUserIdFromJWT(String token) {

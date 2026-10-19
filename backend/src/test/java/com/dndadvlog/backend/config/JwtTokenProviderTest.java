@@ -31,7 +31,8 @@ class JwtTokenProviderTest {
     @Test
     void accessTokensCannotCompleteRegistrationAndLegacyAccessStillWorks() {
         UUID id = UUID.randomUUID();
-        String access = provider.generateToken(id, "player@example.invalid", "冒險者", null);
+        String access = provider.generateToken(id, "player@example.invalid", "冒險者", null, 7);
+        assertEquals(7L, provider.getClaimsFromJWT(access).get("tokenVersion", Long.class));
         assertTrue(provider.validateToken(access));
         assertEquals(id, provider.getUserIdFromJWT(access));
         assertThrows(JwtException.class, () -> provider.getOAuthRegistrationClaims(access));
@@ -42,8 +43,28 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    void renewalExtendsExpiryWithoutChangingSessionOrRevocationVersion() {
+        UUID id = UUID.randomUUID();
+        String old = Jwts.builder().subject(id.toString()).claim("purpose", "access")
+                .claim("tokenVersion", 7).claim("sessionId", "synthetic-session")
+                .issuedAt(Date.from(Instant.now().minusSeconds(1200)))
+                .expiration(Date.from(Instant.now().plusSeconds(60)))
+                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();
+        var renewed = provider.getClaimsFromJWT(provider.renewToken(old));
+        assertEquals(id.toString(), renewed.getSubject());
+        assertEquals("synthetic-session", renewed.get("sessionId"));
+        assertEquals(7L, renewed.get("tokenVersion", Long.class));
+        assertEquals(3600000, renewed.getExpiration().getTime() - renewed.getIssuedAt().getTime());
+        assertTrue(renewed.getIssuedAt().after(provider.getClaimsFromJWT(old).getIssuedAt()));
+        assertNotEquals(provider.getClaimsFromJWT(provider.generateToken(id, "a@example.invalid", "A", null, 7)).get("sessionId"),
+                provider.getClaimsFromJWT(provider.generateToken(id, "a@example.invalid", "A", null, 7)).get("sessionId"));
+        assertThrows(JwtException.class, () -> provider.renewToken(
+                provider.generateOAuthRegistrationToken("GOOGLE", "subject", "a@example.invalid", null)));
+    }
+
+    @Test
     void developmentJwtCannotAuthenticateAgainstASeparateProductionKey() {
-        String localToken = provider.generateToken(UUID.randomUUID(), "player@example.invalid", "冒險者", null);
+        String localToken = provider.generateToken(UUID.randomUUID(), "player@example.invalid", "冒險者", null, 0);
         var productionProvider = new JwtTokenProvider("separate-production-test-key-at-least-32-bytes", 3600000);
         assertTrue(provider.validateToken(localToken));
         assertFalse(productionProvider.validateToken(localToken));

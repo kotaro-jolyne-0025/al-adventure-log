@@ -12,6 +12,8 @@ public interface UserMapper {
 
     User findByEmail(@Param("email") String email);
 
+    boolean isAccessTokenCurrent(@Param("id") UUID id, @Param("tokenVersion") long tokenVersion);
+
     void insert(User user);
 
     void update(User user);

@@ -23,9 +23,10 @@ describe('Daily account confirmation', () => {
     provide: service, useValue: { clearCache: vi.fn() },
   }));
   let http: HttpTestingController;
+  let loginSequence = 0;
 
-  function token(id = 'A', expiry = now + 7 * day): string {
-    return `header.${btoa(JSON.stringify({ sub: id, exp: expiry / 1000 }))}.signature`;
+  function token(id = 'A', expiry = now + 7 * day, sessionId = id, issuedAt = now): string {
+    return `header.${btoa(JSON.stringify({ sub: id, exp: expiry / 1000, iat: issuedAt / 1000, sessionId }))}.signature`;
   }
 
   function storedSession(check: unknown = { userId: user.id, checkedAt: now }): void {
@@ -48,12 +49,15 @@ describe('Daily account confirmation', () => {
 
   function loginAs(service: AuthService, account: User): void {
     service.login({ email: account.email, password: 'test-password' }).subscribe();
-    http.expectOne(`${api}/login`).flush({ token: token(account.id), tokenType: 'Bearer', user: account });
+    http.expectOne(`${api}/login`).flush({ token: token(account.id, now + 7 * day, `${account.id}-new-login-${++loginSequence}`), tokenType: 'Bearer', user: account });
   }
 
   beforeEach(() => {
     localStorage.clear();
+    loginSequence = 0;
     vi.spyOn(Date, 'now').mockReturnValue(now);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     vi.clearAllMocks();
     TestBed.configureTestingModule({ providers: [
       provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
@@ -228,6 +232,165 @@ describe('Daily account confirmation', () => {
     expect(service.currentUser()).toEqual(other);
     expect(navigate()).toBe(true);
     http.expectNone(`${api}/me`);
+  });
+
+  it('renews on foreground input without cancelling pending reads or clearing caches', async () => {
+    storedSession();
+    const old = token('A', now + 60 * 60_000, 'A', now - 11 * 60_000);
+    localStorage.setItem('dnd_auth_token', old);
+    const service = await start();
+    const receiver = vi.fn();
+    service.fetchCurrentUser().subscribe(receiver);
+    const profile = http.expectOne(`${api}/me`);
+    const checks = localStorage.getItem('dnd_auth_check');
+    vi.clearAllMocks();
+    window.dispatchEvent(new Event('input'));
+    const renewal = http.expectOne(`${api}/renew`);
+    expect(renewal.request.headers.get('Authorization')).toBe(`Bearer ${old}`);
+    window.dispatchEvent(new Event('keydown'));
+    http.expectNone(`${api}/renew`);
+    const next = token('A', now + 2 * 60 * 60_000);
+    renewal.flush({ token: next });
+    expect(service.token()).toBe(next);
+    expect(localStorage.getItem('dnd_auth_token')).toBe(next);
+    expect(localStorage.getItem('dnd_auth_check')).toBe(checks);
+    expect(profile.cancelled).toBe(false);
+    expect(caches.every(cache => cache.useValue.clearCache.mock.calls.length === 0)).toBe(true);
+    profile.flush(user);
+    expect(receiver).toHaveBeenCalledWith(user);
+    window.dispatchEvent(new Event('scroll'));
+    http.expectNone(`${api}/renew`);
+  });
+
+  it('does not renew because of background requests, hidden pages, offline state or expired tokens', async () => {
+    storedSession();
+    localStorage.setItem('dnd_auth_token', token('A', now + 60 * 60_000, 'A', now - 11 * 60_000));
+    const service = await start();
+    service.fetchCurrentUser().subscribe();
+    http.expectOne(`${api}/me`).flush(user);
+    http.expectNone(`${api}/renew`);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    window.dispatchEvent(new Event('pointerdown'));
+    http.expectNone(`${api}/renew`);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    window.dispatchEvent(new Event('input'));
+    http.expectNone(`${api}/renew`);
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    vi.mocked(Date.now).mockReturnValue(now + 2 * 60 * 60_000);
+    window.dispatchEvent(new Event('keydown'));
+    http.expectNone(`${api}/renew`);
+  });
+
+  it('backs off temporary renewal failures and keeps the original session', async () => {
+    storedSession();
+    const old = token('A', now + 60 * 60_000, 'A', now - 11 * 60_000);
+    localStorage.setItem('dnd_auth_token', old);
+    const service = await start();
+    service.renewOnActivity();
+    http.expectOne(`${api}/renew`).flush({}, { status: 503, statusText: 'Unavailable' });
+    expect(service.token()).toBe(old);
+    service.renewOnActivity();
+    http.expectNone(`${api}/renew`);
+    vi.mocked(Date.now).mockReturnValue(now + 60_000);
+    service.renewOnActivity();
+    http.expectOne(`${api}/renew`).flush({ token: token('A', now + 2 * 60 * 60_000, 'A', now - 11 * 60_000) });
+    service.renewOnActivity();
+    http.expectNone(`${api}/renew`);
+    vi.mocked(Date.now).mockReturnValue(now + 2 * 60_000);
+    service.renewOnActivity();
+    http.expectNone(`${api}/renew`);
+    vi.mocked(Date.now).mockReturnValue(now + 11 * 60_000);
+    service.renewOnActivity();
+    http.expectOne(`${api}/renew`).flush({ token: token('A', now + 3 * 60 * 60_000, 'A', now + 11 * 60_000) });
+  });
+
+  it('accepts cross-tab renewal without cancelling work and rejects shorter expirations', async () => {
+    storedSession();
+    const old = token('A', now + 60 * 60_000);
+    localStorage.setItem('dnd_auth_token', old);
+    const service = await start();
+    service.updateProfile('New name').subscribe();
+    const profile = http.expectOne(`${api}/me`);
+    vi.clearAllMocks();
+    const newer = token('A', now + 2 * 60 * 60_000);
+    localStorage.setItem('dnd_auth_token', newer);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'dnd_auth_token', newValue: newer }));
+    expect(service.token()).toBe(newer);
+    expect(profile.cancelled).toBe(false);
+    expect(caches.every(cache => cache.useValue.clearCache.mock.calls.length === 0)).toBe(true);
+    localStorage.setItem('dnd_auth_token', old);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'dnd_auth_token', newValue: old }));
+    expect(localStorage.getItem('dnd_auth_token')).toBe(newer);
+    expect(service.token()).toBe(newer);
+    profile.flush({ ...user, displayName: 'New name' });
+  });
+
+  it('cancels pending renewal on logout or a fresh login for the same account', async () => {
+    storedSession();
+    localStorage.setItem('dnd_auth_token', token('A', now + 60 * 60_000, 'A', now - 11 * 60_000));
+    const service = await start();
+    service.renewOnActivity();
+    const renewal = http.expectOne(`${api}/renew`);
+    loginAs(service, user);
+    expect(renewal.cancelled).toBe(true);
+    expect(service.token()).toBe(token('A', now + 7 * day, 'A-new-login-1'));
+    vi.mocked(Date.now).mockReturnValue(now + 11 * 60_000);
+    service.renewOnActivity();
+    const pending = http.expectOne(`${api}/renew`);
+    service.logout(false);
+    expect(pending.cancelled).toBe(true);
+    expect(service.token()).toBeNull();
+  });
+
+  it('does not overwrite a login stored by another tab before its storage event arrives', async () => {
+    storedSession();
+    const old = token('A', now + 60 * 60_000, 'A', now - 11 * 60_000);
+    localStorage.setItem('dnd_auth_token', old);
+    const service = await start();
+    service.renewOnActivity();
+    const renewal = http.expectOne(`${api}/renew`);
+    const newLogin = token('A', now + 2 * 60 * 60_000, 'A-new-login');
+    localStorage.setItem('dnd_auth_token', newLogin);
+    renewal.flush({ token: token('A', now + 2 * 60 * 60_000) });
+    expect(localStorage.getItem('dnd_auth_token')).toBe(newLogin);
+    expect(service.token()).toBe(old);
+  });
+
+  it('handles a pending request 401 after same-session renewal but protects a fresh login', async () => {
+    storedSession();
+    const service = await start();
+    const client = TestBed.inject(HttpClient);
+    client.get(`${environment.apiUrl}/characters`).subscribe({ error: () => {} });
+    const previous = http.expectOne(`${environment.apiUrl}/characters`);
+    const newer = token('A', now + 8 * day);
+    localStorage.setItem('dnd_auth_token', newer);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'dnd_auth_token', newValue: newer }));
+    previous.flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(service.isAuthenticated()).toBe(false);
+    loginAs(service, user);
+    client.get(`${environment.apiUrl}/characters`).subscribe({ error: () => {} });
+    const old = http.expectOne(`${environment.apiUrl}/characters`);
+    service.logout(false);
+    loginAs(service, user);
+    old.flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(service.currentUser()).toEqual(user);
+    expect(service.isAuthenticated()).toBe(true);
+  });
+
+  it('does not clear another tab login when an old 401 precedes its storage event', async () => {
+    storedSession();
+    const service = await start();
+    TestBed.inject(HttpClient).get(`${environment.apiUrl}/characters`).subscribe({ error: () => {} });
+    const old = http.expectOne(`${environment.apiUrl}/characters`);
+    const current = token('B', now + 2 * 60 * 60_000, 'B-new-login');
+    localStorage.setItem('dnd_auth_token', current);
+    localStorage.setItem('dnd_auth_user', JSON.stringify(other));
+    old.flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(localStorage.getItem('dnd_auth_token')).toBe(current);
+    expect(router.navigate).not.toHaveBeenCalled();
+    window.dispatchEvent(new StorageEvent('storage', { key: 'dnd_auth_token', newValue: current }));
+    expect(service.currentUser()).toEqual(other);
   });
 
   it('does not let an old data request 401 log out a newly signed-in account', async () => {
