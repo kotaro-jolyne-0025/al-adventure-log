@@ -1,5 +1,9 @@
 # 冒險紀錄表Web版 — 資料庫 Schema
 
+## Migration 30（密碼變更撤銷登入）
+
+V30 在 `users` 新增 `token_version BIGINT NOT NULL DEFAULT 0`，以 `ADD COLUMN IF NOT EXISTS` 支援重複執行。共用密碼 UPDATE 同時執行 `token_version = token_version + 1`，與密碼重設及憑證消耗共用既有交易。JWT 帶入簽發時版本；每個帶 JWT 的請求以使用者主鍵檢查 `is_active = TRUE` 與版本相同，不讀取密碼雜湊或快取判斷。缺少版本的既有 JWT 僅在版本 0 時相容，重設後亦失效；一般 profile UPDATE 不更新版本。Google 登入清除密碼後重新讀取版本簽發憑證。新增欄位不改變現有 RLS 與表權限。
+
 ## updated_at 並行編輯標記
 
 - 角色、冒險與倉庫沿用既有 `timestamp without time zone`（微秒精度 6）之 `updated_at`，不新增 revision／version 欄位。V28 以 `CREATE OR REPLACE FUNCTION` 修正既有時間觸發器，保留原有欄位及觸發器。
@@ -187,6 +191,7 @@ CREATE TABLE IF NOT EXISTS users (
     display_name VARCHAR(100) NOT NULL,
     avatar_url VARCHAR(500),
     is_active BOOLEAN DEFAULT TRUE,
+    token_version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );

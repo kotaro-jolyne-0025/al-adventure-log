@@ -1,7 +1,8 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { defer, EMPTY, Observable, Subject, takeUntil, tap } from 'rxjs';
+import { defer, EMPTY, finalize, fromEvent, merge, Observable, Subject, takeUntil, tap, throttleTime } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthResponse, LoginCredentials, OAuthLoginRequest, OAuthLoginResponse, RegisterCredentials, User } from '../models/auth.model';
 import { environment } from '../../../environments/environment';
 import { CharacterService } from './character.service';
@@ -26,6 +27,8 @@ export class AuthService {
   private readonly CHECK_KEY = 'dnd_auth_check';
   private readonly CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
   private readonly sessionChanged = new Subject<void>();
+  private renewing = false;
+  private nextRenewAt = 0;
 
   // Signals
   readonly token = signal<string | null>(this.getStoredToken());
@@ -37,12 +40,16 @@ export class AuthService {
    * 採用 30 秒 buffer 避免在邊界時刻因時鐘誤差導致請求失敗。
    */
   isTokenExpired(): boolean {
-    const t = this.token();
-    if (!t) return true;
+    return Date.now() >= this.expiresAt(this.token()) - 30_000;
+  }
 
+  private tokenClaims(value: string | null): {
+    sub?: string; exp?: number; iat?: number; sessionId?: string; tokenVersion?: number;
+  } | null {
+    if (!value) return null;
     try {
       // JWT 使用 base64url 編碼，需先轉換為標準 base64 供 atob() 解碼
-      const base64Url = t.split('.')[1];
+      const base64Url = value.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       // 處理 UTF-8 多位元組字元（如中文 displayName）
       const jsonPayload = decodeURIComponent(
@@ -50,31 +57,88 @@ export class AuthService {
           '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
         ).join('')
       );
-      const payload = JSON.parse(jsonPayload);
-      if (!payload.exp) return false; // 沒有 exp claim 則視為不過期
-      const bufferSeconds = 30;
-      return Date.now() >= (payload.exp - bufferSeconds) * 1000;
+      return JSON.parse(jsonPayload);
     } catch {
-      return true; // 解析失敗視為過期
+      return null;
     }
+  }
+
+  private expiresAt(value: string | null): number {
+    const expiry = this.tokenClaims(value)?.exp;
+    return typeof expiry === 'number' && Number.isFinite(expiry) ? expiry * 1000 : 0;
+  }
+
+  private sameSession(first: string | null, second: string | null): boolean {
+    if (!first || !second) return false;
+    if (first === second) return true;
+    const a = this.tokenClaims(first);
+    const b = this.tokenClaims(second);
+    return !!a?.sub && a.sub === b?.sub && a.sessionId === b?.sessionId
+      && (a.tokenVersion ?? 0) === (b?.tokenVersion ?? 0);
+  }
+
+  isCurrentSession(token: string | null): boolean {
+    return this.sameSession(token, this.token()) && this.sameSession(token, this.getStoredToken());
+  }
+
+  renewOnActivity(): void {
+    const token = this.token();
+    const issuedAt = this.tokenClaims(token)?.iat ?? 0;
+    const now = Date.now();
+    if (document.visibilityState !== 'visible' || !navigator.onLine || this.renewing
+      || !token || this.isTokenExpired() || now - issuedAt * 1000 < 10 * 60_000
+      || now < this.nextRenewAt) return;
+    this.nextRenewAt = now + 60_000;
+    this.renewing = true;
+    this.http.post<{ token: string }>(`${this.API_URL}/renew`, {}).pipe(
+      takeUntil(this.sessionChanged),
+      finalize(() => this.renewing = false),
+    ).subscribe({
+      next: result => {
+        const stored = this.getStoredToken();
+        if (!this.isCurrentSession(token) || !this.sameSession(token, stored)
+          || !this.sameSession(token, result.token)) return;
+        const current = this.expiresAt(stored) > this.expiresAt(this.token()) ? stored : this.token();
+        const next = this.expiresAt(result.token) > this.expiresAt(current) ? result.token : current;
+        localStorage.setItem(this.TOKEN_KEY, next!);
+        this.token.set(next);
+        this.nextRenewAt = Date.now() + 10 * 60_000;
+      },
+      // The interceptor handles 401; transient failures keep the current session.
+      error: () => {},
+    });
   }
 
   constructor() {
     this.local.setOwner(this.currentUser()?.id ?? null);
-    window.addEventListener('storage', event => {
+    fromEvent<StorageEvent>(window, 'storage').pipe(takeUntilDestroyed()).subscribe(event => {
       if (event.key !== this.TOKEN_KEY && event.key !== this.USER_KEY) return;
+      const stored = this.getStoredToken();
+      if (event.key === this.TOKEN_KEY && this.isCurrentSession(stored)) {
+        if (this.expiresAt(stored) < this.expiresAt(this.token())) {
+          localStorage.setItem(this.TOKEN_KEY, this.token()!);
+        } else {
+          if (this.expiresAt(stored) > this.expiresAt(this.token())) this.nextRenewAt = Date.now() + 10 * 60_000;
+          this.token.set(stored);
+        }
+        return;
+      }
       this.sessionChanged.next();
       this.token.set(this.getStoredToken());
       this.currentUser.set(this.getStoredUser());
       this.local.setOwner(this.currentUser()?.id ?? null);
       this.clearAllCaches();
     });
+    merge(...['pointerdown', 'keydown', 'input', 'scroll'].map(name =>
+      fromEvent(window, name, { capture: true, passive: true }),
+    )).pipe(throttleTime(1000), takeUntilDestroyed()).subscribe(() => this.renewOnActivity());
     // 等服務建構完成，避免 HTTP interceptor 注入 AuthService 時產生循環。
     queueMicrotask(() => this.checkSessionIfNeeded());
   }
 
   checkSessionIfNeeded(): void {
-    if (!this.token()) return;
+    const token = this.token();
+    if (!token) return;
     if (this.isTokenExpired()) {
       this.logout(false);
       return;
@@ -87,7 +151,7 @@ export class AuthService {
     if (user) this.recordCheck(user.id);
     this.fetchCurrentUser().subscribe({
       error: (err) => {
-        if (err?.status === 401) this.logout(false);
+        if (err?.status === 401 && this.isCurrentSession(token)) this.logout(false);
       },
     });
   }
@@ -147,7 +211,7 @@ export class AuthService {
 
   fetchCurrentUser(): Observable<User> {
     const token = this.token();
-    return defer(() => token && token === this.token()
+    return defer(() => this.isCurrentSession(token)
       ? this.http.get<User>(`${this.API_URL}/me`) : EMPTY).pipe(
       takeUntil(this.sessionChanged),
       tap((user) => {
@@ -165,7 +229,7 @@ export class AuthService {
 
   updateProfile(displayName: string, avatarUrl?: string | null): Observable<User> {
     const token = this.token();
-    return defer(() => token && token === this.token()
+    return defer(() => this.isCurrentSession(token)
       ? this.http.put<User>(`${this.API_URL}/me`, { displayName, avatarUrl }) : EMPTY).pipe(
       takeUntil(this.sessionChanged),
       tap((user) => {
@@ -179,6 +243,7 @@ export class AuthService {
     this.local.invalidate(undefined, this.currentUser()?.id ?? null, false);
     this.local.setOwner(null);
     this.sessionChanged.next();
+    this.nextRenewAt = 0;
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     localStorage.removeItem(this.CHECK_KEY);
@@ -196,6 +261,7 @@ export class AuthService {
     if (oldOwner && oldOwner !== res.user.id) this.local.invalidate(undefined, oldOwner, false);
     this.local.setOwner(res.user.id);
     this.sessionChanged.next();
+    this.nextRenewAt = 0;
     localStorage.setItem(this.TOKEN_KEY, res.token);
     localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
     this.token.set(res.token);
