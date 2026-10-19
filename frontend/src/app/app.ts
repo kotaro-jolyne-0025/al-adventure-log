@@ -135,7 +135,7 @@ export class App {
     });
     effect(() => {
       if (this.authService.logoutPending()) {
-        this.snackBar.open('登出尚待連線完成，重新連線後會清除登入 Cookie。', '關閉', { duration: 8000 });
+        this.snackBar.open('已在此裝置登出；連線後會完成安全清除。', '關閉', { duration: 8000 });
       }
       if (this.authService.lockUnsupported()) {
         this.snackBar.open('此瀏覽器不支援安全登入同步，請更新瀏覽器後再登入。', '關閉', { duration: 8000 });
