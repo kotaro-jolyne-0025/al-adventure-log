@@ -43,6 +43,14 @@
         </button>
       </div>
 
+      <button mat-stroked-button type="button" class="btn-export" [matMenuTriggerFor]="exportMenu"
+        [disabled]="exportDisabled()" aria-describedby="export-scope">
+        {{ exportBusy() ? '匯出中…' : '匯出' }}
+      </button>
+      <mat-menu #exportMenu="matMenu">
+        <button mat-menu-item (click)="export('pdf')">PDF（原版紀錄表／列印）</button>
+        <button mat-menu-item (click)="export('xlsx')">Excel（完整明細）</button>
+      </mat-menu>
       <button mat-flat-button color="primary" class="btn-add-adv" (click)="onAddEntry()" [disabled]="readOnly()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
         <span class="desktop-add-label">新增冒險紀錄</span>
@@ -50,6 +58,18 @@
       </button>
     </div>
   </div>
+
+  <p class="export-help" id="export-scope">匯出此角色全部已儲存紀錄，不受搜尋或排序影響。角色資料為匯出時狀態；PDF 沿用含舊版規則文字的原稿，備註超長會截尾，完整明細保留於 Excel。</p>
+  @if (!online() || readOnly()) {
+    <p class="export-help">連線並更新雲端資料後即可匯出。</p>
+  }
+  @if (hasLoaded() && !rawEntries().length) {
+    <p class="export-help">尚無冒險紀錄可匯出。</p>
+  }
+  <p class="export-status" role="status">{{ exportMessage() }}</p>
+  @if (exportError()) {
+    <app-read-error [message]="exportError()!" [pending]="exportDisabled()" (retry)="export()" />
+  }
 
   <!-- 🔍 搜尋列 -->
   <div class="search-bar-wrap">

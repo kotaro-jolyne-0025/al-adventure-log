@@ -889,7 +889,7 @@ public class AdventureEntryService {
         return toResponseWithContinuityWarning(entry, next);
     }
 
-    private AdventureEntryResponse toResponseWithContinuityWarning(AdventureEntry entry, AdventureEntry next) {
+    AdventureEntryResponse toResponseWithContinuityWarning(AdventureEntry entry, AdventureEntry next) {
         AdventureEntryResponse response = toResponse(entry);
         List<String> warnings = new ArrayList<>();
         int reducedMagicItems = -(orZero(entry.getMagicItemsLost()) + orZero(entry.getMagicItemsDowntimeLost()));
@@ -1075,7 +1075,7 @@ public class AdventureEntryService {
         return response;
     }
 
-    private AdventureGainedItemResponse toGainedItemResponse(AdventureGainedItem item) {
+    AdventureGainedItemResponse toGainedItemResponse(AdventureGainedItem item) {
         AdventureGainedItemResponse response = new AdventureGainedItemResponse();
         response.setId(item.getId());
         response.setAdventureEntryId(item.getAdventureEntryId());

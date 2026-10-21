@@ -939,6 +939,7 @@ class LedgerPersistenceIntegrationTest {
                 .register(UUID.class, JdbcType.OTHER, ObjectTypeHandler.class);
         for (String resource : List.of(
                 "mapper/CharacterMapper.xml",
+                "mapper/UserMapper.xml",
                 "mapper/AdventureEntryMapper.xml",
                 "mapper/AdventureGainedItemMapper.xml",
                 "mapper/InventoryItemMapper.xml",

@@ -9,6 +9,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
+import { filter, finalize, fromEvent, merge, Subject, takeUntil } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdventureService } from '../../../core/services/adventure.service';
 import { AdventureEntry } from '../../../core/models/adventure.model';
@@ -45,6 +47,7 @@ export type AdventureSortField = 'playDate' | 'createdAt';
     DatePipe,
     MatButtonModule,
     MatTooltipModule,
+    MatMenuModule,
     LucideCoins,
     LucideTent,
     LucideSparkles,
@@ -106,6 +109,65 @@ export class AdventureListComponent implements OnInit {
   private readonly pageSize = 20;
   protected readonly visibleLimit = signal(this.pageSize);
   protected characterId!: string;
+  protected readonly exportBusy = signal(false);
+  protected readonly exportMessage = signal('');
+  protected readonly exportError = signal<string | null>(null);
+  protected readonly online = signal(navigator.onLine);
+  protected readonly exportDisabled = computed(() => this.readOnly() || this.isRefreshing() || this.exportBusy() || !this.online() || !this.rawEntries().length);
+  private lastExportFormat: 'pdf' | 'xlsx' = 'pdf';
+  private downloadUrl?: string;
+  private downloadTimer?: ReturnType<typeof setTimeout>;
+  private readonly characterChanged = new Subject<void>();
+
+  constructor() {
+    merge(fromEvent(window, 'online'), fromEvent(window, 'offline')).pipe(takeUntilDestroyed(this.destroy))
+      .subscribe(() => this.online.set(navigator.onLine));
+    merge(this.local.sessionChanged, this.local.changes.pipe(filter(id => !id || id === this.characterId)))
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.releaseDownload());
+    this.destroy.onDestroy(() => this.releaseDownload());
+  }
+
+  protected export(format = this.lastExportFormat): void {
+    if (this.exportDisabled()) return;
+    this.lastExportFormat = format;
+    this.exportBusy.set(true);
+    this.exportError.set(null);
+    this.exportMessage.set('正在產生匯出檔案…');
+    const characterId = this.characterId;
+    this.adventureService.export(characterId, format).pipe(
+      takeUntil(this.characterChanged),
+      takeUntilDestroyed(this.destroy),
+      finalize(() => {
+        this.exportBusy.set(false);
+        if (this.exportMessage() === '正在產生匯出檔案…') this.exportMessage.set('匯出已取消，請重新匯出。');
+      }),
+    ).subscribe({
+      next: ({ blob, filename }) => {
+        if (this.characterId !== characterId) return;
+        this.releaseDownload();
+        this.downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = this.downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        this.downloadTimer = setTimeout(() => this.releaseDownload(), 1000);
+        this.exportMessage.set('已交付瀏覽器下載。');
+      },
+      error: error => {
+        this.exportMessage.set('');
+        this.exportError.set(error.message || '無法匯出，請稍後重試。');
+      },
+    });
+  }
+
+  private releaseDownload(): void {
+    if (this.downloadTimer) clearTimeout(this.downloadTimer);
+    if (this.downloadUrl) URL.revokeObjectURL(this.downloadUrl);
+    this.downloadUrl = undefined;
+    this.downloadTimer = undefined;
+  }
 
   protected readonly sortFieldLabel = computed(() => {
     return this.sortField() === 'playDate' ? '遊玩日期' : '建立時間';
@@ -186,10 +248,16 @@ export class AdventureListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.characterId =
-      this.route.parent?.snapshot.paramMap.get('id') ??
-      this.route.snapshot.paramMap.get('id') ?? '';
-    this.loadEntries();
+    (this.route.parent ?? this.route).paramMap.pipe(takeUntilDestroyed(this.destroy)).subscribe(params => {
+      const id = params.get('id') ?? '';
+      if (id === this.characterId) return;
+      this.characterChanged.next();
+      this.releaseDownload();
+      this.exportError.set(null); this.exportMessage.set('');
+      this.characterId = id;
+      this.rawEntries.set([]); this.hasLoaded.set(false);
+      this.loadEntries();
+    });
   }
 
   protected loadEntries(): void {
@@ -197,7 +265,7 @@ export class AdventureListComponent implements OnInit {
     this.loadError.set(null);
     this.isLoading.set(!this.hasLoaded());
     this.isRefreshing.set(true);
-    this.reads.read(this.characterId, 'adventures', () => this.adventureService.getAllByCharacter(this.characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+    this.reads.read(this.characterId, 'adventures', () => this.adventureService.getAllByCharacter(this.characterId, true)).pipe(takeUntil(this.characterChanged), takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         const list = result.data;
         this.readSource.set(result.source);

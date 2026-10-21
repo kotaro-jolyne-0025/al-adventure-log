@@ -21,6 +21,14 @@
         <result property="updatedAt"        column="updated_at"/>
     </resultMap>
 
+    <select id="findByOwnedCharacter" resultMap="gainedItemMap">
+        SELECT g.* FROM adventure_gained_item g
+        INNER JOIN adventure_entry e ON e.id = g.adventure_entry_id
+        INNER JOIN "character" c ON c.id = e.character_id
+        WHERE c.id = #{characterId}::uuid AND c.user_id = #{userId}::uuid
+        ORDER BY g.created_at ASC, g.id ASC
+    </select>
+
     <select id="findByAdventureEntryId" resultMap="gainedItemMap">
         SELECT * FROM adventure_gained_item
         WHERE adventure_entry_id = #{adventureEntryId}::uuid

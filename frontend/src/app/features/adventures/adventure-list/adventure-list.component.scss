@@ -4,6 +4,17 @@
   padding: 8px 0 40px;
 }
 
+.export-help, .export-status {
+  color: var(--text-secondary);
+  font-size: var(--type-body-small, .875rem);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  margin: 0 0 12px;
+}
+.export-status:empty { margin: 0; }
+.btn-export { min-height: 44px; }
+@media (max-width: 600px) { .btn-export { width: 100%; grid-column: 1 / -1; grid-row: 3; } }
+
 .list-header {
   display: flex;
   align-items: center;

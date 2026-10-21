@@ -10,6 +10,8 @@ import java.util.UUID;
 @Mapper
 public interface AdventureGainedItemMapper {
 
+    List<AdventureGainedItem> findByOwnedCharacter(@Param("characterId") UUID characterId, @Param("userId") UUID userId);
+
     List<AdventureGainedItem> findByAdventureEntryId(@Param("adventureEntryId") UUID adventureEntryId);
 
     AdventureGainedItem findById(@Param("id") UUID id);

@@ -1,7 +1,8 @@
 import { versionHeader, writeRequest } from './write-precondition';
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { map, Observable, tap } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { catchError, defer, EMPTY, filter, from, map, merge, mergeMap, Observable, of, takeUntil, tap, throwError } from 'rxjs';
+import { LocalStore } from './local-store.service';
 import { RequestCache } from './request-cache';
 import { environment } from '../../../environments/environment';
 import {
@@ -22,6 +23,7 @@ import { CharacterService } from './character.service';
 export class AdventureService {
   private readonly http = inject(HttpClient);
   private readonly characterService = inject(CharacterService);
+  private readonly local = inject(LocalStore);
   private readonly base = `${environment.apiUrl}/characters`;
 
   // 記憶體快取
@@ -35,6 +37,45 @@ export class AdventureService {
   clearCache(characterId?: string): void {
     this.entriesCache.clear(characterId);
     this.defaultsCache.clear(characterId);
+  }
+
+  export(characterId: string, format: 'pdf' | 'xlsx'): Observable<{ blob: Blob; filename: string }> {
+    return defer(() => {
+      const owner = this.local.owner();
+      const generation = this.local.currentGeneration();
+      const valid = () => this.local.owner() === owner && this.local.currentGeneration() === generation;
+      if (!owner) return throwError(() => new Error('請重新登入後匯出。'));
+      const invalidated = merge(this.local.sessionChanged,
+        this.local.changes.pipe(filter(id => !id || id === characterId)),
+        this.characterService.cacheInvalidated$.pipe(filter(id => !id || id === characterId)));
+      const mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      return this.http.get(`${this.base}/${characterId}/exports`, {
+        params: { format }, responseType: 'blob', observe: 'response',
+      }).pipe(
+        map(response => {
+          if (!response.body?.size || response.body.type.split(';')[0] !== mime) {
+            throw new Error('匯出檔案格式不正確，請重試。');
+          }
+          const disposition = response.headers.get('Content-Disposition') ?? '';
+          const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+          const filename = encoded ? decodeURIComponent(encoded) : `冒險紀錄.${format}`;
+          return { blob: response.body, filename };
+        }),
+        catchError(error => {
+          if (!valid()) return EMPTY;
+          if (!(error instanceof HttpErrorResponse)) return throwError(() => error);
+          const fallback = error.status === 401 ? '登入已失效，請重新登入。' : '無法匯出，請確認連線後重試。';
+          if (!(error.error instanceof Blob)) return throwError(() => new Error(error.error?.message || fallback));
+          return from(error.error.text()).pipe(
+            map(text => { try { return JSON.parse(text)?.message || fallback; } catch { return fallback; } }),
+            catchError(() => of(fallback)),
+            mergeMap(message => valid() ? throwError(() => new Error(message)) : EMPTY),
+          );
+        }),
+        filter(valid),
+        takeUntil(invalidated),
+      );
+    });
   }
 
   // ── AdventureEntry ───────────────────────────────────────────────────────
