@@ -59,6 +59,8 @@
 
 CI 權限為 `contents: read`，不提供 `id-token: write`，不指定部署／備份 environment，不引用正式 Secret，不使用 `pull_request_target` checkout PR。測試輸出只上傳不含玩家資料、憑證或瀏覽器 storage 的結果。
 
+PR 說明編輯亦觸發 CI。`pr-policy` 額外取得 `pull-requests: read`，僅在政策驗證步驟使用自動產生的唯讀 GitHub token，從 API 取得目前 PR 說明，避免重跑沿用舊事件內容。API 失敗時檢查失敗，不退回舊說明或略過風險欄位；PR 說明透過環境變數交給檢查器，不插入 shell 程式碼。push main 與人工執行維持不檢查 PR 風險欄位。
+
 正式前端部署 Secret 移入只允許 `main` 的 production environment；先驗證該環境部署成功，再移除重複的 repository-level Secret。備份沿用 `database-backups` 的分支限制與 OIDC，後端沿用既有 Cloud Build 信任範圍。上述平台設定在實作驗證後由另行授權的啟用步驟處理。
 
 ### 4. 單人也能使用的主幹與 Tag 保護
