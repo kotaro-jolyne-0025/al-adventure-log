@@ -85,3 +85,13 @@
 - 自訂網域登入頁回傳 200，未登入 API 回傳預期 401；部署後的 Google 使用者讀取與效能工具重測依使用者指示延後。
 - 正常 PR 的四項 CI 已實際驗證；純文件 PR 與故意失敗案例的完整驗收尚未完成，因此 task 5.3 保留未完成。
 - 使用者選擇暫不啟用 main 保護；發布 Tag 保護、production environment／Secret 路徑及週期還原亦未在本次啟用。tasks 4.1–4.3、5.4–5.6 保留未完成。
+
+
+## 2026-10-23 v3.0.2 剩餘依賴整合驗證
+
+- 本輪納入 #44、#45、#46：checkout v7、setup-node v7、setup-java v6，保留既有 runner、Java 17、Node 22、觸發事件、權限與固定四項檢查名稱；前端部署仍由 CI/CD 執行。
+- 納入 #48、#50：Lucide Angular 1.59.0、Prettier 3.9.10、jsdom 30.1.3；保留 Vite 8.3.5 安全覆寫與 TypeScript 6.0.3。同步前後端產品版號 3.0.2。
+- 本機 Node 24.18.0 符合 jsdom 要求。前端 37 個測試檔、227 項成功，production build 成功，npm audit 包含開發依賴為 0。後端 clean verify 188 項成功、0 失敗／錯誤／略過，正式 JAR 隔離檢查成功；政策測試 15 項成功。
+- 本機隔離環境驗證首頁、登入與圖示呈現；正式站部署後的必要讀取及新 Actions 執行結果，以對應整合 PR 的實際平台紀錄為準。
+- #51 保留 PostgreSQL 17 測試及隔離還原基準；未直接改成 18。#52 因 Angular compiler-cli 要求 TypeScript >=6.0 <6.1，7.0.2 不相容而保留，未繞過 peer 檢查。
+- 沒有應用業務邏輯、玩家提示文案、schema 或歷史 migration 變更。未逐頁遍測所有圖示／手機互動，未實際寄送 SMTP 郵件。備份／隔離還原時效及前版部署參照另於私有維運紀錄核對。
