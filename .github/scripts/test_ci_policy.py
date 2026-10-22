@@ -1,4 +1,7 @@
 import sys
+import os
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -49,6 +52,37 @@ class MigrationPolicyTests(unittest.TestCase):
 
 
 class PrPolicyTests(unittest.TestCase):
+    def test_workflow_fetches_current_pr_body_and_fails_on_api_errors(self):
+        bash = shutil.which("bash") or "C:/Program Files/Git/bin/bash.exe"
+        if not Path(bash).is_file():
+            self.skipTest("Bash is required to exercise the workflow step")
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("types: [opened, synchronize, reopened, edited]", workflow)
+        script = workflow.rsplit("        run: |\n", 1)[1]
+        script = "\n".join(line.removeprefix("          ") for line in script.splitlines())
+        stubs = '''
+gh() { printf '%s' "$CURRENT_BODY"; return "$API_EXIT"; }
+python() { printf '%s' "$PR_BODY"; }
+'''
+        current_body = '風險分級：中\n驗證內容：$(printf injected) `printf injected`\nEOF'
+        env = dict(os.environ, EVENT_NAME="pull_request", GH_REPO="fixture/repo", PR_NUMBER="44",
+                   BASE_SHA="base", HEAD_SHA="head", PR_BODY="stale body", CURRENT_BODY=current_body, API_EXIT="0")
+        result = subprocess.run([bash, "--noprofile", "--norc", "-e", "-c", stubs + script],
+                                env=env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(current_body, result.stdout)
+        env["API_EXIT"] = "1"
+        result = subprocess.run([bash, "--noprofile", "--norc", "-e", "-c", stubs + script],
+                                env=env, capture_output=True, text=True, encoding="utf-8")
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual("", result.stdout)
+        for event in ("push", "workflow_dispatch"):
+            env["EVENT_NAME"] = event
+            result = subprocess.run([bash, "--noprofile", "--norc", "-e", "-c", stubs + script],
+                                    env=env, capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual("", result.stdout)
+
     def test_production_artifact_excludes_local_configuration_and_tools(self):
         with tempfile.TemporaryDirectory() as temp:
             jar = Path(temp) / "fixture.jar"
