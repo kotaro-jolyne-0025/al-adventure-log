@@ -95,3 +95,14 @@
 - 本機隔離環境驗證首頁、登入與圖示呈現；正式站部署後的必要讀取及新 Actions 執行結果，以對應整合 PR 的實際平台紀錄為準。
 - #51 保留 PostgreSQL 17 測試及隔離還原基準；未直接改成 18。#52 因 Angular compiler-cli 要求 TypeScript >=6.0 <6.1，7.0.2 不相容而保留，未繞過 peer 檢查。
 - 沒有應用業務邏輯、玩家提示文案、schema 或歷史 migration 變更。未逐頁遍測所有圖示／手機互動，未實際寄送 SMTP 郵件。備份／隔離還原時效及前版部署參照另於私有維運紀錄核對。
+
+
+## 2026-10-23 剩餘依賴 PR 的後續處理（候選 3.0.3，未部署）
+
+- #51 的 PostgreSQL 18.6.0 測試二進位套件改由 Maven property 管理；必要的 `pr-backend` 依序執行 PostgreSQL 17.10 與預設 18.6 的 clean verify，任一失敗都阻擋合併，保持四項固定檢查名稱。正式 PostgreSQL 仍為 17，既有隔離還原流程仍用 17，未修改正式資料庫。
+- Windows 實際 PostgreSQL 17.10 與 18.6 各完成 188 項測試，0 失敗／錯誤／略過；正式 JAR 排除 embedded PostgreSQL、開發啟動器與私人本機設定的檢查成功。
+- `-Plocal-dev test-compile exec:java` 實際以暫存 PostgreSQL 18.6 啟動，完成 HTTP 登入／Cookie／CSRF、session 綁定、完整冒險儲存與子項目、衝突／缺少時間戳、無效子項目整包回滾、並行寫入、倉庫資源同步、跨玩家拒絕及登出驗證。
+- 本機總健康回 503 的原因為未配置外部 SMTP，與既有隔離驗收一致；不把它當成完整健康成功。正式 SMTP 寄信未驗證。
+- #52 的 TypeScript 7 不符合目前 Angular compiler-cli 的 >=6.0 <6.1 要求，已結案為未合併；由 [#56](https://github.com/kotaro-jolyne-0025/al-adventure-log/issues/56) 追蹤上游支援、解除版本排除及完整驗證的條件。Dependabot 僅暫停 TypeScript 7.x，保留 TypeScript 6 修補更新與其他套件更新。
+- 前端僅同步候選產品版號 3.0.3，依賴與應用程式內容相對 3.0.2 不變，沿用其 227 項測試結果；本輪重新安裝及 production build 成功。政策 15 項、POM／YAML／雙版本必要步驟與版本範圍自檢成功。
+- 使用者最終授權上限為 PR：不合併、不部署、不建立 Tag／Release。3.0.3 僅為 PR 中候選版號，正式站仍為 3.0.2。本候選的真實平台檢查結果以該 PR 的最新 CI 為準。
