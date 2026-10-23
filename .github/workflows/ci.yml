@@ -56,7 +56,11 @@ jobs:
           mapper="$RUNNER_TEMP/released-CharacterMapper.xml"
           git show "${MIGRATION_BASE_TAG}:backend/src/main/resources/mapper/CharacterMapper.xml" > "$mapper"
           echo "MIGRATION_BASE_CHARACTER_MAPPER=$mapper" >> "$GITHUB_ENV"
-      - name: Run backend verification and PostgreSQL integration tests
+      # Production remains on PostgreSQL 17; both versions must pass this required job.
+      - name: Verify backend against PostgreSQL 17
+        working-directory: backend
+        run: ./mvnw --batch-mode --no-transfer-progress -Dembedded-postgres-binaries.version=17.10.0 clean verify
+      - name: Verify backend against the default PostgreSQL version
         working-directory: backend
         run: ./mvnw --batch-mode --no-transfer-progress clean verify
       - name: Check production artifact isolation
