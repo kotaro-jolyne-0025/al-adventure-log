@@ -43,7 +43,7 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Find latest published migration boundary
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install pinned OpenSpec CLI
