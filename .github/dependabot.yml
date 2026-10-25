@@ -8,6 +8,10 @@ updates:
       time: "10:00"
       timezone: Asia/Taipei
     open-pull-requests-limit: 3
+    # Remove when Angular compiler/build support TypeScript 7; tracked in #56.
+    ignore:
+      - dependency-name: typescript
+        versions: ["7.x"]
     groups:
       npm-security:
         applies-to: security-updates
