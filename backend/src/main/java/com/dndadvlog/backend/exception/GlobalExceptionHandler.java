@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -63,6 +64,14 @@ public class GlobalExceptionHandler {
         // Parser diagnostics can include request values such as OAuth registration proofs.
         log.warn("Unreadable request body on [{}]", request.getRequestURI());
         return buildResponse(HttpStatus.BAD_REQUEST, "請求內容包含無效或不允許的欄位", request.getRequestURI());
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnsupportedMethod(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .headers(ex.getHeaders())
+                .body(buildBody(HttpStatus.METHOD_NOT_ALLOWED, "此 HTTP 方法不受支援", request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)

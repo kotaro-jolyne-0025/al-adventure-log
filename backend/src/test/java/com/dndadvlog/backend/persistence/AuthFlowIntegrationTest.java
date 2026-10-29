@@ -185,6 +185,17 @@ class AuthFlowIntegrationTest {
         if (postgres != null) postgres.close();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"login", "renew"})
+    void unsupportedAuthMethodIsNotCached(String path) throws Exception {
+        mvc.perform(get("/api/auth/" + path))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().string("Allow", "POST"))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().doesNotExist("Set-Cookie"))
+                .andExpect(jsonPath("$.status").value(405));
+    }
+
     private ResultActions postJson(String path, Map<String, ?> body) throws Exception {
         return mvc.perform(post("/api/auth/" + path).contentType("application/json").content(JSON.writeValueAsBytes(body)));
     }
