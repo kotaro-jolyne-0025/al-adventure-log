@@ -9,6 +9,7 @@ import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
@@ -17,6 +18,31 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(OutputCaptureExtension.class)
 class GlobalExceptionHandlerTest {
+    @Test
+    void missingResourceReturnsNotFoundWithoutExposingDiagnostics(CapturedOutput output) {
+        String sensitive = "synthetic-private-resource-value";
+        var request = new MockHttpServletRequest("GET", "/api/auth");
+        request.setQueryString("token=" + sensitive);
+        request.setContent(sensitive.getBytes(StandardCharsets.UTF_8));
+        var error = new NoResourceFoundException(HttpMethod.GET, "/api/auth", "private-resource-" + sensitive);
+
+        var response = new GlobalExceptionHandler().handleMissingResource(error, request);
+
+        assertEquals(404, response.getStatusCode().value());
+        var body = response.getBody();
+        assertNotNull(body);
+        assertEquals(Set.of("timestamp", "status", "error", "message", "path"), body.keySet());
+        assertNotNull(body.get("timestamp"));
+        assertEquals(404, body.get("status"));
+        assertEquals("Not Found", body.get("error"));
+        assertEquals("找不到請求的資源", body.get("message"));
+        assertEquals("/api/auth", body.get("path"));
+        assertFalse(body.toString().contains(sensitive));
+        assertFalse(output.getAll().contains(sensitive));
+        assertFalse(output.getAll().contains("ERROR"));
+        assertFalse(output.getAll().contains("NoResourceFoundException"));
+    }
+
     @Test
     void unsupportedMethodPreservesAllowAndOmitsSensitiveValues(CapturedOutput output) {
         String sensitive = "synthetic-sensitive-request-value";

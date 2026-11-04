@@ -32,8 +32,11 @@ import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.ObjectTypeHandler;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.transaction.SpringManagedTransactionFactory;
 import org.springframework.context.annotation.Bean;
@@ -56,6 +59,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import javax.sql.DataSource;
 import java.time.Instant;
@@ -94,7 +99,13 @@ class AuthFlowIntegrationTest {
     @EnableWebMvc
     @EnableTransactionManagement
     @Import({SecurityConfig.class, OAuthRequestBodyAdvice.class})
-    static class TestConfig {
+    static class TestConfig implements WebMvcConfigurer {
+        @Override
+        public void addResourceHandlers(ResourceHandlerRegistry registry) {
+            // Match Spring Boot's resource fallback so missing URLs reach the real resource handler.
+            registry.addResourceHandler("/**").addResourceLocations("classpath:/static/");
+        }
+
         @Bean DataSourceTransactionManager transactionManager() { return new DataSourceTransactionManager(source); }
         @Bean JwtTokenProvider tokenProvider() { return new JwtTokenProvider(SECRET, 3600000); }
         @Bean JwtAuthenticationFilter jwtFilter(JwtTokenProvider tokens) { return new JwtAuthenticationFilter(tokens, users); }
@@ -194,6 +205,33 @@ class AuthFlowIntegrationTest {
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(header().doesNotExist("Set-Cookie"))
                 .andExpect(jsonPath("$.status").value(405));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/auth", "/api/auth/not-a-route"})
+    @ExtendWith(OutputCaptureExtension.class)
+    void missingAuthResourceIsNotCached(String path, CapturedOutput output) throws Exception {
+        String sensitive = "synthetic-missing-resource-secret";
+        mvc.perform(get(path).param("token", sensitive).content(sensitive))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                .andExpect(header().doesNotExist("Set-Cookie"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("找不到請求的資源"))
+                .andExpect(jsonPath("$.path").value(path))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(sensitive))));
+        verifyNoInteractions(users);
+        assertFalse(output.getAll().contains(sensitive));
+        assertFalse(output.getAll().contains("ERROR"));
+        assertFalse(output.getAll().contains("NoResourceFoundException"));
+    }
+
+    @Test
+    void missingResourceDoesNotBypassAuthenticationOrCsrf() throws Exception {
+        mvc.perform(get("/api/not-a-route")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/not-a-route").header("X-Test-No-Csrf", "true"))
+                .andExpect(status().isForbidden());
     }
 
     private ResultActions postJson(String path, Map<String, ?> body) throws Exception {
