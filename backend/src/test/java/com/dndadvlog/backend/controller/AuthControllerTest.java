@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class AuthControllerTest {
@@ -44,6 +45,19 @@ class AuthControllerTest {
 
         verify(limits).check(eq("login"), eq("player@example.invalid"), any());
         verify(auth, never()).login(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"login", "renew"})
+    void rejectsGetWithoutInvokingAuthentication(String path) throws Exception {
+        mvc.perform(get("/api/auth/" + path))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().string("Allow", "POST"))
+                .andExpect(header().doesNotExist("Set-Cookie"))
+                .andExpect(jsonPath("$.status").value(405))
+                .andExpect(jsonPath("$.path").value("/api/auth/" + path));
+
+        verifyNoInteractions(auth, limits);
     }
 
     @Test
