@@ -442,6 +442,8 @@ Google ID token 依 Google 官方 `GoogleIdTokenVerifier`／`GooglePublicKeysMan
 
 ### 3.6 統一錯誤回應格式
 
+請求通過前置安全檢查後，若因靜態資源 fallback 找不到資源而產生 `NoResourceFoundException`，回傳 **404 Not Found** 與下列 JSON 格式，訊息固定為「找不到請求的資源」。不回傳例外內的資源定位細節、查詢參數或請求本體，不設定登入 Cookie，也不記錄此預期拒絕的應用程式 ERROR 堆疊；認證路徑保留 no-store，前置安全檢查的 401／403／409 與真正未預期錯誤的 500 維持既有行為。
+
 請求通過前置安全檢查並抵達 API 路由判定後，若路徑存在但 HTTP 方法不支援，回傳 **405 Method Not Allowed**，沿用下列 JSON 欄位並以 `Allow` header 保留路由提供的支援方法。訊息固定為「此 HTTP 方法不受支援」，`path` 不含查詢參數，不執行端點業務或設定登入 Cookie。此類預期拒絕不寫應用程式 ERROR 堆疊，以 HTTP request log 觀測；不記錄請求本體、查詢參數或憑證。前置安全檢查的 401／403／409 維持既有行為；真正未預期例外仍回 500 並保留 ERROR 記錄。
 
 ```json

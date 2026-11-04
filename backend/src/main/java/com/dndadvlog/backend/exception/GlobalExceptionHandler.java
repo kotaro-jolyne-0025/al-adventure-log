@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +73,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
                 .headers(ex.getHeaders())
                 .body(buildBody(HttpStatus.METHOD_NOT_ALLOWED, "此 HTTP 方法不受支援", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingResource(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .headers(ex.getHeaders())
+                .body(buildBody(HttpStatus.NOT_FOUND, "找不到請求的資源", request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)
