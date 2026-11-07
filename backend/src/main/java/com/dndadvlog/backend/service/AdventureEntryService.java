@@ -306,6 +306,7 @@ public class AdventureEntryService {
         if (snapshot == null) {
             InventoryItem existingWarehouse = inventoryItemMapper.findById(itemId);
             if (isLegacyWarehouseForEntry(existingWarehouse, entry)) {
+                InventoryItem.validateTypeUnchanged(existingWarehouse.getItemType(), parseItemType(request.getItemType()));
                 snapshot = new AdventureGainedItem();
                 snapshot.setId(itemId);
                 snapshot.setAdventureEntryId(entryId);
@@ -345,6 +346,7 @@ public class AdventureEntryService {
             }
         }
 
+        InventoryItem.validateTypeUnchanged(parseItemType(snapshot.getItemType()), parseItemType(request.getItemType()));
         int oldQty = snapshot.getQuantity() != null ? snapshot.getQuantity().intValue() : 1;
         int newQty = request.getQuantity() != null ? request.getQuantity().intValue() : 1;
         int delta = newQty - oldQty;
@@ -385,6 +387,7 @@ public class AdventureEntryService {
         }
 
         if (warehouseItem != null) {
+            InventoryItem.validateTypeUnchanged(warehouseItem.getItemType(), parseItemType(request.getItemType()));
             // 即時同步名稱、稀有度、同調、備註
             warehouseItem.setItemName(request.getItemName());
             warehouseItem.setItemType(parseItemType(request.getItemType()));

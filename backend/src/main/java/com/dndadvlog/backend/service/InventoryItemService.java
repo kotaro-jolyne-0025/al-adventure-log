@@ -5,6 +5,7 @@ import com.dndadvlog.backend.dto.InventoryItemResponse;
 import com.dndadvlog.backend.entity.InventoryItem;
 import com.dndadvlog.backend.entity.AdventureEntry;
 import com.dndadvlog.backend.entity.AdventureGainedItem;
+import com.dndadvlog.backend.exception.BusinessException;
 import com.dndadvlog.backend.exception.ResourceNotFoundException;
 import com.dndadvlog.backend.mapper.InventoryItemMapper;
 import com.dndadvlog.backend.mapper.AdventureEntryMapper;
@@ -43,6 +44,7 @@ public class InventoryItemService {
         InventoryItem item = new InventoryItem();
         item.setId(UUID.randomUUID());
         item.setCharacterId(characterId);
+        validatePermanentQuantity(request, null);
         validateAndSetRelations(request, item, userId);
         mapRequestToItem(request, item);
         inventoryItemMapper.insert(item);
@@ -57,6 +59,8 @@ public class InventoryItemService {
         if (!characterId.equals(item.getCharacterId())) {
             throw new ResourceNotFoundException("找不到物品 ID：" + itemId);
         }
+        InventoryItem.validateTypeUnchanged(item.getItemType(), request.getItemType());
+        validatePermanentQuantity(request, item);
         validateAndSetRelations(request, item, userId);
         mapRequestToItem(request, item);
         if (Boolean.TRUE.equals(item.getNeedsDetails())
@@ -95,9 +99,19 @@ public class InventoryItemService {
         item.setItemCategory(request.getItemCategory());
         item.setIsSoulCoin(Boolean.TRUE.equals(request.getIsSoulCoin()));
         item.setRequiresAttunement(Boolean.TRUE.equals(request.getRequiresAttunement()));
-        item.setQuantity(request.getQuantity() != null ? request.getQuantity() : Integer.valueOf(1));
+        item.setQuantity(request.getQuantity() != null ? request.getQuantity()
+                : item.getQuantity() != null ? item.getQuantity() : Integer.valueOf(1));
         item.setSource(request.getSource());
         item.setNotes(request.getNotes());
+    }
+
+    private static void validatePermanentQuantity(InventoryItemRequest request, InventoryItem existing) {
+        if (request.getItemType() != InventoryItem.ItemType.PERMANENT) return;
+        int currentQuantity = existing != null && existing.getQuantity() != null ? existing.getQuantity() : 1;
+        int requestedQuantity = request.getQuantity() != null ? request.getQuantity() : currentQuantity;
+        if (requestedQuantity != currentQuantity) {
+            throw new BusinessException("永久性魔法物品必須每件分別填寫明細，消耗品數量必須大於零");
+        }
     }
 
     private void refreshCurrentMagicItems(UUID characterId) {

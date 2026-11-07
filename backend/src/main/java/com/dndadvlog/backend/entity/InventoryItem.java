@@ -42,4 +42,10 @@ public class InventoryItem {
             throw new com.dndadvlog.backend.exception.BusinessException("靈魂幣只能歸類為消耗品");
         }
     }
+
+    public static void validateTypeUnchanged(ItemType current, ItemType requested) {
+        if (current != requested) {
+            throw new com.dndadvlog.backend.exception.BusinessException("無效的物品類型");
+        }
+    }
 }

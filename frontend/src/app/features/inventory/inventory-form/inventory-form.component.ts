@@ -86,11 +86,13 @@ export class InventoryFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.form.get('itemType')!.valueChanges.subscribe(type => {
+      this.updateQuantityValidators(type);
       if (type === 'PERMANENT' && this.form.get('isSoulCoin')!.value) {
         this.form.patchValue({ isSoulCoin: false });
         this.snackBar.open('靈魂幣只能標記於消耗品，已取消勾選', '關閉', { duration: 4000 });
       }
     });
+    this.updateQuantityValidators(this.form.get('itemType')!.value);
     this.characterId =
       this.route.parent?.snapshot.paramMap.get('id') ??
       this.route.snapshot.paramMap.get('characterId') ?? '';
@@ -107,6 +109,14 @@ export class InventoryFormComponent implements OnInit {
       this.itemId = itemIdParam;
       this.loadItem(this.itemId);
     }
+  }
+
+  private updateQuantityValidators(type: ItemType): void {
+    const quantity = this.form.get('quantity')!;
+    quantity.setValidators(type === 'CONSUMABLE'
+      ? [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]
+      : []);
+    quantity.updateValueAndValidity({ emitEvent: false });
   }
 
   protected retryLoad(): void {
@@ -179,7 +189,7 @@ export class InventoryFormComponent implements OnInit {
       itemCategory: (raw.itemCategory || null) as ItemCategory | null,
       requiresAttunement: isPermanent ? Boolean(raw.requiresAttunement) : false,
       isSoulCoin: !isPermanent && Boolean(raw.isSoulCoin),
-      quantity: raw.quantity ? Number(raw.quantity) : 1,
+      quantity: isPermanent && !this.isEditMode() ? 1 : raw.quantity ? Number(raw.quantity) : 1,
       source: raw.source?.trim() || null,
       notes: raw.notes?.trim() || null,
     };

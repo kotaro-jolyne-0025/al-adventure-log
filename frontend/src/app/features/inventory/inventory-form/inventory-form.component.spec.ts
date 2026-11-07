@@ -7,6 +7,25 @@ import { InventoryItem } from '../../../core/models/inventory.model';
 import { InventoryFormComponent } from './inventory-form.component';
 
 describe('Inventory edit initialization', () => {
+  it('keeps item type fixed during edit and hides permanent quantity', () => {
+    const item: InventoryItem = { id: 'i', characterId: 'c', itemName: 'Ring', itemType: 'PERMANENT', quantity: 1 };
+    TestBed.configureTestingModule({ providers: [
+      { provide: ActivatedRoute, useValue: {
+        parent: { snapshot: { paramMap: convertToParamMap({ id: 'c' }) } },
+        snapshot: { paramMap: convertToParamMap({ itemId: 'i' }), queryParamMap: convertToParamMap({}) },
+      } },
+      { provide: Router, useValue: { navigate: vi.fn() } },
+      { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      { provide: InventoryService, useValue: { getAllByCharacter: () => of([item]) } },
+    ] });
+    const fixture = TestBed.createComponent(InventoryFormComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('mat-select[formControlName="itemType"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[readonly]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('input[formControlName="quantity"]')).toBeNull();
+  });
+
   it.each([409, 428])('preserves the item input and original timestamp after status %i', status => {
     const item: InventoryItem = { id: 'i', characterId: 'c', itemName: 'Sword', itemType: 'PERMANENT',
       quantity: 1, updatedAt: '2026-10-14T01:02:03.123456' };

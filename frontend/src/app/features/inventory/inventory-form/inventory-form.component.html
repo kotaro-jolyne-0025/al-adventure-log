@@ -26,11 +26,15 @@
       <div class="field-row">
         <mat-form-field appearance="outline" class="flex-1">
           <mat-label>物品類型 *</mat-label>
-          <mat-select formControlName="itemType">
-            @for (t of itemTypes; track t) {
-              <mat-option [value]="t">{{ typeLabels[t] }}</mat-option>
-            }
-          </mat-select>
+          @if (isEditMode()) {
+            <input matInput [value]="form.get('itemType')?.value === 'PERMANENT' ? typeLabels['PERMANENT'] : typeLabels['CONSUMABLE']" readonly />
+          } @else {
+            <mat-select formControlName="itemType">
+              @for (t of itemTypes; track t) {
+                <mat-option [value]="t">{{ typeLabels[t] }}</mat-option>
+              }
+            </mat-select>
+          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="flex-1">
@@ -71,10 +75,12 @@
       }
 
       <div class="field-row">
-        <mat-form-field appearance="outline" class="flex-1">
-          <mat-label>數量</mat-label>
-          <input matInput type="number" formControlName="quantity" min="1" />
-        </mat-form-field>
+        @if (form.get('itemType')?.value === 'CONSUMABLE') {
+          <mat-form-field appearance="outline" class="flex-1">
+            <mat-label>數量</mat-label>
+            <input matInput type="number" formControlName="quantity" min="1" />
+          </mat-form-field>
+        }
 
         <mat-form-field appearance="outline" class="flex-2">
           <mat-label>取得來源（選填）</mat-label>

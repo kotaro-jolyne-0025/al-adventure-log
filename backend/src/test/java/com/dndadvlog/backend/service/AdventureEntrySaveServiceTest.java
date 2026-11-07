@@ -145,6 +145,7 @@ class AdventureEntrySaveServiceTest {
     private InventoryItem legacyItem() {
         InventoryItem item = new InventoryItem();
         item.setId(legacyId); item.setCharacterId(characterId); item.setAdventureEntryId(entryId);
+        item.setItemType(InventoryItem.ItemType.PERMANENT);
         item.setQuantity(1);
         return item;
     }
