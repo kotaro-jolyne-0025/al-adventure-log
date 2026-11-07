@@ -7,6 +7,7 @@ import com.dndadvlog.backend.entity.AdventureEntry;
 import com.dndadvlog.backend.entity.AdventureGainedItem;
 import com.dndadvlog.backend.entity.InventoryItem;
 import com.dndadvlog.backend.exception.ResourceNotFoundException;
+import com.dndadvlog.backend.exception.BusinessException;
 import com.dndadvlog.backend.mapper.AdventureEntryMapper;
 import com.dndadvlog.backend.mapper.AdventureGainedItemMapper;
 import com.dndadvlog.backend.mapper.InventoryItemMapper;
@@ -82,6 +83,8 @@ class InventoryItemServiceTest {
     @Test
     void preservesProvenanceDuringOrdinaryInventoryEdit() {
         InventoryItem item = new InventoryItem();
+        item.setQuantity(1);
+        item.setItemType(InventoryItem.ItemType.PERMANENT);
         item.setId(UUID.randomUUID());
         item.setCharacterId(characterId);
         item.setAdventureEntryId(entryId);
@@ -93,6 +96,58 @@ class InventoryItemServiceTest {
         assertEquals(entryId, item.getAdventureEntryId());
         assertEquals(snapshotId, item.getAdventureGainedItemId());
         verify(inventoryItemMapper).update(item);
+    }
+
+    @Test
+    void rejectsStackedPermanentItemOnCreate() {
+        InventoryItemRequest request = request();
+        request.setQuantity(2);
+
+        assertThrows(BusinessException.class, () -> service.createItem(characterId, request, userId));
+        verify(inventoryItemMapper, never()).insert(any());
+    }
+
+    @Test
+    void rejectsPermanentQuantityEditWithoutWriting() {
+        InventoryItem item = inventoryItem(null, false);
+        item.setItemType(InventoryItem.ItemType.PERMANENT);
+        item.setQuantity(1);
+        when(inventoryItemMapper.findById(item.getId())).thenReturn(item);
+        InventoryItemRequest request = request();
+        request.setQuantity(2);
+
+        assertThrows(BusinessException.class, () -> service.updateItem(characterId, item.getId(), request, userId));
+        verify(inventoryItemMapper, never()).update(any());
+    }
+
+    @Test
+    void preservesLegacyPermanentQuantityWhenEditingOtherFields() {
+        InventoryItem item = inventoryItem(null, false);
+        item.setItemType(InventoryItem.ItemType.PERMANENT);
+        item.setQuantity(3);
+        when(inventoryItemMapper.findById(item.getId())).thenReturn(item);
+        InventoryItemRequest request = request();
+        request.setQuantity(null);
+        request.setItemName("Renamed");
+
+        service.updateItem(characterId, item.getId(), request, userId);
+
+        assertEquals(3, item.getQuantity());
+        assertEquals("Renamed", item.getItemName());
+        verify(inventoryItemMapper).update(item);
+    }
+
+    @Test
+    void rejectsTypeChangesWithoutWriting() {
+        InventoryItem item = inventoryItem(null, false);
+        item.setItemType(InventoryItem.ItemType.CONSUMABLE);
+        item.setQuantity(4);
+        when(inventoryItemMapper.findById(item.getId())).thenReturn(item);
+        InventoryItemRequest request = request();
+        request.setQuantity(1);
+
+        assertThrows(BusinessException.class, () -> service.updateItem(characterId, item.getId(), request, userId));
+        verify(inventoryItemMapper, never()).update(any());
     }
 
     @Test

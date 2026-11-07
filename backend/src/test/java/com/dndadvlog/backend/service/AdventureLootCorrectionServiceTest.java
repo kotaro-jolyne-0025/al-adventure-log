@@ -23,8 +23,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,7 +62,7 @@ class AdventureLootCorrectionServiceTest {
         snapshot.setAcquisitionSource(AcquisitionSource.ADVENTURE);
         snapshot.setNeedsDetails(false);
         when(entryMapper.findByIdAndUserId(entryId, userId)).thenReturn(entry);
-        when(gainedItemMapper.findById(snapshot.getId())).thenReturn(snapshot);
+        lenient().when(gainedItemMapper.findById(snapshot.getId())).thenReturn(snapshot);
     }
 
     @Test
@@ -68,6 +70,46 @@ class AdventureLootCorrectionServiceTest {
         service.updateGainedItem(entryId, snapshot.getId(), request(3), userId);
 
         verify(inventoryItemMapper, never()).insert(any());
+    }
+
+    @Test
+    void rejectsAdventureItemTypeChangesBeforeWriting() {
+        AdventureGainedItemRequest changeToPermanent = request(1);
+        changeToPermanent.setItemType("PERMANENT");
+        assertThrows(com.dndadvlog.backend.exception.BusinessException.class,
+                () -> service.updateGainedItem(entryId, snapshot.getId(), changeToPermanent, userId));
+
+        snapshot.setItemType("PERMANENT");
+        AdventureGainedItemRequest changeToConsumable = request(1);
+        assertThrows(com.dndadvlog.backend.exception.BusinessException.class,
+                () -> service.updateGainedItem(entryId, snapshot.getId(), changeToConsumable, userId));
+
+        verify(gainedItemMapper, never()).update(any());
+        verify(inventoryItemMapper, never()).update(any());
+    }
+
+    @Test
+    void rejectsChangingTypeWhileCreatingLegacySnapshot() {
+        snapshot.setItemType("CONSUMABLE");
+        UUID legacyId = snapshot.getId();
+        org.mockito.Mockito.doReturn(null).when(gainedItemMapper).findById(legacyId);
+        InventoryItem legacy = new InventoryItem();
+        legacy.setId(legacyId);
+        legacy.setCharacterId(characterId);
+        legacy.setAdventureEntryId(entryId);
+        legacy.setItemType(InventoryItem.ItemType.CONSUMABLE);
+        legacy.setQuantity(4);
+        legacy.setSource("Adventure");
+        entry.setAdventureName("Adventure");
+        when(inventoryItemMapper.findById(legacyId)).thenReturn(legacy);
+        AdventureGainedItemRequest change = request(1);
+        change.setItemType("PERMANENT");
+
+        assertThrows(com.dndadvlog.backend.exception.BusinessException.class,
+                () -> service.updateGainedItem(entryId, legacyId, change, userId));
+
+        verify(gainedItemMapper, never()).insert(any());
+        verify(inventoryItemMapper, never()).update(any());
     }
 
     @Test
@@ -85,6 +127,7 @@ class AdventureLootCorrectionServiceTest {
         snapshot.setQuantity(5);
         InventoryItem warehouse = new InventoryItem();
         warehouse.setId(UUID.randomUUID());
+        warehouse.setItemType(InventoryItem.ItemType.CONSUMABLE);
         warehouse.setQuantity(2);
         when(inventoryItemMapper.findByAdventureGainedItemId(snapshot.getId())).thenReturn(warehouse);
 
