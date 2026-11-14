@@ -1,18 +1,22 @@
 import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
+import type { Signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { LucideArrowLeft, LucideSave } from '@lucide/angular';
+import { LucideArrowLeft, LucideChevronDown, LucideSave } from '@lucide/angular';
 import { InventoryService } from '../../../core/services/inventory.service';
+import { AdventureService } from '../../../core/services/adventure.service';
 import {
   ItemType,
   ItemRarity,
@@ -37,20 +41,26 @@ import {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatAutocompleteModule,
     MatCheckboxModule,
     MatButtonModule,
     MatProgressSpinner,
     LucideArrowLeft,
+    LucideChevronDown,
     LucideSave,
   ],
   templateUrl: './inventory-form.component.html',
   styleUrl: './inventory-form.component.scss',
 })
 export class InventoryFormComponent implements OnInit {
+  protected readonly characterName = inject(ROUTER_OUTLET_DATA, { optional: true }) as Signal<string | undefined> | null;
+
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly inventoryService = inject(InventoryService);
+  private readonly adventureService = inject(AdventureService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
 
   protected isEditMode = signal(false);
@@ -63,6 +73,9 @@ export class InventoryFormComponent implements OnInit {
   private itemId?: string;
   private expectedUpdatedAt?: string;
   protected writeConflict = signal(false);
+  protected sourceOptions = signal<string[] | null>(null);
+  protected sourceLoading = signal(false);
+  protected sourceLoadFailed = signal(false);
 
   readonly itemTypes: ItemType[] = ['PERMANENT', 'CONSUMABLE'];
   readonly rarities: (ItemRarity | '')[] = ['', 'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'];
@@ -109,6 +122,37 @@ export class InventoryFormComponent implements OnInit {
       this.itemId = itemIdParam;
       this.loadItem(this.itemId);
     }
+  }
+
+  protected toggleSourcePicker(input: HTMLInputElement, trigger: MatAutocompleteTrigger): void {
+    if (trigger.panelOpen) {
+      trigger.closePanel();
+    } else {
+      input.focus();
+      trigger.openPanel();
+    }
+  }
+
+  protected loadSourceAdventures(): void {
+    if (this.sourceLoading() || this.sourceOptions() !== null) return;
+    this.sourceLoading.set(true);
+    this.sourceLoadFailed.set(false);
+    this.adventureService.getAllByCharacter(this.characterId, true)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: entries => {
+          const names = [...entries]
+            .sort((a, b) => (b.playDate ?? '').localeCompare(a.playDate ?? ''))
+            .map(entry => entry.adventureName?.trim() ?? '')
+            .filter(Boolean);
+          this.sourceOptions.set([...new Set(names)]);
+          this.sourceLoading.set(false);
+        },
+        error: () => {
+          this.sourceLoading.set(false);
+          this.sourceLoadFailed.set(true);
+        },
+      });
   }
 
   private updateQuantityValidators(type: ItemType): void {

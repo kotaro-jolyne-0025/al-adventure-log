@@ -32,6 +32,7 @@ class InventoryItemServiceTest {
     @Mock AdventureEntryMapper entryMapper;
     @Mock AdventureGainedItemMapper gainedItemMapper;
     @Mock CharacterMapper characterMapper;
+    @Mock InventoryMovementService movements;
     @InjectMocks InventoryItemService service;
 
     private final UUID userId = UUID.randomUUID();
@@ -159,8 +160,23 @@ class InventoryItemServiceTest {
     }
 
     @Test
+    void rejectsConvertingStackedConsumableToPermanent() {
+        InventoryItem item = inventoryItem(null, false);
+        item.setQuantity(4);
+        when(inventoryItemMapper.findById(item.getId())).thenReturn(item);
+        InventoryItemRequest request = request();
+        for (int quantity : List.of(1, 4)) {
+            request.setQuantity(quantity);
+            assertThrows(BusinessException.class, () -> service.updateItem(characterId, item.getId(), request, userId));
+        }
+        verify(inventoryItemMapper, never()).update(any());
+    }
+
+    @Test
     void refreshesCharacterFromPermanentQuantitySumAfterEveryMutation() {
         InventoryItem item = new InventoryItem();
+        item.setQuantity(1);
+        item.setItemType(InventoryItem.ItemType.CONSUMABLE);
         item.setId(UUID.randomUUID());
         item.setCharacterId(characterId);
         item.setItemType(InventoryItem.ItemType.CONSUMABLE);
@@ -224,6 +240,8 @@ class InventoryItemServiceTest {
 
     private InventoryItem inventoryItem(AcquisitionSource source, boolean needsDetails) {
         InventoryItem item = new InventoryItem();
+        item.setQuantity(1);
+        item.setItemType(InventoryItem.ItemType.CONSUMABLE);
         item.setId(UUID.randomUUID());
         item.setCharacterId(characterId);
         item.setAcquisitionSource(source);

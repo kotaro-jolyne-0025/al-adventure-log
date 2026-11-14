@@ -1,10 +1,10 @@
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
-import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, OnInit, Signal, signal } from '@angular/core';
 import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
 import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
 import { LocalStore } from '../../../core/services/local-store.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { AdventureService } from '../../../core/services/adventure.service';
+import { combineLatest, of } from 'rxjs';
+import { InventoryHistoryComponent } from '../../inventory/inventory-history/inventory-history.component';
 import { AdventureEntry, AdventureGainedItem, StoryAward } from '../../../core/models/adventure.model';
 import { InventoryItem, ITEM_CATEGORY_LABELS, ITEM_RARITY_LABELS, soulCoinQuantity } from '../../../core/models/inventory.model';
 import { formatClassLevels } from '../../../core/models/dnd-classes';
@@ -29,7 +31,6 @@ import {
   LucideInfinity,
   LucideStar,
   LucideArrowLeft,
-  LucideCalendar,
   LucidePencil,
   LucideTrash2,
   LucideInfo,
@@ -44,6 +45,7 @@ import {
   imports: [
     CacheNoticeComponent,
     ReadErrorComponent,
+    InventoryHistoryComponent,
     CommonModule,
     DatePipe,
     DecimalPipe,
@@ -58,7 +60,6 @@ import {
     LucideInfinity,
     LucideStar,
     LucideArrowLeft,
-    LucideCalendar,
     LucidePencil,
     LucideTrash2,
     LucideInfo,
@@ -70,6 +71,8 @@ import {
   styleUrl: './adventure-detail.component.scss',
 })
 export class AdventureDetailComponent implements OnInit {
+  private readonly outletData = inject(ROUTER_OUTLET_DATA, { optional: true }) as Signal<string | undefined> | null;
+  protected readonly characterName = computed(() => this.outletData?.());
   private readonly local = inject(LocalStore);
   private readonly reads = inject(LocalReadCache);
   private readonly destroy = inject(DestroyRef);
@@ -92,22 +95,34 @@ export class AdventureDetailComponent implements OnInit {
   protected isRefreshing = signal(false);
   protected loadError = signal<string | null>(null);
   protected retryable = signal(true);
+  private loadGeneration = 0;
 
   readonly rarityLabels: Record<string, string> = ITEM_RARITY_LABELS;
   readonly categoryLabels = ITEM_CATEGORY_LABELS;
 
   protected characterId!: string;
-  private entryId!: string;
+  protected entryId!: string;
 
   ngOnInit(): void {
-    this.characterId =
-      this.route.parent?.snapshot.paramMap.get('id') ??
-      this.route.snapshot.paramMap.get('characterId') ?? '';
-    this.entryId = this.route.snapshot.paramMap.get('entryId') ?? '';
-    this.loadEntry();
+    this.local.sessionChanged.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => {
+      ++this.loadGeneration; this.entry.set(null); this.readSource.set(null);
+    });
+    combineLatest([
+      this.route.parent?.paramMap ?? of(this.route.parent?.snapshot.paramMap),
+      this.route.paramMap ?? of(this.route.snapshot.paramMap),
+    ]).pipe(takeUntilDestroyed(this.destroy)).subscribe(([parent, params]) => {
+      const characterId = parent?.get('id') ?? params.get('characterId') ?? '';
+      const entryId = params.get('entryId') ?? '';
+      if (characterId !== this.characterId || entryId !== this.entryId) {
+        this.entry.set(null);
+        this.characterId = characterId; this.entryId = entryId;
+        this.loadEntry();
+      }
+    });
   }
 
   protected loadEntry(): void {
+    const generation = ++this.loadGeneration;
     this.readSource.set(null);
     this.loadError.set(null);
     this.isLoading.set(!this.entry());
@@ -115,6 +130,7 @@ export class AdventureDetailComponent implements OnInit {
     this.reads.read(this.characterId, `adventure:${this.entryId}`, () => this.adventureService.getDetails(this.characterId, this.entryId))
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
+        if (generation !== this.loadGeneration) return;
         this.readSource.set(result.source);
         if (result.source === 'copy' && this.entry()) return;
         this.fetchedAt.set(result.fetchedAt);
@@ -133,6 +149,7 @@ export class AdventureDetailComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: (error) => {
+        if (generation !== this.loadGeneration) return;
         this.readSource.set(null);
         this.entry.set(null); this.magicItems.set([]); this.consumableItems.set([]); this.storyAwards.set([]);
         this.isLoading.set(false);
@@ -140,7 +157,7 @@ export class AdventureDetailComponent implements OnInit {
         this.retryable.set(![401, 403, 404].includes(error.status));
         this.loadError.set(readErrorMessage(error, '冒險紀錄'));
       },
-      complete: () => this.isRefreshing.set(false),
+      complete: () => { if (generation === this.loadGeneration) this.isRefreshing.set(false); },
     });
   }
 
@@ -221,9 +238,9 @@ export class AdventureDetailComponent implements OnInit {
   protected onDelete(): void {
     if (this.readOnly()) return;
     const data: ConfirmDialogData = {
-      title: '刪除冒險記錄',
+      title: '刪除冒險紀錄',
       intent: 'destructive',
-      message: '確定要刪除此冒險記錄嗎？此操作無法復原。',
+      message: '確定要刪除此冒險紀錄嗎？此操作無法復原。',
       confirmText: '確認刪除',
       cancelText: '取消',
     };
@@ -233,7 +250,7 @@ export class AdventureDetailComponent implements OnInit {
         if (!confirmed || this.readOnly()) return;
         this.adventureService.delete(this.characterId, this.entryId, this.entry()?.updatedAt).subscribe({
           next: () => {
-            this.snackBar.open('冒險記錄已刪除', '關閉', { duration: 2500 });
+            this.snackBar.open('冒險紀錄已刪除', '關閉', { duration: 2500 });
             this.router.navigate(['/characters', this.characterId, 'adventures']);
           },
           error: error => {

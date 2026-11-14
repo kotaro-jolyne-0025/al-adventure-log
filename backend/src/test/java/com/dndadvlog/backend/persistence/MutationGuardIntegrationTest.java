@@ -76,7 +76,7 @@ class MutationGuardIntegrationTest {
         context.registerBean(CharacterService.class, () -> new CharacterService(characterMapper, entries, template.getMapper(InventoryItemMapper.class)));
         context.registerBean(AdventureEntryService.class, () -> new AdventureEntryService(entries, characterMapper,
                 template.getMapper(DowntimeActivityMapper.class), template.getMapper(AdventureGainedItemMapper.class),
-                template.getMapper(StoryAwardMapper.class), context.getBean(CharacterService.class), template.getMapper(InventoryItemMapper.class)));
+                template.getMapper(StoryAwardMapper.class), context.getBean(CharacterService.class), template.getMapper(InventoryItemMapper.class), LedgerPersistenceIntegrationTest.movementService(template)));
         context.refresh();
         guard = context.getBean(MutationGuard.class);
         adventures = context.getBean(AdventureEntryService.class);

@@ -31,6 +31,7 @@ class AdventureEntrySaveServiceTest {
     @Mock StoryAwardMapper storyAwardMapper;
     @Mock CharacterService characterService;
     @Mock InventoryItemMapper inventoryItemMapper;
+    @Mock InventoryMovementService movements;
     @InjectMocks AdventureEntryService service;
 
     private final UUID userId = UUID.randomUUID();
@@ -144,6 +145,7 @@ class AdventureEntrySaveServiceTest {
 
     private InventoryItem legacyItem() {
         InventoryItem item = new InventoryItem();
+        item.setItemType(InventoryItem.ItemType.PERMANENT);
         item.setId(legacyId); item.setCharacterId(characterId); item.setAdventureEntryId(entryId);
         item.setItemType(InventoryItem.ItemType.PERMANENT);
         item.setQuantity(1);

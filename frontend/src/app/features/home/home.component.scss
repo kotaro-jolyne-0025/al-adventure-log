@@ -14,7 +14,7 @@
 
 .landing-content {
   width: 100%;
-  max-width: 760px;
+  max-width: 1080px;
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
@@ -114,56 +114,51 @@
   }
 }
 
-/* ── 2x2 核心特色卡片網格 ── */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.25rem;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+.feature-showcase {
+  section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
+    align-items: center;
+    gap: clamp(20px, 4vw, 56px);
+    padding-block: 48px;
+    border-block-start: 1px solid var(--border-subtle);
   }
 
-  .feature-card {
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg, 14px);
-    padding: 1.5rem 1.25rem;
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
+  h2 {
+    font-size: clamp(1.4rem, 2.6vw, 2rem);
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  p, figcaption { color: var(--text-secondary); }
+  p { line-height: 1.65; }
+  figure { margin: 0; min-width: 0; }
+  figcaption { font-size: .875rem; padding-block-start: 6px; }
+
+  .examples { display: grid; gap: 14px; min-width: 0; }
+  .supporting { width: 90%; }
+  .phone { width: min(100%, 280px); }
+
+  .shot {
+    display: block;
     overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
 
-    &:hover {
-      transform: translateY(-2px);
-      border-color: var(--color-primary);
-      box-shadow: var(--shadow-md);
-      background-color: var(--bg-surface-hover, var(--bg-surface));
+    &:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 3px;
     }
 
-    .feature-card-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
+    img { display: block; width: 100%; height: auto; }
+  }
 
-    .feature-card-desc {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      margin: 0;
-      line-height: 1.55;
-    }
+  @media (max-width: 720px) {
+    section { grid-template-columns: 1fr; padding-block: 28px; gap: 12px; }
+    .supporting { width: 100%; }
   }
 }
-
 /* ── 頁尾聲明 ── */
 .landing-footer {
   text-align: center;

@@ -1,9 +1,15 @@
 <div class="page-container">
   <div class="page-header">
-    <button mat-icon-button (click)="onBack()" aria-label="返回角色列表">
+    <button mat-icon-button (click)="onBack()" [matTooltip]="isEditMode() ? '返回紀錄' : '返回角色列表'"
+      [attr.aria-label]="isEditMode() ? '返回紀錄' : '返回角色列表'">
       <svg lucideArrowLeft [size]="20"></svg>
     </button>
-    <h1 class="page-title">{{ isEditMode() ? '編輯角色' : '新增角色' }}</h1>
+    <div class="character-form-heading">
+      <h1 class="page-title">{{ isEditMode() ? '編輯角色' : '新增角色' }}</h1>
+      @if (characterName?.(); as name) {
+        <span class="form-character-name">{{ name }}</span>
+      }
+    </div>
   </div>
 
   <mat-card class="form-card">

@@ -72,6 +72,38 @@ export interface InventoryItemRequest extends WritePrecondition {
   notes?: string | null;
 }
 
+export interface InventoryMovement {
+  id: string;
+  characterId: string;
+  itemId: string;
+  itemName: string;
+  itemType: ItemType;
+  previousItemType?: ItemType | null;
+  operation: 'BASELINE' | 'ACQUIRE' | 'ADJUST' | 'CONSUME' | 'REMOVE' | 'REVERSE';
+  reason: string;
+  quantityBefore: number;
+  quantityDelta: number;
+  quantityAfter: number;
+  sourceEntryId?: string | null;
+  sourceName?: string | null;
+  sourceCode?: string | null;
+  usageEntryId?: string | null;
+  usageOriginalEntryId?: string | null;
+  usageName?: string | null;
+  usageCode?: string | null;
+  notes?: string | null;
+  reversalOf?: string | null;
+  reversed: boolean;
+  reversible: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryMovementPage {
+  items: InventoryMovement[];
+  nextCursor: string | null;
+}
+
 export function soulCoinQuantity(items: readonly { itemType: ItemType; isSoulCoin?: boolean; itemCategory?: ItemCategory | null; itemName?: string; quantity?: number }[]): number {
   return items.filter(item => item.itemType === 'CONSUMABLE' && item.isSoulCoin === true).reduce((total, item) => total + (item.quantity ?? 1), 0);
 }

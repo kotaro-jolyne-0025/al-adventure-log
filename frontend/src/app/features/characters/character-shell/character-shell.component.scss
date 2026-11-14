@@ -12,7 +12,7 @@
   --page-safe-left: 0px;
   --page-safe-right: 0px;
   width: 100%;
-  max-width: 1080px;
+  max-width: var(--character-page-max-width);
   min-width: 0;
   margin: 0 auto;
   padding: 20px max(16px, var(--safe-area-right)) max(80px, var(--safe-area-bottom)) max(16px, var(--safe-area-left));
@@ -350,71 +350,126 @@
   }
 }
 
-/* Tabs */
-.character-tabs {
-  margin-top: 8px;
-
-  ::ng-deep .mat-mdc-tab-header {
-    margin-bottom: 16px;
-  }
-
-  ::ng-deep .mat-mdc-tab-link {
-    @media (max-width: 600px) {
-      flex: 1;
-      padding: 0 12px;
-    }
-  }
-
-  .tab-icon {
-    margin-right: 6px;
-    font-size: 1.15rem;
-    width: 1.15rem;
-    height: 1.15rem;
-    vertical-align: middle;
-  }
-}
-
 .tab-content-area {
   margin-top: 8px;
 }
 
-.full-resource-summary {
-  display: block;
-}
-
-.compact-resource-summary {
+.hide-character-card :is(.desktop-character, .mobile-character),
+.mobile-character,
+.character-bottom-nav {
   display: none;
 }
 
 @media (max-width: 600px) {
-  :host:has(app-character-form, app-adventure-form, app-inventory-form) {
-    .full-resource-summary {
+  .desktop-character {
+    display: none;
+  }
+
+  .mobile-character {
+    display: block;
+    background: var(--bg-surface);
+    margin-bottom: 12px;
+    padding: 10px 12px 0;
+
+    details {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      cursor: pointer;
+      list-style: none;
+      color: var(--color-primary);
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+
+      &:active {
+        background: var(--bg-surface-hover);
+      }
+    }
+
+    @media (hover: hover) {
+      summary:hover {
+        background: var(--bg-surface-hover);
+      }
+    }
+
+    summary::-webkit-details-marker {
       display: none;
     }
 
-    .compact-resource-summary {
-      display: block;
-      border-top: 1px solid var(--border-subtle);
+    details[open] summary svg {
+      transform: rotate(180deg);
+    }
+  }
 
-      summary {
-        min-height: 44px;
-        padding: 10px 0;
-        box-sizing: border-box;
-        color: var(--text-secondary);
-        font-size: var(--type-label);
-        cursor: pointer;
+  .mobile-resource-content {
+    padding-bottom: 12px;
 
-        &:focus-visible {
-          outline: 3px solid var(--mat-sys-primary);
-          outline-offset: -3px;
-          border-radius: var(--radius-sm);
-        }
-      }
+    .char-hud-bar {
+      border-top: 0;
+      padding-top: 0;
+    }
+  }
 
-      .char-hud-bar {
-        border-top: 0;
-        padding-top: 0;
+  .shell-container:has(.character-bottom-nav) {
+    padding-bottom: var(--character-nav-height, calc(76px + var(--safe-area-bottom)));
+  }
+
+  .character-bottom-nav {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    position: fixed;
+    z-index: 30;
+    inset: auto 0 0;
+    padding: 4px max(12px, var(--safe-area-right)) calc(4px + var(--safe-area-bottom)) max(12px, var(--safe-area-left));
+    background: var(--bg-surface-elevated);
+    border-top: 1px solid var(--border-subtle);
+
+    a {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-height: 64px;
+      min-width: 0;
+      max-width: 240px;
+      text-align: center;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: var(--type-label);
+    }
+
+    .destination-icon {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      min-height: 30px;
+      border-radius: 999px;
+    }
+
+    a[aria-current] {
+      font-weight: 700;
+      color: var(--text-primary);
+
+      .destination-icon {
+        color: var(--mat-sys-on-secondary-container);
+        background: var(--mat-sys-secondary-container);
       }
     }
+  }
+
+  .mobile-character summary:focus-visible,
+  .character-bottom-nav a:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
   }
 }

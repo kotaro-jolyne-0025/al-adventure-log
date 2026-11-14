@@ -57,6 +57,7 @@ public class AdventureEntryService {
     private final StoryAwardMapper storyAwardMapper;
     private final CharacterService characterService;
     private final InventoryItemMapper inventoryItemMapper;
+    private final InventoryMovementService movements;
 
     public List<AdventureEntryResponse> getEntriesByCharacter(UUID characterId, UUID userId) {
         List<AdventureEntry> entries = entryMapper.findListSnapshot(characterId, userId);
@@ -232,6 +233,8 @@ public class AdventureEntryService {
     public void deleteEntry(UUID entryId, UUID userId) {
         AdventureEntry entry = findOwnedEntry(entryId, userId);
         Character character = characterService.findCharacter(entry.getCharacterId(), userId);
+        inventoryItemMapper.findByAdventureEntryId(entryId).forEach(item ->
+                movements.save(item, item.getQuantity(), 0, item.getItemType(), "REMOVE", "SOURCE_DELETE"));
         entryMapper.deleteById(entryId);
         applyContributionDifference(character, contributionOf(entry), AdventureContribution.EMPTY);
         characterMapper.update(character);
@@ -324,6 +327,8 @@ public class AdventureEntryService {
 
                 existingWarehouse.setAdventureGainedItemId(itemId);
                 existingWarehouse.setAdventureEntryId(entryId);
+                int before = existingWarehouse.getQuantity();
+                InventoryItem.ItemType previousType = existingWarehouse.getItemType();
                 existingWarehouse.setItemName(request.getItemName());
                 existingWarehouse.setItemType(parseItemType(request.getItemType()));
                 existingWarehouse.setRarity(parseRarity(request.getRarity()));
@@ -337,6 +342,7 @@ public class AdventureEntryService {
                     existingWarehouse.setQuantity(request.getQuantity());
                 }
                 inventoryItemMapper.update(existingWarehouse);
+                movements.save(existingWarehouse, before, existingWarehouse.getQuantity(), previousType, "ADJUST", "SOURCE_CORRECTION");
                 refreshCurrentMagicItems(entry.getCharacterId());
                 log.info("為歷史道具補建快照並同步倉庫: 道具={}, EntryID={}", request.getItemName(), entryId);
                 if (refreshSnapshot) refreshMagicSnapshot(entry);
@@ -388,6 +394,8 @@ public class AdventureEntryService {
 
         if (warehouseItem != null) {
             InventoryItem.validateTypeUnchanged(warehouseItem.getItemType(), parseItemType(request.getItemType()));
+            int before = warehouseItem.getQuantity();
+            InventoryItem.ItemType previousType = warehouseItem.getItemType();
             // 即時同步名稱、稀有度、同調、備註
             warehouseItem.setItemName(request.getItemName());
             warehouseItem.setItemType(parseItemType(request.getItemType()));
@@ -399,8 +407,10 @@ public class AdventureEntryService {
             warehouseItem.setNeedsDetails(snapshot.getNeedsDetails());
             warehouseItem.setNotes(request.getNotes());
 
-            int targetQty = Math.max(0, orZero(warehouseItem.getQuantity()) + delta);
-            if (targetQty <= 0) {
+            int targetQty = Math.toIntExact(Math.max(0L, (long) orZero(warehouseItem.getQuantity()) + delta));
+            movements.save(warehouseItem, before, targetQty, previousType, "ADJUST", "SOURCE_CORRECTION");
+            // A metadata-only correction must keep exhausted stock available for reversal.
+            if (targetQty <= 0 && delta != 0) {
                 inventoryItemMapper.deleteById(warehouseItem.getId());
             } else {
                 warehouseItem.setQuantity(targetQty);
@@ -426,6 +436,7 @@ public class AdventureEntryService {
             newItem.setSource(entry.getAdventureName() != null ? entry.getAdventureName() : "冒險獲得");
             newItem.setNotes(request.getNotes());
             inventoryItemMapper.insert(newItem);
+            movements.save(newItem, 0, newItem.getQuantity(), null, "ACQUIRE", "SOURCE_CORRECTION");
             log.info("倉庫物品自動補建並綁定快照: ID={}, 名稱={}", newItem.getId(), newItem.getItemName());
         }
 
@@ -444,6 +455,7 @@ public class AdventureEntryService {
         AdventureEntry entry = findOwnedEntry(snapshot.getAdventureEntryId(), userId);
         InventoryItem warehouseItem = inventoryItemMapper.findByAdventureGainedItemId(itemId);
         if (warehouseItem != null) {
+            movements.save(warehouseItem, warehouseItem.getQuantity(), 0, warehouseItem.getItemType(), "REMOVE", "SOURCE_DELETE");
             inventoryItemMapper.deleteById(warehouseItem.getId());
         }
         gainedItemMapper.deleteById(itemId);
@@ -618,6 +630,7 @@ public class AdventureEntryService {
                 : entry.getAdventureCode());
         warehouseItem.setNotes(snapshot.getNotes());
         inventoryItemMapper.insert(warehouseItem);
+        movements.save(warehouseItem, 0, warehouseItem.getQuantity(), null, "ACQUIRE", "ADVENTURE");
         return snapshot.getId();
     }
 

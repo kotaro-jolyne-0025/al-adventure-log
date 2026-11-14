@@ -1,17 +1,21 @@
 import { ElementRef } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { AvatarCropperDialogComponent } from './avatar-cropper-dialog.component';
 
 describe('AvatarCropperDialogComponent responsive preview', () => {
   let component: AvatarCropperDialogComponent;
   let canvas: HTMLCanvasElement;
   let close: ReturnType<typeof vi.fn>;
+  let notify: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     close = vi.fn();
+    notify = vi.fn();
     component = new AvatarCropperDialogComponent(
       { close } as unknown as MatDialogRef<AvatarCropperDialogComponent>,
       { imageSource: '' },
+      { open: notify } as unknown as MatSnackBar,
     );
     canvas = document.createElement('canvas');
     canvas.width = canvas.height = 320;
@@ -81,6 +85,17 @@ describe('AvatarCropperDialogComponent responsive preview', () => {
     component['onConfirm']();
     expect(drawImage).toHaveBeenCalledWith(component['img'], 74, 73, 120, 120, 0, 0, 300, 300);
     expect(outputSize).toEqual([300, 300]);
+    expect(HTMLCanvasElement.prototype.toDataURL).toHaveBeenCalledWith('image/webp', 0.88);
     expect(close).toHaveBeenCalledWith('data:image/webp;base64,preview');
+  });
+
+  it('does not save another format when the browser cannot encode WebP', () => {
+    component['imageLoaded'].set(true);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,unsupported');
+    component['onConfirm']();
+    expect(close).toHaveBeenCalledWith();
+    expect(notify).toHaveBeenCalledWith('無法讀取這張照片，請確認格式後再試一次', '關閉', { duration: 3500 });
+    expect(HTMLCanvasElement.prototype.toDataURL).toHaveBeenCalledOnce();
   });
 });

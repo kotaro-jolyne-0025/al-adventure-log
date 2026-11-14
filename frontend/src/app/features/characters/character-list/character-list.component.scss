@@ -1,7 +1,7 @@
 .page-container {
   width: 100%;
   min-width: 0;
-  max-width: 1080px;
+  max-width: var(--character-page-max-width);
   margin: 0 auto;
   padding: 24px max(16px, var(--page-safe-right)) max(80px, var(--safe-area-bottom)) max(16px, var(--page-safe-left));
 

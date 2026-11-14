@@ -28,6 +28,17 @@ export class ViewportService {
         // a new visible focus (for example a dialog opened while resizing).
         const active = document.activeElement;
         if (active !== focused && active !== document.body) return;
+        if (focused instanceof HTMLAnchorElement &&
+            focused.closest('.character-top-nav, .character-bottom-nav')) {
+          const href = focused.href;
+          const visible = [...document.querySelectorAll<HTMLAnchorElement>(
+            '.character-top-nav a, .character-bottom-nav a',
+          )].find(link => link.href === href && link.getClientRects().length);
+          if (visible) {
+            visible.focus({ preventScroll: true });
+            return;
+          }
+        }
         const scope = focused.closest('[data-resize-focus]');
         const candidates = scope?.querySelectorAll<HTMLElement>(
           '[data-resize-focus-target], button, input, textarea, mat-select, summary, a[href]',

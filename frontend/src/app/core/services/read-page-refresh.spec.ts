@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { ElementRef } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -32,6 +33,7 @@ describe.each(pages)('Background refresh: $name', page => {
       .mockReturnValue(refresh);
     const snapshot = { paramMap: convertToParamMap({ id: 'c', entryId: 'e' }) };
     TestBed.configureTestingModule({ providers: [
+      { provide: ElementRef, useValue: new ElementRef(document.createElement('div')) },
       { provide: ActivatedRoute, useValue: { snapshot, paramMap: of(snapshot.paramMap), parent: { snapshot, paramMap: of(snapshot.paramMap) } } },
       { provide: Router, useValue: { url: '/characters/c/adventures', navigate: vi.fn() } },
       { provide: MatDialog, useValue: {} }, { provide: MatSnackBar, useValue: {} },

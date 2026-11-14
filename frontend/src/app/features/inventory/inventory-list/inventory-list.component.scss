@@ -7,49 +7,17 @@
 .inventory-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 12px;
-
-  @media (max-width: 600px) {
-    margin-bottom: 12px;
-    gap: 10px;
-  }
 }
 
-.header-titles {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--type-page-title);
-  font-weight: 700;
-  margin: 0;
-  color: var(--text-primary);
-
-  @media (max-width: 600px) {
-    font-size: 1.2rem;
-  }
-}
-
-.title-icon,
 .empty-icon,
 .filter-chip .chip-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.title-icon {
-  color: var(--color-primary);
 }
 
 .header-actions {
@@ -58,15 +26,36 @@
   gap: 12px;
   flex-wrap: wrap;
   min-width: 0;
+}
 
-  @media (max-width: 600px) {
-    width: 100%;
-    flex-direction: column-reverse;
-    gap: 10px;
+.inventory-sort {
+  display: flex;
+  min-width: 0;
+}
+
+@media (min-width: 601px) {
+  .search-bar {
+    flex-basis: 100%;
+  }
+
+  .filter-chips-row {
+    flex: 1;
+  }
+
+  .filter-chip,
+  .filter-chip-clear,
+  .sort-toolbar-capsule {
+    box-sizing: border-box;
+    min-height: 32px;
+  }
+
+  .inventory-sort .sort-toolbar-capsule {
+    height: 32px;
   }
 }
 
 .sort-toolbar-capsule {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   height: 40px;
@@ -186,9 +175,9 @@
   padding: 0 18px;
 
   @media (max-width: 600px) {
-    width: 100%;
     height: 44px;
     justify-content: center;
+    padding-inline: 14px;
   }
 }
 
@@ -197,22 +186,30 @@
 
   ::ng-deep .mat-mdc-tab {
     @media (max-width: 600px) {
-      flex: 1;
-      padding: 0 8px;
+      flex: 1 1 0;
+      min-width: 0;
+      height: auto;
+      min-height: 48px;
+      padding: 4px;
     }
   }
 
+  .inventory-tab-label {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.35;
+    text-align: center;
+  }
+
+  .inventory-tab-count { display: inline-block; }
+
   .tab-icon {
+    flex-shrink: 0;
     margin-right: 6px;
     display: inline-flex;
     vertical-align: middle;
   }
-}
 
-.tab-total {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: 0.82em;
 }
 
 /* 🔍 搜尋 & 篩選面板 */
@@ -223,6 +220,11 @@
   padding-top: 16px;
   gap: 12px;
   margin-bottom: 18px;
+
+  @media (min-width: 601px) {
+    flex-flow: row wrap;
+    align-items: center;
+  }
 
   @media (max-width: 600px) {
     margin-bottom: 14px;
@@ -376,9 +378,9 @@
 .item-row-card {
   padding: 12px 18px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px auto;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(180px, 220px) 218px;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   border-radius: var(--radius-md);
   transition:
     transform 0.15s ease,
@@ -403,18 +405,8 @@
   }
 
   @media (max-width: 900px) {
-    grid-template-columns: minmax(0, 1fr) 200px auto;
-    gap: 16px;
-  }
-
-  /* 消耗品卡片專用 4 欄 Grid：名稱 ➔ 獨立數量徽章 ➔ 稀有度 ➔ 日期/操作 */
-  &.consumable-row-card {
-    grid-template-columns: minmax(0, 1fr) 56px 180px auto;
-
-    @media (max-width: 900px) {
-      grid-template-columns: minmax(0, 1fr) 50px 150px auto;
-      gap: 14px;
-    }
+    grid-template-columns: minmax(0, 1fr) 50px minmax(140px, 180px) 218px;
+    gap: 12px;
   }
 
   /* 手機版響應式結構：自適應多行流動 */
@@ -508,6 +500,10 @@
   flex-shrink: 0;
 }
 
+.row-qty-col--empty {
+  visibility: hidden;
+}
+
 /* 數量標籤徽章 */
 .qty-badge {
   display: inline-flex;
@@ -585,19 +581,37 @@
 }
 
 .crud-btns {
-  display: flex;
+  display: grid;
+  grid-template-columns: 52px 32px 32px;
   align-items: center;
   gap: 2px;
 }
 
+.consume-action,
+.consume-action-placeholder {
+  width: 52px;
+  min-width: 52px;
+}
+
+.consume-action {
+  padding: 0 4px;
+}
+
+.consume-action-placeholder {
+  display: block;
+  height: 32px;
+}
+
 .row-right-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 90px 120px;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: end;
+  gap: 8px;
   flex-shrink: 0;
 
   @media (max-width: 640px) {
+    display: flex;
     justify-content: space-between;
     padding-top: 8px;
     border-top: 1px solid var(--border-subtle);

@@ -3,7 +3,12 @@
     <button mat-icon-button (click)="onBack()" class="btn-back" matTooltip="返回倉庫" aria-label="返回倉庫">
       <svg lucideArrowLeft [size]="20"></svg>
     </button>
-    <h1 class="page-title">{{ isEditMode() ? '編輯物品' : '新增物品' }}</h1>
+    <div class="character-form-heading">
+      <h1 class="page-title">{{ isEditMode() ? '編輯物品' : '新增物品' }}</h1>
+      @if (characterName?.(); as name) {
+        <span class="form-character-name">{{ name }}</span>
+      }
+    </div>
   </div>
 
   <div class="form-card clean-card">
@@ -84,9 +89,33 @@
 
         <mat-form-field appearance="outline" class="flex-2">
           <mat-label>取得來源（選填）</mat-label>
-          <input matInput formControlName="source" />
+          <input #sourceInput matInput formControlName="source" autocomplete="off"
+            [matAutocomplete]="sourcePicker" #sourceTrigger="matAutocompleteTrigger"
+            [matAutocompleteDisabled]="form.disabled || isSaving()" />
+          <button mat-icon-button matIconSuffix type="button" aria-label="選擇冒險"
+            [attr.aria-expanded]="sourceTrigger.panelOpen" [disabled]="form.disabled || isSaving()"
+            (mousedown)="$event.preventDefault()"
+            (click)="toggleSourcePicker(sourceInput, sourceTrigger)">
+            <svg lucideChevronDown [size]="18" aria-hidden="true"></svg>
+          </button>
         </mat-form-field>
+        <mat-autocomplete #sourcePicker="matAutocomplete" (opened)="loadSourceAdventures()">
+          @if (sourceLoadFailed()) {
+            <mat-option disabled>無法載入冒險，可重試或不選擇冒險。</mat-option>
+          } @else if (sourceOptions() === null) {
+            <mat-option disabled>載入中…</mat-option>
+          } @else if (sourceOptions()?.length === 0) {
+            <mat-option disabled>尚無冒險紀錄</mat-option>
+          } @else {
+            @for (name of sourceOptions(); track name) {
+              <mat-option [value]="name">{{ name }}</mat-option>
+            }
+          }
+        </mat-autocomplete>
       </div>
+      @if (sourceLoadFailed()) {
+        <app-read-error message="無法載入冒險，可重試或不選擇冒險。" (retry)="loadSourceAdventures()" />
+      }
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>備註</mat-label>

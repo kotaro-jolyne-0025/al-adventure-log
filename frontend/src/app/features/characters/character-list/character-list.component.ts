@@ -106,7 +106,7 @@ export class CharacterListComponent implements OnInit {
     const data: ConfirmDialogData = {
       title: '刪除角色',
       intent: 'destructive',
-      message: `確定要刪除「${character.characterName}」嗎？此操作將一併刪除其所有冒險記錄與倉庫物品，且無法復原。`,
+      message: `確定要刪除「${character.characterName}」嗎？此操作將一併刪除其所有冒險紀錄與倉庫物品，且無法復原。`,
       confirmText: '確認刪除',
       cancelText: '取消',
     };

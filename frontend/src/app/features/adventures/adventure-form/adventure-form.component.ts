@@ -9,7 +9,8 @@ import { DraftExitDialogComponent } from '../../../shared/components/draft-exit-
 import { AdventureDraftSession } from '../../../core/services/adventure-draft-session';
 import { DraftUpdateCoordinator } from '../../../core/services/draft-update-coordinator.service';
 import { adventureBaseline, AdventureDraftInput, draftFormValues, draftText } from '../../../core/models/adventure-draft';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
+import type { Signal } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -110,6 +111,12 @@ type MobileOptionalSection = 'magic-items' | 'consumables' | 'story-awards' | 'd
   styleUrl: './adventure-form.component.scss',
 })
 export class AdventureFormComponent implements OnInit, OnDestroy {
+  protected readonly characterName = inject(ROUTER_OUTLET_DATA, { optional: true }) as Signal<string | undefined> | null;
+
+  protected backLabel(): string {
+    return this.isEditMode() ? '返回冒險詳情' : '返回紀錄';
+  }
+
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -1113,28 +1120,28 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     const hasEmptyMagic = this.gainedMagicItems().some(item => !item.itemName.trim());
     if (hasEmptyMagic) {
       this.expandSection('magic-items');
-      this.formError.set('魔法物品名稱不得為空白，請填寫或刪除該卡片');
+      this.formError.set('魔法物品名稱不得為空白，請填寫或移除該卡片');
       this.errorTarget.set('#magic-items-content');
       return;
     }
     const hasEmptyConsumable = this.gainedConsumableItems().some(item => !item.itemName.trim());
     if (hasEmptyConsumable) {
       this.expandSection('consumables');
-      this.formError.set('消耗品名稱不得為空白，請填寫或刪除該卡片');
+      this.formError.set('消耗品名稱不得為空白，請填寫或移除該卡片');
       this.errorTarget.set('#consumables-content');
       return;
     }
     const hasEmptyActivity = this.downtimeActivities().some(act => !act.description.trim());
     if (hasEmptyActivity) {
       this.expandSection('downtime');
-      this.formError.set('休整期活動描述不得為空白，請填寫或刪除該卡片');
+      this.formError.set('休整期活動描述不得為空白，請填寫或移除該卡片');
       this.errorTarget.set('#downtime-content');
       return;
     }
     const hasEmptyStoryAward = this.storyAwards().some(award => !award.awardName.trim());
     if (hasEmptyStoryAward) {
       this.expandSection('story-awards');
-      this.formError.set('故事獎勵名稱不得為空白，請填寫或刪除該卡片');
+      this.formError.set('故事獎勵名稱不得為空白，請填寫或移除該卡片');
       this.errorTarget.set('#story-awards-content');
       return;
     }

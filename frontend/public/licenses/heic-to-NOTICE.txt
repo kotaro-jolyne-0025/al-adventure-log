@@ -1,0 +1,22 @@
+heic-to 1.6.7 by Hopper Gee
+
+Used without source modifications to decode HEIC/HEIF images in the browser.
+This third-party library is licensed under LGPL-3.0-or-later, not the
+application's PolyForm Noncommercial license. See heic-to-LGPL-3.0.txt
+and GPL-3.0.txt in this directory. No warranty is provided by the library.
+
+Exact upstream source and build instructions:
+https://github.com/hoppergee/heic-to/tree/78345a3fcdb4a1d70d513fce2646aeff0127f7ba
+Published package:
+https://registry.npmjs.org/heic-to/-/heic-to-1.6.7.tgz
+
+The library bundles libheif and its codecs. Consult the upstream source
+for their respective copyright and license terms. The application's
+3rdpartylicenses.txt also includes the heic-to package license.
+Upstream libheif source and license information:
+https://github.com/strukturag/libheif/tree/v1.23.7
+
+To rebuild this application's library integration, install the frontend
+dependencies with npm ci and run npm run build from frontend/. Replace
+the heic-to dependency with a compatible modified version to rebuild
+with that version. The decoder is loaded as a separate lazy chunk.

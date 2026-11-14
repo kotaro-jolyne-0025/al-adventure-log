@@ -49,6 +49,7 @@ class AdventureEntryServiceTest {
     @Mock
     private InventoryItemMapper inventoryItemMapper;
 
+    @Mock InventoryMovementService movements;
     @InjectMocks
     private AdventureEntryService service;
 

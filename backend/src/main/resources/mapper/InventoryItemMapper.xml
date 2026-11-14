@@ -70,6 +70,7 @@
 
     <select id="findByAdventureEntryId" resultMap="itemMap">
         SELECT * FROM inventory_item WHERE adventure_entry_id = #{adventureEntryId}::uuid
+          OR adventure_gained_item_id IN (SELECT id FROM adventure_gained_item WHERE adventure_entry_id = #{adventureEntryId}::uuid)
     </select>
 
     <insert id="insert">

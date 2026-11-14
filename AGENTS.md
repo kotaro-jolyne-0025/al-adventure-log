@@ -17,6 +17,10 @@
 - 調整角色、冒險、倉庫及子項目的讀寫、快取或草稿時，遵循 [`openspec/specs/state-consistency/spec.md`](openspec/specs/state-consistency/spec.md) 與 [`database-schema.md`](database-schema.md) 的一致性規則。
 - 後端本機開發時，先切換到 `backend/`，再執行 `./mvnw.cmd -Plocal-dev test-compile exec:java` 啟動隔離的暫存資料庫。不要直接執行 `BackendApplication` 或使用 Spring Boot Dashboard。
 - Material Design 3 UI/UX 工作先閱讀 `.agents/skills/material-design-3-ui/SKILL.md`，參考文件按需載入。
+- UI/UX 設計決策依序進行：依 M3 與既有 `DESIGN.md` 提出至少三種在資訊架構或操作流程上有實質差異的方案，不只更換配色；比較操作步驟、學習成本、手機操作、無障礙及錯誤預防與恢復，說明優缺點與推薦理由。使用者選定方案後才實作，完成後依適用的 Modern Web Guidance 指南審查並按影響驗證。
+- HTML、CSS 與前端 JavaScript 工作使用已安裝的 `modern-web-guidance`，實作前搜尋並讀取適用指南，依專案瀏覽器支援需求處理相容性與 fallback。優先重用既有共用元件與 Material 元件，不因指南範例另建平行實作；不自行擴大成全站現代化改寫。
+- 上述流程遵守既有 `DESIGN.md` 與 M3；技能建議互相矛盾或與既有設計衝突時，先說明取捨，不自行改變設計方向。已選定且授權的方案直接沿用；單純查核或不涉及新設計決策的局部修正，不強制重新提出三案，也不擴大實作範圍。
+- 排版變更須遵循 `DESIGN.md` 的「排版變更與樣式回歸規範」：修改前盤點共用選擇器、父子容器與斷點；修改後以相同條件比較相關頁面。不得因局部導覽或容器調整破壞已確認的排序寬度、對齊與留白；排序膠囊右側非預期大留白列為必要回歸案例。
 
 ## 發布與部署
 

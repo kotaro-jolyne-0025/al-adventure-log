@@ -1,18 +1,21 @@
 <a class="skip-link" href="#main-content" (click)="skipToContent($event)">跳到主要內容</a>
 <header class="app-header">
   <mat-toolbar class="app-toolbar">
-    @if (showBack()) {
-      <button mat-icon-button (click)="goBack()" class="top-nav-back-btn" matTooltip="返回角色列表" aria-label="返回角色列表">
-        <svg lucideArrowLeft [size]="20"></svg>
-      </button>
-    }
-
     <a class="brand-container" [routerLink]="authService.isAuthenticated() ? '/characters' : '/'"
-      aria-label="冒險紀錄表 Web版首頁">
+      [attr.aria-label]="authService.isAuthenticated() ? '返回角色列表' : '冒險紀錄表 Web版首頁'">
       <img src="logo.png" alt="冒險紀錄表 Web版 Logo" class="brand-logo-img" />
       <span class="brand-title">冒險紀錄表 Web版</span>
     </a>
 
+    @if (toolbarCharacter(mainOutlet); as shell) {
+      @if (shell.toolbarNavigationId; as id) {
+        <nav class="character-top-nav" aria-label="角色內容">
+          <a [routerLink]="['/characters', id, 'adventures']" [attr.aria-current]="shell.activeTab() === 0 ? 'page' : null">冒險紀錄</a>
+          <a [routerLink]="['/characters', id, 'inventory']" [attr.aria-current]="shell.activeTab() === 1 ? 'page' : null">倉庫</a>
+          <a [routerLink]="['/characters', id, 'inventory']" [queryParams]="{ view: 'history' }" [attr.aria-current]="shell.activeTab() === 2 ? 'page' : null">物品異動紀錄</a>
+        </nav>
+      }
+    }
     <span class="spacer"></span>
 
     <!-- 主題切換按鈕 (A 淺色 / B 炭灰深色) -->
@@ -116,6 +119,6 @@
   </div>
 }
 <main class="app-content" id="main-content" tabindex="-1" [attr.aria-busy]="navigationPending()">
-  <router-outlet />
+  <router-outlet #mainOutlet="outlet" />
 </main>
 

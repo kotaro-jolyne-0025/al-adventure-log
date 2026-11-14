@@ -45,6 +45,7 @@ class MagicItemReconciliationServiceTest {
     @Mock StoryAwardMapper storyAwardMapper;
     @Mock CharacterService characterService;
     @Mock InventoryItemMapper inventoryItemMapper;
+    @Mock InventoryMovementService movements;
     @InjectMocks AdventureEntryService service;
 
     @Test
