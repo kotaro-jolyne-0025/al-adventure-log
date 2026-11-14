@@ -65,6 +65,8 @@ body.theme-light {
   --scrollbar-track: #f8fafc;
   --scrollbar-thumb: #cbd5e1;
 
+  --character-page-max-width: 1080px;
+
   // Safe Area Insets (for mobile notches & gesture bars)
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
@@ -707,6 +709,16 @@ svg.icon-block {
   display: none;
 }
 
+.list-destination-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (max-width: 600px) {
   :is(app-adventure-list, app-inventory-list) .page-container {
     :is(.list-header, .inventory-header) {
@@ -718,12 +730,6 @@ svg.icon-block {
 
     .header-titles {
       gap: 4px 8px;
-    }
-
-    .section-title {
-      font-size: 1rem;
-      overflow-wrap: anywhere;
-      min-width: 0;
     }
 
     .header-actions {
@@ -795,7 +801,7 @@ svg.icon-block {
   }
 
   :is(app-character-form, app-adventure-form, app-inventory-form, app-adventure-detail) .page-container {
-    :is(.page-title, .adv-title-hero) {
+    .page-title {
       font-size: 1.0625rem;
     }
 
@@ -961,4 +967,29 @@ body {
 app-form-feedback button:focus-visible,
 .position-controls button:focus-visible {
   outline: 3px solid var(--color-primary); outline-offset: 2px;
+}
+.character-form-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+
+  > * { min-width: 0; overflow-wrap: anywhere; }
+
+  .form-character-name {
+    flex: 1 1 12rem;
+    border-inline-start: 1px solid var(--border-medium);
+    padding-inline-start: 12px;
+    color: var(--text-secondary);
+    font-size: .875rem;
+  }
+
+  @media (max-width: 600px) {
+    .form-character-name {
+      flex-basis: 100%;
+      border: 0;
+      padding: 0;
+    }
+  }
 }

@@ -1,11 +1,10 @@
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
-import { Component, DestroyRef, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, OnInit, OnDestroy, signal, viewChild } from '@angular/core';
 import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
 import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
 import { LocalStore } from '../../../core/services/local-store.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterOutlet, RouterLink } from '@angular/router';
-import { MatTabsModule } from '@angular/material/tabs';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet, RouterLink } from '@angular/router';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -18,7 +17,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { CommonModule } from '@angular/common';
 
-import { LucideCoins, LucideTent, LucideSparkles, LucideGhost, LucidePencil, LucideBookOpen, LucideBox } from '@lucide/angular';
+import { LucideCoins, LucideTent, LucideSparkles, LucideGhost, LucidePencil, LucideBookOpen, LucideBox, LucideChevronDown, LucideHistory } from '@lucide/angular';
 
 @Component({
   selector: 'app-character-shell',
@@ -29,7 +28,6 @@ import { LucideCoins, LucideTent, LucideSparkles, LucideGhost, LucidePencil, Luc
     CommonModule,
     RouterOutlet,
     RouterLink,
-    MatTabsModule,
     MatButtonModule,
     MatTooltipModule,
     MatProgressSpinner,
@@ -37,7 +35,7 @@ import { LucideCoins, LucideTent, LucideSparkles, LucideGhost, LucidePencil, Luc
     LucideTent,
     LucideSparkles,
     LucideGhost,
-    LucidePencil, LucideBookOpen, LucideBox
+    LucidePencil, LucideBookOpen, LucideBox, LucideChevronDown, LucideHistory
   ],
   templateUrl: './character-shell.component.html',
   styleUrl: './character-shell.component.scss',
@@ -56,17 +54,39 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
 
   protected character = signal<Character | null>(null);
+  private characterOwner: string | null = null;
   protected isLoading = signal(true);
   protected isRefreshing = signal(false);
   protected loadError = signal<string | null>(null);
   protected retryable = signal(true);
   protected characterId!: string;
+  readonly activeTab = signal(0);
+  private readonly bottomNav = viewChild<ElementRef<HTMLElement>>('bottomNav');
+  protected readonly bottomNavHeight = signal<number | null>(null);
+  private readonly trackBottomNav = effect(onCleanup => {
+    const nav = this.bottomNav()?.nativeElement;
+    if (!nav) return;
+    const observer = new ResizeObserver(() => this.bottomNavHeight.set(nav.offsetHeight || null));
+    observer.observe(nav, { box: 'border-box' });
+    onCleanup(() => observer.disconnect());
+  });
 
   private readonly destroy$ = new Subject<void>();
 
   ngOnInit(): void {
     this.characterId = this.route.snapshot.paramMap.get('id')!;
+    this.activeTab.set(this.getActiveTab());
+    this.router.events?.pipe(takeUntilDestroyed(this.destroy)).subscribe(event => {
+      if (event instanceof NavigationEnd) this.activeTab.set(this.getActiveTab());
+    });
     this.loadCharacterData();
+    this.route.paramMap?.pipe(takeUntilDestroyed(this.destroy)).subscribe(params => {
+      const id = params.get('id');
+      if (!id || id === this.characterId) return;
+      this.characterId = id;
+      this.character.set(null);
+      this.loadCharacterData();
+    });
 
     // 🌟 即時響應所有資料異動（新增/編輯/刪除冒險記錄、消耗品使用、道具增刪），即時更新頂部 HUD
     this.characterService.characterChanged$
@@ -84,22 +104,26 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   }
 
   protected loadCharacterData(): void {
-    this.local.markFresh(this.characterId, false);
+    const id = this.characterId;
+    this.local.markFresh(id, false);
     this.readSource.set(null);
     this.loadError.set(null);
     this.isLoading.set(!this.character());
     this.isRefreshing.set(true);
-    this.reads.read(this.characterId, 'character', () => this.characterService.getById(this.characterId, true))
+    this.reads.read(id, 'character', () => this.characterService.getById(id, true))
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
+        if (id !== this.characterId) return;
         this.readSource.set(result.source);
         this.local.markFresh(this.characterId, result.source === 'cloud');
         if (result.source === 'copy' && this.character()) return;
         this.fetchedAt.set(result.fetchedAt);
+        this.characterOwner = this.local.owner();
         this.character.set(result.data);
         this.isLoading.set(false);
       },
       error: (error) => {
+        if (id !== this.characterId) return;
         this.readSource.set(null);
         this.character.set(null);
         this.isLoading.set(false);
@@ -107,7 +131,7 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
         this.retryable.set(![401, 403, 404].includes(error.status));
         this.loadError.set(readErrorMessage(error, '角色'));
       },
-      complete: () => this.isRefreshing.set(false),
+      complete: () => { if (id === this.characterId) this.isRefreshing.set(false); },
     });
   }
 
@@ -141,17 +165,51 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
     return name ? name.trim().charAt(0).toUpperCase() : '?';
   }
 
-  protected onTabChange(index: number): void {
-    if (index === 0) {
-      this.router.navigate(['/characters', this.characterId, 'adventures']);
-    } else {
-      this.router.navigate(['/characters', this.characterId, 'inventory']);
-    }
+  private getActiveTab(): number {
+    const child = this.route.firstChild?.snapshot;
+    if (child?.url[0]?.path !== 'inventory') return 0;
+    return child.routeConfig?.path === 'inventory' && child.queryParamMap.get('view') === 'history' ? 2 : 1;
   }
 
-  protected getActiveTab(): number {
-    const url = this.router.url;
-    return url.includes('/inventory') ? 1 : 0;
+  protected hideCharacterCard(): boolean {
+    return this.isFormRoute() || this.route.firstChild?.routeConfig?.path === 'adventures/:entryId';
+  }
+
+  protected currentCharacterName(): string | undefined {
+    const character = this.character();
+    if (this.characterOwner && this.characterOwner === this.local.owner() &&
+      character?.id === this.route.snapshot.paramMap.get('id')) {
+      return character?.characterName;
+    }
+    return undefined;
+  }
+
+  get toolbarNavigationId(): string | undefined {
+    const character = this.character();
+    if (!character || this.isFormRoute() || !this.characterOwner || this.characterOwner !== this.local.owner()) {
+      return undefined;
+    }
+    return character.id === this.route.snapshot.paramMap.get('id') ? character.id : undefined;
+  }
+
+  protected isFormRoute(): boolean {
+    const segments = this.route.firstChild?.snapshot.url;
+    const last = segments?.at(-1)?.path;
+    return last === 'new' || last === 'edit';
+  }
+
+  protected keepContentFocusVisible(event: FocusEvent): void {
+    if (!(event.target instanceof HTMLElement) || !(event.currentTarget instanceof HTMLElement)) return;
+    const shell = event.currentTarget.parentElement;
+    if (!shell || !window.matchMedia('(max-width: 600px)').matches) return;
+
+    const focused = event.target.getBoundingClientRect();
+    const top = document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0;
+    const navigation = shell.querySelector('.character-bottom-nav');
+    const bottom = navigation?.getBoundingClientRect().top ?? window.innerHeight;
+    if (focused.top < top || focused.bottom > bottom) {
+      event.target.scrollIntoView({ block: 'center', inline: 'nearest' });
+    }
   }
 
   protected onBack(): void {

@@ -1,3 +1,6 @@
+import { ElementRef } from '@angular/core';
+import { InventoryHistoryComponent } from '../inventory-history/inventory-history.component';
+import { InventoryConsumeDialogComponent } from '../inventory-consume-dialog/inventory-consume-dialog.component';
 import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
 import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
 import { LocalStore } from '../../../core/services/local-store.service';
@@ -14,6 +17,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { InventoryService } from '../../../core/services/inventory.service';
 import {
   InventoryItem,
@@ -34,7 +38,6 @@ import {
   LucideClock,
   LucideArrowDown,
   LucideArrowUp,
-  LucidePackage,
   LucidePlus,
   LucideBookmark,
   LucidePencil,
@@ -63,6 +66,7 @@ const RARITY_WEIGHT: Record<string, number> = {
   selector: 'app-inventory-list',
   standalone: true,
   imports: [
+    InventoryHistoryComponent,
     CacheNoticeComponent,
     ReadErrorComponent,
     RouterLink,
@@ -77,7 +81,6 @@ const RARITY_WEIGHT: Record<string, number> = {
     LucideClock,
     LucideArrowDown,
     LucideArrowUp,
-    LucidePackage,
     LucidePlus,
     LucideBookmark,
     LucidePencil,
@@ -92,6 +95,7 @@ const RARITY_WEIGHT: Record<string, number> = {
   styleUrl: './inventory-list.component.scss',
 })
 export class InventoryListComponent implements OnInit {
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly local = inject(LocalStore);
   private readonly reads = inject(LocalReadCache);
   private readonly destroy = inject(DestroyRef);
@@ -115,7 +119,10 @@ export class InventoryListComponent implements OnInit {
   protected loadError = signal<string | null>(null);
   protected hasLoaded = signal(false);
   protected activeTab = signal(0); // 0=PERMANENT, 1=CONSUMABLE
+  protected historyView = signal(false);
   protected characterId!: string;
+  private listScrollY = 0;
+  private loadGeneration = 0;
 
   // --- 搜尋 & 篩選狀態 ---
   protected readonly searchQuery = signal('');
@@ -190,18 +197,18 @@ export class InventoryListComponent implements OnInit {
   }
 
   protected permanentItems = computed(() => {
-    const list = this.allItems().filter((i) => i.itemType === 'PERMANENT');
+    const list = this.allItems().filter((i) => i.itemType === 'PERMANENT' && i.quantity > 0);
     return this.sortItems(this.filterItems(list), this.sortField(), this.sortOrder());
   });
 
   protected consumableItems = computed(() => {
-    const list = this.allItems().filter((i) => i.itemType === 'CONSUMABLE');
+    const list = this.allItems().filter((i) => i.itemType === 'CONSUMABLE' && i.quantity > 0);
     return this.sortItems(this.filterItems(list), this.sortField(), this.sortOrder());
   });
 
   /** 原始（未篩選）數量，用於顯示 total count */
-  protected readonly rawPermanentCount = computed(() => this.allItems().filter(i => i.itemType === 'PERMANENT').length);
-  protected readonly rawConsumableCount = computed(() => this.allItems().filter(i => i.itemType === 'CONSUMABLE').length);
+  protected readonly rawPermanentCount = computed(() => this.allItems().filter(i => i.itemType === 'PERMANENT' && i.quantity > 0).length);
+  protected readonly rawConsumableCount = computed(() => this.allItems().filter(i => i.itemType === 'CONSUMABLE' && i.quantity > 0).length);
 
 
   readonly rarityLabels = ITEM_RARITY_LABELS;
@@ -234,7 +241,51 @@ export class InventoryListComponent implements OnInit {
     this.characterId =
       this.route.parent?.snapshot.paramMap.get('id') ??
       this.route.snapshot.paramMap.get('id') ?? '';
+    this.local.sessionChanged.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => {
+      this.resetContext(this.characterId);
+    });
+    this.route.queryParamMap?.pipe(takeUntilDestroyed(this.destroy)).subscribe(params => {
+      const wasHistory = this.historyView();
+      const history = params.get('view') === 'history';
+      if (history === wasHistory) return;
+      if (history) this.listScrollY = window.scrollY;
+      this.historyView.set(history);
+      const characterId = this.characterId;
+      setTimeout(() => {
+        const host = this.element.nativeElement;
+        if (!host.isConnected || this.historyView() !== history || this.characterId !== characterId) return;
+        if (history) host.querySelector<HTMLElement>('app-inventory-history section')?.focus();
+        else {
+          const destinations = host.closest('app-root')?.querySelectorAll<HTMLElement>(
+            ':is(.character-bottom-nav, .character-top-nav) [aria-current="page"]');
+          const current = Array.from(destinations ?? []).find(link => link.getClientRects().length)
+            ?? host.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+          current?.focus({ preventScroll: true });
+          window.scrollTo({ top: this.listScrollY, behavior: 'instant' });
+        }
+      });
+    });
 
+    this.loadItems();
+    (this.route.parent?.paramMap ?? this.route.paramMap ?? of(
+      this.route.parent?.snapshot.paramMap ?? this.route.snapshot.paramMap,
+    )).pipe(takeUntilDestroyed(this.destroy)).subscribe(params => {
+      const characterId = params.get('id') ?? '';
+      if (characterId !== this.characterId) this.resetContext(characterId);
+    });
+  }
+
+  private resetContext(characterId: string): void {
+    this.characterId = characterId;
+    this.activeTab.set(0);
+    this.searchQuery.set('');
+    this.selectedRarities.set(new Set());
+    this.filterAttunementOnly.set(false);
+    this.filtersExpanded.set(false);
+    this.listScrollY = 0;
+    this.allItems.set([]);
+    this.hasLoaded.set(false);
+    this.readSource.set(null);
     this.loadItems();
   }
 
@@ -316,14 +367,17 @@ export class InventoryListComponent implements OnInit {
   }
 
   protected loadItems(silent: boolean = false): void {
+    const generation = ++this.loadGeneration;
+    const characterId = this.characterId;
     this.readSource.set(null);
     this.loadError.set(null);
     this.isRefreshing.set(true);
     if (!silent) {
       this.isLoading.set(!this.hasLoaded());
     }
-    this.reads.read(this.characterId, 'inventory', () => this.inventoryService.getAllByCharacter(this.characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+    this.reads.read(characterId, 'inventory', () => this.inventoryService.getAllByCharacter(characterId, true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
+        if (generation !== this.loadGeneration || characterId !== this.characterId) return;
         const items = result.data;
         this.readSource.set(result.source);
         if (result.source === 'copy' && this.hasLoaded()) return;
@@ -335,6 +389,7 @@ export class InventoryListComponent implements OnInit {
         }
       },
       error: (error) => {
+        if (generation !== this.loadGeneration || characterId !== this.characterId) return;
         this.readSource.set(null);
         if (!silent) { this.allItems.set([]); this.hasLoaded.set(false); }
         this.loadError.set(readErrorMessage(error, '倉庫'));
@@ -343,7 +398,9 @@ export class InventoryListComponent implements OnInit {
           this.isLoading.set(false);
         }
       },
-      complete: () => this.isRefreshing.set(false),
+      complete: () => {
+        if (generation === this.loadGeneration) this.isRefreshing.set(false);
+      },
     });
   }
 
@@ -353,6 +410,17 @@ export class InventoryListComponent implements OnInit {
     this.router.navigate(['/characters', this.characterId, 'inventory', 'new'], {
       queryParams: { type },
     });
+  }
+
+  protected onConsume(event: Event, item: InventoryItem): void {
+    event.stopPropagation();
+    if (this.readOnly() || item.itemType !== 'CONSUMABLE' || item.quantity <= 0) return;
+    this.dialog.open(InventoryConsumeDialogComponent, { width: '480px', maxWidth: '95vw', restoreFocus: false,
+      data: { characterId: this.characterId, item, canWrite: () => !this.readOnly() } })
+      .afterClosed().pipe(takeUntilDestroyed(this.destroy)).subscribe(saved => {
+        if (saved) { this.snackBar.open('已記錄消耗。', '關閉', { duration: 2500 }); this.loadItems(true); }
+        this.element.nativeElement.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+      });
   }
 
   protected onEditItem(event: Event, itemId: string): void {

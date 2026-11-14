@@ -9,32 +9,21 @@
   }
 
   @if (!isLoading() && entry()) {
-    <!-- Detail Header -->
+    <h1 class="sr-only">{{ entry()!.adventureName || entry()!.adventureCode || '冒險紀錄' }}</h1>
     <div class="detail-header">
-      <div class="header-left">
-        <button mat-icon-button class="btn-back" (click)="onBack()" matTooltip="返回冒險紀錄表" aria-label="返回冒險紀錄表">
-          <svg lucideArrowLeft [size]="18"></svg>
-        </button>
-        <div>
-          <div class="adv-code-row">
-            @if (entry()!.adventureCode) {
-              <span class="adv-code-tag">{{ entry()!.adventureCode }}</span>
-            }
-            <span class="adv-date-tag">
-              <svg lucideCalendar [size]="14" class="date-icon"></svg>
-              {{ entry()!.playDate ? (entry()!.playDate! | date:'yyyy/MM/dd') : '未指定日期' }}
-            </span>
-          </div>
-          <h1 class="adv-title-hero">
-            {{ entry()!.adventureName || entry()!.adventureCode || '冒險紀錄' }}
-          </h1>
-        </div>
-      </div>
+      <button mat-button class="btn-back" (click)="onBack()" type="button">
+        <svg lucideArrowLeft [size]="18" aria-hidden="true"></svg>
+        返回紀錄
+      </button>
+
+      @if (characterName(); as name) {
+        <span class="detail-character-name">{{ name }}</span>
+      }
 
       <div class="header-actions">
-        <button mat-flat-button [disabled]="readOnly()" color="primary" class="btn-edit" (click)="onEdit()">
+        <button mat-flat-button [disabled]="readOnly()" color="primary" class="btn-edit"
+          (click)="onEdit()" matTooltip="編輯" aria-label="編輯">
           <svg lucidePencil [size]="16"></svg>
-          <span>編輯</span>
         </button>
         <button mat-icon-button [disabled]="readOnly()" color="warn" matTooltip="刪除此紀錄" (click)="onDelete()" aria-label="刪除此紀錄">
           <svg lucideTrash2 [size]="18"></svg>
@@ -279,6 +268,15 @@
       </div>
     }
 
+    <div class="detail-section-card clean-card">
+      <div class="section-card-header">
+        <svg lucideFlaskConical [size]="18" class="section-icon" aria-hidden="true"></svg>
+        <h2 class="section-title">消耗紀錄</h2>
+      </div>
+      <p class="consumption-hint">請至倉庫登記消耗，並選擇這場冒險。</p>
+      <app-inventory-history [characterId]="characterId" [usageAdventureEntryId]="entryId" [readOnly]="readOnly()" />
+    </div>
+
     <!-- ⭐ 故事獎勵 (Story Awards) -->
     @if (storyAwards().length > 0) {
       <div class="detail-section-card clean-card">
@@ -310,7 +308,7 @@
     <div class="detail-section-card clean-card">
       <div class="section-card-header">
         <svg lucideTent [size]="18" class="section-icon"></svg>
-        <h2 class="section-title">休整期活動 (Downtime Activities)</h2>
+        <h2 class="section-title" matTooltip="Downtime Activities">休整期活動</h2>
       </div>
 
       <div class="notes-and-activities">

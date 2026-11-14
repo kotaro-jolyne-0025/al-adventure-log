@@ -3,7 +3,12 @@
     <button mat-icon-button (click)="onBack()" class="btn-back" matTooltip="返回倉庫" aria-label="返回倉庫">
       <svg lucideArrowLeft [size]="20"></svg>
     </button>
-    <h1 class="page-title">{{ isEditMode() ? '編輯物品' : '新增物品' }}</h1>
+    <div class="character-form-heading">
+      <h1 class="page-title">{{ isEditMode() ? '編輯物品' : '新增物品' }}</h1>
+      @if (characterName?.(); as name) {
+        <span class="form-character-name">{{ name }}</span>
+      }
+    </div>
   </div>
 
   <div class="form-card clean-card">

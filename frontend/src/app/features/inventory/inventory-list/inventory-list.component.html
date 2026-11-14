@@ -1,60 +1,27 @@
 <div class="page-container">
   <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="hasLoaded()" (refresh)="loadItems()" />
-  <!-- Header -->
+  <h2 class="list-destination-title">{{ historyView() ? '物品異動紀錄' : '倉庫' }}</h2>
+  @if (!historyView()) {
   <div class="inventory-header">
-    <div class="header-titles">
-      <h2 class="section-title">
-        <svg lucidePackage [size]="22" class="title-icon"></svg>
-        倉庫
-      </h2>
-    </div>
     <div class="header-actions">
-      <!-- 🌟 一體化膠囊排序工具列 -->
-      <div class="sort-toolbar-capsule">
-        <!-- 欄位選擇（左側） -->
-        <label class="capsule-section select-section" matTooltip="點擊切換排序欄位">
-          <svg lucideSlidersHorizontal [size]="16" class="capsule-icon"></svg>
-          <span class="capsule-text">{{ sortFieldLabel() }}</span>
-          <svg lucideChevronDown [size]="15" class="capsule-arrow"></svg>
-          <select class="invisible-native-select" [value]="sortField()" (change)="onSortFieldChange($event)"
-            aria-label="選擇倉庫排序依據">
-            <option value="rarity">稀有度</option>
-            <option value="createdAt">取得時間</option>
-          </select>
-        </label>
-
-        <!-- 中間高雅細分隔線 -->
-        <div class="capsule-divider"></div>
-
-        <!-- 方向反轉（右側） -->
-        <button type="button" class="capsule-section button-section" (click)="toggleSortOrder()"
-          [matTooltip]="directionTooltip()">
-          @if (sortOrder() === 'desc') {
-          <svg lucideArrowDown [size]="16" class="capsule-icon dir-icon"></svg>
-          } @else {
-          <svg lucideArrowUp [size]="16" class="capsule-icon dir-icon icon-asc"></svg>
-          }
-          <span class="capsule-text">{{ directionLabel() }}</span>
-        </button>
-      </div>
-
       <button mat-flat-button color="primary" class="btn-add-item" (click)="onAddItem()" [disabled]="readOnly()">
         <svg lucidePlus [size]="18" class="btn-icon"></svg>
-        <span class="desktop-add-label">新增物品</span>
-        <span class="mobile-add-label">新增物品</span>
+        新增物品
       </button>
     </div>
   </div>
+  }
 
+  @if (historyView()) {
+  <app-inventory-history [characterId]="characterId" [readOnly]="readOnly()" />
+  } @else {
   <!-- Tabs -->
   <mat-tab-group [selectedIndex]="activeTab()" (selectedIndexChange)="activeTab.set($event)" animationDuration="150ms"
     class="inventory-sub-tabs">
     <mat-tab>
       <ng-template mat-tab-label>
         <svg lucideSparkles [size]="18" class="tab-icon"></svg>
-        <span matTooltip="Permanent Magic Items">永久性魔法物品 ({{ permanentItems().length }}
-          @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawPermanentCount() }}</span> }
-          )</span>
+        <span class="inventory-tab-label">永久性魔法物品<span class="inventory-tab-count">（{{ rawPermanentCount() }}）</span></span>
       </ng-template>
       <ng-template matTabContent>
         <ng-container *ngTemplateOutlet="inventoryTools" />
@@ -101,6 +68,8 @@
         </div>
       </div>
 
+      <div class="row-qty-col row-qty-col--empty" aria-hidden="true"></div>
+
       <!-- 2. 中間：稀有度與同調標籤 -->
       <div class="row-center-tags">
         @if (item.rarity) {
@@ -128,6 +97,7 @@
         </span>
         }
         <div class="crud-btns">
+          <span class="consume-action-placeholder" aria-hidden="true"></span>
           <button mat-icon-button class="action-btn" matTooltip="編輯物品"
             [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)" [disabled]="readOnly()">
             <svg lucidePencil [size]="16"></svg>
@@ -149,9 +119,7 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <svg lucideFlaskConical [size]="18" class="tab-icon"></svg>
-        <span>消耗品 ({{ consumableItems().length }}
-          @if (hasActiveFilters()) { <span class="tab-total">/ {{ rawConsumableCount() }}</span> }
-          )</span>
+        <span class="inventory-tab-label">消耗品<span class="inventory-tab-count">（{{ rawConsumableCount() }}）</span></span>
       </ng-template>
       <ng-template matTabContent>
         <ng-container *ngTemplateOutlet="inventoryTools" />
@@ -213,7 +181,7 @@
         </span>
         }
         @if (item.isSoulCoin) { <span class="category-pill">靈魂幣</span> }
-                @if (item.itemCategory) {
+        @if (item.itemCategory) {
         <span class="category-pill">{{ categoryLabels[item.itemCategory] }}</span>
         }
       </div>
@@ -228,6 +196,7 @@
         }
 
         <div class="crud-btns">
+          <button mat-button type="button" class="consume-action" (click)="onConsume($event, item)" [disabled]="readOnly()" [attr.aria-label]="'消耗物品：' + item.itemName">消耗</button>
           <button mat-icon-button class="action-btn" matTooltip="編輯物品"
             [attr.aria-label]="'編輯物品：' + item.itemName" (click)="onEditItem($event, item.id)" [disabled]="readOnly()">
             <svg lucidePencil [size]="16"></svg>
@@ -246,6 +215,7 @@
       </ng-template>
     </mat-tab>
   </mat-tab-group>
+  }
 <ng-template #inventoryTools>
 
   <!-- 🔍 搜尋 & 篩選列 -->
@@ -263,7 +233,7 @@
       }
     </div>
 
-      <button type="button" class="mobile-filter-toggle" (click)="filtersExpanded.set(!filtersExpanded())"
+      <button mat-stroked-button type="button" class="mobile-filter-toggle" (click)="filtersExpanded.set(!filtersExpanded())"
         [attr.aria-expanded]="filtersExpanded()" aria-controls="inventory-filter-options"
         [attr.aria-label]="(filtersExpanded() ? '收合篩選' : '展開篩選') + '，已選 ' + activeFilterCount() + ' 項'">
         篩選@if (activeFilterCount() > 0) { ({{ activeFilterCount() }}) }
@@ -298,8 +268,10 @@
       </button>
       }
     </div>
+    <div class="inventory-sort">
+      <ng-container *ngTemplateOutlet="inventorySort" />
+    </div>
   </div>
-
 
   @if (loadError()) {
     <app-read-error [message]="(hasLoaded() ? '資料尚未更新。' : '') + loadError()!" [pending]="isLoading()" (retry)="loadItems()" />
@@ -320,5 +292,29 @@
   }
 
 
+</ng-template>
+<ng-template #inventorySort>
+  <div class="sort-toolbar-capsule">
+      <label class="capsule-section select-section" matTooltip="點擊切換排序欄位">
+        <svg lucideSlidersHorizontal [size]="16" class="capsule-icon" aria-hidden="true"></svg>
+        <span class="capsule-text">{{ sortFieldLabel() }}</span>
+        <svg lucideChevronDown [size]="15" class="capsule-arrow" aria-hidden="true"></svg>
+        <select class="invisible-native-select" [value]="sortField()" (change)="onSortFieldChange($event)"
+          aria-label="選擇倉庫排序依據">
+          <option value="rarity">稀有度</option>
+          <option value="createdAt">取得時間</option>
+        </select>
+      </label>
+      <div class="capsule-divider" aria-hidden="true"></div>
+      <button type="button" class="capsule-section button-section" (click)="toggleSortOrder()"
+        [matTooltip]="directionTooltip()">
+        @if (sortOrder() === 'desc') {
+        <svg lucideArrowDown [size]="16" class="capsule-icon dir-icon" aria-hidden="true"></svg>
+        } @else {
+        <svg lucideArrowUp [size]="16" class="capsule-icon dir-icon icon-asc" aria-hidden="true"></svg>
+        }
+        <span class="capsule-text">{{ directionLabel() }}</span>
+      </button>
+  </div>
 </ng-template>
 </div>

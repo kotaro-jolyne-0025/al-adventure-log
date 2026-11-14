@@ -45,7 +45,15 @@ export const routes: Routes = [
       { path: 'edit', title: '編輯角色 | 冒險紀錄表 Web版', loadComponent: () => import('./features/characters/character-form/character-form.component').then(m => m.CharacterFormComponent) },
 
       // Epic 3: 倉庫
-      { path: 'inventory', title: '倉庫 | 冒險紀錄表 Web版', data: { preload: true }, loadComponent: () => import('./features/inventory/inventory-list/inventory-list.component').then(m => m.InventoryListComponent) },
+      {
+        path: 'inventory',
+        title: route => route.queryParamMap.get('view') === 'history'
+          ? '物品異動紀錄 | 冒險紀錄表 Web版'
+          : '倉庫 | 冒險紀錄表 Web版',
+        runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+        data: { preload: true },
+        loadComponent: () => import('./features/inventory/inventory-list/inventory-list.component').then(m => m.InventoryListComponent),
+      },
       { path: 'inventory/new', title: '新增物品 | 冒險紀錄表 Web版', loadComponent: () => import('./features/inventory/inventory-form/inventory-form.component').then(m => m.InventoryFormComponent) },
       { path: 'inventory/:itemId/edit', title: '編輯物品 | 冒險紀錄表 Web版', loadComponent: () => import('./features/inventory/inventory-form/inventory-form.component').then(m => m.InventoryFormComponent) },
 

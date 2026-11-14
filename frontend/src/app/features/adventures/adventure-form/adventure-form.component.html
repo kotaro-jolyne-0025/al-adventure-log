@@ -1,7 +1,12 @@
 <div class="page-container">
   <div class="page-header">
-    <button mat-icon-button (click)="onBack()" matTooltip="返回" aria-label="返回"><svg lucideArrowLeft [size]="20"></svg></button>
-    <h1 class="page-title">{{ isEditMode() ? '編輯冒險紀錄' : '新增冒險紀錄' }}</h1>
+    <button mat-icon-button (click)="onBack()" [matTooltip]="backLabel()" [attr.aria-label]="backLabel()"><svg lucideArrowLeft [size]="20"></svg></button>
+    <div class="character-form-heading">
+      <h1 class="page-title">{{ isEditMode() ? '編輯冒險紀錄' : '新增冒險紀錄' }}</h1>
+      @if (characterName?.(); as name) {
+        <span class="form-character-name">{{ name }}</span>
+      }
+    </div>
   </div>
 
   <app-draft-notice [offered]="draft.offered()" [savedAt]="draft.record()?.savedAt ?? null"
@@ -467,9 +472,9 @@
         <div class="card-header-between full-width">
           <mat-card-title class="card-title-flex" [class.mobile-heading-replaced]="downtimeActivities().length > 0">
             <svg lucideTent [size]="20" class="title-icon downtime"></svg>
-            <span class="section-heading-label">休整期活動(Downtime Activities)</span>
+            <span class="section-heading-label" matTooltip="Downtime Activities">休整期活動</span>
             @if (downtimeActivities().length > 0) {
-            <button type="button" class="mobile-section-toggle" (click)="toggleSection('downtime')"
+            <button type="button" class="mobile-section-toggle" (click)="toggleSection('downtime')" matTooltip="Downtime Activities"
               [attr.aria-expanded]="isSectionExpanded('downtime', downtimeActivities().length)" aria-controls="downtime-content"
               [attr.aria-label]="(isSectionExpanded('downtime', downtimeActivities().length) ? '收合' : '展開') + '休整期活動，' + downtimeActivities().length + ' 筆'">
               <span class="section-chevron" aria-hidden="true">{{ isSectionExpanded('downtime', downtimeActivities().length) ? '▾' : '▸' }}</span>

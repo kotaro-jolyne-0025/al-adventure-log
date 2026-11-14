@@ -19,7 +19,11 @@ it('keeps rendered detail mutation buttons disabled during refresh and after cop
     { provide: ActivatedRoute, useValue: { snapshot, parent: { snapshot } } },
     { provide: MatDialog, useValue: {} }, { provide: MatSnackBar, useValue: {} },
     { provide: LocalReadCache, useValue: { read } },
-    { provide: AdventureService, useValue: {} }, { provide: InventoryService, useValue: {} },
+    { provide: AdventureService, useValue: {} },
+    { provide: InventoryService, useValue: { movements: () => of({ items: [{
+      id: 'm', itemName: 'Potion', operation: 'CONSUME', quantityDelta: -1, quantityBefore: 1,
+      quantityAfter: 0, reversible: true, reversed: false,
+    }], nextCursor: null }) } },
   ] });
   TestBed.inject(LocalStore).markFresh('c', true);
   const fixture = TestBed.createComponent(AdventureDetailComponent);
@@ -27,12 +31,16 @@ it('keeps rendered detail mutation buttons disabled during refresh and after cop
   await fixture.whenStable();
   const button = () => fixture.nativeElement.querySelector('.btn-edit') as HTMLButtonElement;
   expect(button().disabled).toBe(false);
+  const historyMenu = () => fixture.nativeElement.querySelector('.record-menu') as HTMLButtonElement;
+  expect(historyMenu().disabled).toBe(false);
   fixture.componentInstance['loadEntry']();
   await fixture.whenStable();
   expect(button().disabled).toBe(true);
+  expect(historyMenu().disabled).toBe(true);
   refresh.next({ data, source: 'copy', fetchedAt: 100 });
   refresh.complete();
   await fixture.whenStable();
   expect(button().disabled).toBe(true);
+  expect(historyMenu().disabled).toBe(true);
   expect(fixture.nativeElement.textContent).toContain('目前顯示上次查看的資料');
 });

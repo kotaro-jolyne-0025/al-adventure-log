@@ -1,7 +1,8 @@
 import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
+import type { Signal } from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -62,6 +63,8 @@ import {
   styleUrl: './character-form.component.scss',
 })
 export class CharacterFormComponent implements OnInit {
+  protected readonly characterName = inject(ROUTER_OUTLET_DATA, { optional: true }) as Signal<string | undefined> | null;
+
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);

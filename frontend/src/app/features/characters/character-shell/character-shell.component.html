@@ -8,15 +8,13 @@
   </div>
 }
 
-  <div class="shell-container">
+  <div class="shell-container" [class.hide-character-card]="hideCharacterCard()" [style.--character-nav-height.px]="bottomNavHeight()" data-resize-focus>
     <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="!!character()" [compact]="true" (refresh)="loadCharacterData()" />
     @if (character()) {
     
-    <!-- Character Header Card & Navigation -->
-    <div class="char-hero-card clean-card">
-
       <!-- Hero Portrait + Identity & Actions -->
-      <div class="char-hero-top" data-resize-focus>
+      <ng-template #characterIdentity>
+      <div class="char-hero-top">
         <div class="hero-identity">
           <div class="char-avatar-hero">
             @if (character()!.avatarUrl) {
@@ -51,6 +49,7 @@
         </div>
 
       </div>
+      </ng-template>
 
       <!-- Character HUD Stats Bar (即時數值看板) -->
       <ng-template #resourceSummary>
@@ -105,30 +104,44 @@
 
       </div>
       </ng-template>
-      <div data-resize-focus>
-      <div class="full-resource-summary" tabindex="-1" data-resize-focus-target role="region" aria-label="角色資源">
-        <ng-container *ngTemplateOutlet="resourceSummary" />
+      <div class="char-hero-card clean-card desktop-character">
+        <ng-container *ngTemplateOutlet="characterIdentity" />
+        <div role="region" aria-label="資源總覽">
+          <ng-container *ngTemplateOutlet="resourceSummary" />
+        </div>
       </div>
-      <details class="compact-resource-summary">
-        <summary>角色資源</summary>
-        <ng-container *ngTemplateOutlet="resourceSummary" />
-      </details>
+      <div class="mobile-character clean-card">
+        <ng-container *ngTemplateOutlet="characterIdentity" />
+        <details>
+          <summary>資源總覽 <svg lucideChevronDown [size]="24" aria-hidden="true"></svg></summary>
+          <div class="mobile-resource-content">
+            <ng-container *ngTemplateOutlet="resourceSummary" />
+          </div>
+        </details>
       </div>
-    </div>
 
     }
     @if (!character() && !isLoading() && !loadError()) { <p>目前無法顯示角色資訊，請連線後再試。</p> }
-    <!-- Tab Nav -->
-    <nav mat-tab-nav-bar [tabPanel]="characterPanel" class="character-tabs" aria-label="角色內容">
-      <a mat-tab-link [routerLink]="['/characters', characterId, 'adventures']" [active]="getActiveTab() === 0">
-        <svg lucideBookOpen [size]="20" class="tab-icon" aria-hidden="true"></svg><span>冒險紀錄表</span>
-      </a>
-      <a mat-tab-link [routerLink]="['/characters', characterId, 'inventory']" [active]="getActiveTab() === 1">
-        <svg lucideBox [size]="20" class="tab-icon" aria-hidden="true"></svg><span>倉庫</span>
-      </a>
-    </nav>
-    <mat-tab-nav-panel #characterPanel class="tab-content-area">
-      <router-outlet />
-    </mat-tab-nav-panel>
+    <div data-resize-focus>
+    @if (character() && !isFormRoute()) {
+      <nav #bottomNav class="character-bottom-nav" aria-label="角色內容">
+        <a [routerLink]="['/characters', characterId, 'adventures']" [attr.aria-current]="activeTab() === 0 ? 'page' : null">
+          <span class="destination-icon"><svg lucideBookOpen [size]="22" aria-hidden="true"></svg></span>
+          <span>冒險紀錄</span>
+        </a>
+        <a [routerLink]="['/characters', characterId, 'inventory']" [attr.aria-current]="activeTab() === 1 ? 'page' : null">
+          <span class="destination-icon"><svg lucideBox [size]="22" aria-hidden="true"></svg></span>
+          <span>倉庫</span>
+        </a>
+        <a [routerLink]="['/characters', characterId, 'inventory']" [queryParams]="{ view: 'history' }" [attr.aria-current]="activeTab() === 2 ? 'page' : null">
+          <span class="destination-icon"><svg lucideHistory [size]="22" aria-hidden="true"></svg></span>
+          <span>物品異動紀錄</span>
+        </a>
+      </nav>
+    }
+    </div>
+    <div class="tab-content-area" (focusin)="keepContentFocusVisible($event)">
+      <router-outlet [routerOutletData]="currentCharacterName()" />
+    </div>
 
   </div>

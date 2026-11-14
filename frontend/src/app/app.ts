@@ -21,8 +21,8 @@ import { ViewportService } from './core/services/viewport.service';
 import { AppInstallService } from './core/services/app-install.service';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
 import { DraftUpdateCoordinator } from './core/services/draft-update-coordinator.service';
+import type { CharacterShellComponent } from './features/characters/character-shell/character-shell.component';
 import {
-  LucideArrowLeft,
   LucideSun,
   LucideMoon,
   LucideUser,
@@ -50,7 +50,6 @@ import {
     MatDividerModule,
     MatDialogModule,
     MatTooltipModule,
-    LucideArrowLeft,
     LucideSun,
     LucideMoon,
     LucideUser,
@@ -83,10 +82,15 @@ export class App {
   readonly version = version;
   private updateDialogOpen = false;
 
-  // 判斷是否處於角色內頁（非角色列表、非登入註冊頁面）
-  readonly showBack = signal(false);
   readonly navigationPending = signal(false);
   private loadingNavigationId = 0;
+
+  protected toolbarCharacter(outlet: RouterOutlet): CharacterShellComponent | undefined {
+    if (outlet.isActivated && outlet.activatedRoute.routeConfig?.path === 'characters/:id') {
+      return outlet.component as CharacterShellComponent;
+    }
+    return undefined;
+  }
 
   protected skipToContent(event: Event): void {
     event.preventDefault();
@@ -114,12 +118,6 @@ export class App {
             document.getElementById('main-content')?.focus({ preventScroll: true });
           }, { injector: this.injector });
         }
-        // 只要不是 /characters 列表首頁，處於角色詳情/新建/編輯時就顯示返回
-        const isDetailPage =
-          url.startsWith('/characters/') ||
-          url.includes('/adventures') ||
-          url.includes('/inventory');
-        this.showBack.set(isDetailPage);
       });
     this.router.events
       .pipe(filter((e): e is NavigationError => e instanceof NavigationError))
@@ -183,10 +181,6 @@ export class App {
       if (await this.draftUpdate.prepareReload()) this.appUpdate.reload();
       else this.snackBar.open('草稿尚未暫存，請重試保存，或先送出紀錄再更新。', '關閉', { duration: 6000 });
     });
-  }
-
-  goBack(): void {
-    this.router.navigate(['/characters']);
   }
 
   async installApp(): Promise<void> {

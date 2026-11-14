@@ -1,7 +1,8 @@
 import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
+import type { Signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -47,6 +48,8 @@ import {
   styleUrl: './inventory-form.component.scss',
 })
 export class InventoryFormComponent implements OnInit {
+  protected readonly characterName = inject(ROUTER_OUTLET_DATA, { optional: true }) as Signal<string | undefined> | null;
+
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
