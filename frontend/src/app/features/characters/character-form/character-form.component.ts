@@ -1,5 +1,5 @@
 import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 
 import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
 import type { Signal } from '@angular/core';
@@ -72,6 +72,7 @@ export class CharacterFormComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly CLASS_OPTIONS = DND_CLASSES;
 
@@ -175,7 +176,7 @@ export class CharacterFormComponent implements OnInit {
     if (this.isProcessingAvatar()) return;
     if (input.files && input.files[0]) {
       const file = input.files[0];
-      // 限制原始檔案大小（5MB），避免大圖解碼佔用過多記憶體導致裁切卡頓
+      // 限制原始檔案大小；壓縮檔大小不代表解碼後的記憶體用量。
       const MAX_FILE_SIZE = 5 * 1024 * 1024;
       if (file.size > MAX_FILE_SIZE) {
         this.snackBar.open('圖片檔案過大，請選擇 5MB 以下的圖片', '關閉', { duration: 3000 });
@@ -187,8 +188,16 @@ export class CharacterFormComponent implements OnInit {
         const isHeif = /\.(heic|heif)$/i.test(file.name) || /^image\/hei[cf]/i.test(file.type);
         if (isHeif) {
           this.isProcessingAvatar.set(true);
-          const { default: convertHeic } = await import('heic2any');
-          const converted = await convertHeic({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+          const nativeReadable = await this.canDecodeAvatar(file);
+          if (this.destroyRef.destroyed) return;
+          if (nativeReadable) {
+            this.openCropper(file);
+            return;
+          }
+          const { heicTo } = await import('heic-to');
+          if (this.destroyRef.destroyed) return;
+          const converted = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.92 });
+          if (this.destroyRef.destroyed) return;
           if (!(converted instanceof Blob)) throw new Error('HEIF conversion returned no image');
           this.openCropper(new File([converted], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' }));
         } else if (['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -197,11 +206,28 @@ export class CharacterFormComponent implements OnInit {
           this.snackBar.open('請選取 JPG、PNG、WebP 或 HEIC／HEIF 圖片', '關閉', { duration: 3000 });
         }
       } catch {
+        if (!this.destroyRef.destroyed) {
           this.snackBar.open('無法讀取這張照片，請確認格式後再試一次', '關閉', { duration: 3500 });
+        }
       } finally {
         this.isProcessingAvatar.set(false);
         input.value = ''; // 重置 input 讓同檔名可重複觸發
       }
+    }
+  }
+
+  private async canDecodeAvatar(file: File): Promise<boolean> {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    try {
+      image.src = url;
+      await image.decode();
+      return image.naturalWidth > 0 && image.naturalHeight > 0;
+    } catch {
+      return false;
+    } finally {
+      image.removeAttribute('src');
+      URL.revokeObjectURL(url);
     }
   }
 

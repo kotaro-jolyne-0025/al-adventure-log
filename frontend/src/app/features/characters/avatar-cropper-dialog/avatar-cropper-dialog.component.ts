@@ -4,6 +4,7 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import {
   LucideCrop,
@@ -226,6 +227,7 @@ export class AvatarCropperDialogComponent implements OnInit {
   constructor(
     private dialogRef: MatDialogRef<AvatarCropperDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: AvatarCropperDialogData,
+    private snackBar: MatSnackBar,
   ) {}
 
   ngOnInit(): void {
@@ -464,10 +466,11 @@ export class AvatarCropperDialogComponent implements OnInit {
 
     outCtx.drawImage(this.img, sx, sy, sw, sh, 0, 0, outputSize, outputSize);
 
-    // 優先匯出 WebP (quality 0.88)，若瀏覽器不支援會自動 fallback 為 image/png
-    let resultDataUrl = outCanvas.toDataURL('image/webp', 0.88);
-    if (!resultDataUrl.startsWith('data:image/webp')) {
-      resultDataUrl = outCanvas.toDataURL('image/jpeg', 0.88);
+    const resultDataUrl = outCanvas.toDataURL('image/webp', 0.88);
+    if (!resultDataUrl.startsWith('data:image/webp;')) {
+      this.snackBar.open('無法讀取這張照片，請確認格式後再試一次', '關閉', { duration: 3500 });
+      this.dialogRef.close();
+      return;
     }
 
     this.dialogRef.close(resultDataUrl);
