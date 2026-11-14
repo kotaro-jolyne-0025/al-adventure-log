@@ -3,7 +3,7 @@
     <!-- Hero Section -->
     <header class="hero-section">
       <div class="hero-logo-wrapper">
-        <img src="logo.png" alt="冒險紀錄表 Web版 Logo" class="hero-logo-img" />
+        <img src="logo.png" alt="冒險紀錄表 Web版 Logo" width="72" height="72" fetchpriority="high" class="hero-logo-img" />
       </div>
 
       <h1 class="hero-title">冒險紀錄表 Web版</h1>
@@ -25,28 +25,72 @@
       </div>
     </header>
 
-    <!-- 2x2 核心特色卡片網格 (無 Emoji，典雅微光排版) -->
-    <section class="features-grid">
-      <div class="feature-card">
-        <h2 class="feature-card-title">多角色檔案管理</h2>
-        <p class="feature-card-desc">集中管理您的所有角色，即時掌握等級、職業、金幣、休整期。</p>
-      </div>
-
-      <div class="feature-card">
-        <h2 class="feature-card-title">跑團紀錄追蹤</h2>
-        <p class="feature-card-desc">詳細記錄每場模組名稱、DM 資訊、升級、金幣與休整期變動。</p>
-      </div>
-
-      <div class="feature-card">
-        <h2 class="feature-card-title">魔法物品與裝備庫</h2>
-        <p class="feature-card-desc">分類管理永久性魔法物品與消耗品。</p>
-      </div>
-
-      <div class="feature-card">
-        <h2 class="feature-card-title">多裝置友善</h2>
-        <p class="feature-card-desc">支援手機與電腦介面。</p>
-      </div>
-    </section>
+    <div class="feature-showcase">
+      <section aria-labelledby="characters">
+        <div>
+          <h2 id="characters">多角色檔案管理</h2>
+          <p>集中管理角色，查看各自的等級、職業、金幣和休整期。</p>
+        </div>
+        <div class="examples">
+          <figure>
+            <a class="shot" href="demos/characters-portraits.png"><img src="demos/characters-portraits.png" width="1060" height="465" loading="lazy" decoding="async" alt="四張角色卡顯示不同角色的種族、職業與等級"></a>
+            <figcaption>角色列表</figcaption>
+          </figure>
+          <figure class="supporting">
+            <a class="shot" href="demos/resources-portraits.png"><img src="demos/resources-portraits.png" width="1070" height="228" loading="lazy" decoding="async" alt="角色資源總覽，列出金幣、休整期和魔法物品數量"></a>
+            <figcaption>資源總覽</figcaption>
+          </figure>
+        </div>
+      </section>
+      <section aria-labelledby="adventures">
+        <div>
+          <h2 id="adventures">跑團紀錄追蹤</h2>
+          <p>每場冒險各有一筆紀錄，可以回看當時的等級和資源變動。</p>
+        </div>
+        <div class="examples">
+          <figure>
+            <a class="shot" href="demos/adventure-detail-portraits.png"><img src="demos/adventure-detail-portraits.png" width="1065" height="565" loading="lazy" decoding="async" alt="失落神殿的秘密冒險資訊與資源變動"></a>
+            <figcaption>單場冒險詳情</figcaption>
+          </figure>
+          <figure class="supporting">
+            <a class="shot" href="demos/adventure-list-portraits.png"><img src="demos/adventure-list-portraits.png" width="1070" height="460" loading="lazy" decoding="async" alt="兩場冒險依序列出，各自有日期、DM 與資源獎勵"></a>
+            <figcaption>歷次冒險列表</figcaption>
+          </figure>
+        </div>
+      </section>
+      <section aria-labelledby="inventory">
+        <div>
+          <h2 id="inventory">魔法物品與裝備庫</h2>
+          <p>在倉庫分類管理永久物品與消耗品，用掉後可以回查庫存變動。</p>
+        </div>
+        <div class="examples">
+          <figure>
+            <a class="shot" href="demos/inventory-portraits.png"><img src="demos/inventory-portraits.png" width="1070" height="340" loading="lazy" decoding="async" alt="倉庫顯示永久性魔法物品和消耗品分類、篩選和消耗品數量"></a>
+            <figcaption>倉庫分類與剩餘數量</figcaption>
+          </figure>
+          <figure class="supporting">
+            <a class="shot" href="demos/movement-portraits.png"><img src="demos/movement-portraits.png" width="1065" height="445" loading="lazy" decoding="async" alt="展開治療藥水消耗紀錄，可看到原有數量、剩餘數量、使用冒險及備註"></a>
+            <figcaption>展開消耗紀錄，查看變動前後</figcaption>
+          </figure>
+        </div>
+      </section>
+      <section aria-labelledby="devices">
+        <div>
+          <h2 id="devices">多裝置友善</h2>
+          <p>同一個角色，桌機適合一次瀏覽多筆紀錄，手機可從底部切換到倉庫。</p>
+        </div>
+        <div class="examples">
+          <figure>
+            <a class="shot" href="demos/desktop-portraits.png"><img src="demos/desktop-portraits.png" width="1080" height="785" loading="lazy" decoding="async" alt="桌機冒險列表，角色資源總覽和紀錄一併顯示"></a>
+            <figcaption>桌機</figcaption>
+          </figure>
+          <figure class="phone">
+            <a class="shot" href="demos/mobile-portraits.png"><img src="demos/mobile-portraits.png" width="382" height="827" loading="lazy" decoding="async" alt="手機上的同一個冒險列表，三個角色導覽入口放在底部"></a>
+            <figcaption>手機</figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
 
     <!-- 頁尾聲明 (WotC 同好政策與法律連結) -->
     <footer class="landing-footer">
