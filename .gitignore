@@ -34,6 +34,8 @@ backend/src/main/resources/application-local.yml
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+frontend/test-results/
+frontend/playwright-report/
 
 # npm / yarn
 npm-debug.log*
