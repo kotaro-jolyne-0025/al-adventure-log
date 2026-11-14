@@ -40,6 +40,7 @@ class AdventureLootCorrectionServiceTest {
     @Mock StoryAwardMapper storyAwardMapper;
     @Mock CharacterService characterService;
     @Mock InventoryItemMapper inventoryItemMapper;
+    @Mock InventoryMovementService movements;
     @InjectMocks AdventureEntryService service;
 
     private final UUID userId = UUID.randomUUID();
@@ -126,6 +127,7 @@ class AdventureLootCorrectionServiceTest {
     void decreasingLootFloorsRemainingInventoryAtZero() {
         snapshot.setQuantity(5);
         InventoryItem warehouse = new InventoryItem();
+        warehouse.setItemType(InventoryItem.ItemType.CONSUMABLE);
         warehouse.setId(UUID.randomUUID());
         warehouse.setItemType(InventoryItem.ItemType.CONSUMABLE);
         warehouse.setQuantity(2);

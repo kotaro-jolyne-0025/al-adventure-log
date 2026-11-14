@@ -163,7 +163,7 @@ class LedgerPersistenceIntegrationTest {
         AdventureGainedItemMapper gained = template.getMapper(AdventureGainedItemMapper.class);
         AdventureEntryService service = new AdventureEntryService(entries, characters,
                 template.getMapper(DowntimeActivityMapper.class), gained,
-                template.getMapper(StoryAwardMapper.class), new CharacterService(characters, entries, inventory), inventory);
+                template.getMapper(StoryAwardMapper.class), new CharacterService(characters, entries, inventory), inventory, movementService(template));
         new TransactionTemplate(new DataSourceTransactionManager(dataSource)).executeWithoutResult(status -> {
             Character character = newCharacter();
             characters.insert(character);
@@ -216,7 +216,7 @@ class LedgerPersistenceIntegrationTest {
         CharacterService characterService = new CharacterService(characters, entries, inventory);
         AdventureEntryService service = new AdventureEntryService(entries, characters,
                 template.getMapper(DowntimeActivityMapper.class), gained,
-                template.getMapper(StoryAwardMapper.class), characterService, inventory);
+                template.getMapper(StoryAwardMapper.class), characterService, inventory, movementService(template));
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         transaction.executeWithoutResult(status -> {
             Character character = newCharacter();
@@ -249,7 +249,7 @@ class LedgerPersistenceIntegrationTest {
             two.setIsSoulCoin(true);
             service.updateGainedItem(saved.getId(), two.getId(), two, USER_ID);
             assertEquals(3, inventory.sumSoulCoinQuantityByCharacterId(character.getId()));
-            var stockService = new com.dndadvlog.backend.service.InventoryItemService(inventory, characterService, entries, gained, characters);
+            var stockService = new com.dndadvlog.backend.service.InventoryItemService(inventory, characterService, entries, gained, characters, movementService(template));
             var stockRequest = new com.dndadvlog.backend.dto.InventoryItemRequest();
             stockRequest.setItemName("Player custom name");
             stockRequest.setItemType(InventoryItem.ItemType.CONSUMABLE);
@@ -644,7 +644,7 @@ class LedgerPersistenceIntegrationTest {
                 template.getMapper(AdventureGainedItemMapper.class),
                 template.getMapper(StoryAwardMapper.class),
                 characterService,
-                template.getMapper(InventoryItemMapper.class));
+                template.getMapper(InventoryItemMapper.class), movementService(template));
 
         AdventureEntryRequest entryRequest = new AdventureEntryRequest();
         entryRequest.setPlayDate(LocalDate.of(2026, 9, 19));
@@ -693,7 +693,7 @@ class LedgerPersistenceIntegrationTest {
                 template.getMapper(AdventureGainedItemMapper.class),
                 awardMapper,
                 new CharacterService(characterMapper, entryMapper, template.getMapper(InventoryItemMapper.class)),
-                template.getMapper(InventoryItemMapper.class));
+                template.getMapper(InventoryItemMapper.class), movementService(template));
 
         AdventureEntryResponse created = transaction.execute(status ->
                 service.createEntryWithDetails(character.getId(),
@@ -931,10 +931,20 @@ class LedgerPersistenceIntegrationTest {
         }
     }
 
+    static com.dndadvlog.backend.service.InventoryMovementService movementService(SqlSessionTemplate template) {
+        return new com.dndadvlog.backend.service.InventoryMovementService(
+            template.getMapper(com.dndadvlog.backend.mapper.InventoryMovementMapper.class),
+            template.getMapper(InventoryItemMapper.class), template.getMapper(AdventureEntryMapper.class),
+            new CharacterService(template.getMapper(CharacterMapper.class),template.getMapper(AdventureEntryMapper.class),template.getMapper(InventoryItemMapper.class)),
+            null);
+    }
+
     static SqlSessionFactory buildSqlSessionFactory(DataSource source) throws Exception {
         Configuration configuration = new Configuration(
                 new Environment("embedded-postgres", new SpringManagedTransactionFactory(), source));
         configuration.setMapUnderscoreToCamelCase(true);
+        configuration.getTypeHandlerRegistry().register(new com.dndadvlog.backend.config.UuidTypeHandler());
+        configuration.addMapper(com.dndadvlog.backend.mapper.InventoryMovementMapper.class);
         configuration.getTypeHandlerRegistry()
                 .register(UUID.class, JdbcType.OTHER, ObjectTypeHandler.class);
         for (String resource : List.of(

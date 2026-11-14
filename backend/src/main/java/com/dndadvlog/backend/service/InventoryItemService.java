@@ -29,6 +29,7 @@ public class InventoryItemService {
     private final AdventureEntryMapper entryMapper;
     private final AdventureGainedItemMapper gainedItemMapper;
     private final CharacterMapper characterMapper;
+    private final InventoryMovementService movements;
 
     public List<InventoryItemResponse> getItems(UUID characterId, InventoryItem.ItemType itemType, UUID userId) {
         characterService.findCharacter(characterId, userId);
@@ -48,6 +49,7 @@ public class InventoryItemService {
         validateAndSetRelations(request, item, userId);
         mapRequestToItem(request, item);
         inventoryItemMapper.insert(item);
+        movements.save(item, 0, item.getQuantity(), null, "ACQUIRE", "MANUAL");
         refreshCurrentMagicItems(characterId);
         return toResponse(findItem(item.getId()));
     }
@@ -61,6 +63,8 @@ public class InventoryItemService {
         }
         InventoryItem.validateTypeUnchanged(item.getItemType(), request.getItemType());
         validatePermanentQuantity(request, item);
+        int before = item.getQuantity();
+        InventoryItem.ItemType previousType = item.getItemType();
         validateAndSetRelations(request, item, userId);
         mapRequestToItem(request, item);
         if (Boolean.TRUE.equals(item.getNeedsDetails())
@@ -68,6 +72,7 @@ public class InventoryItemService {
             item.setNeedsDetails(false);
         }
         inventoryItemMapper.update(item);
+        movements.save(item, before, item.getQuantity(), previousType, "ADJUST", "MANUAL");
         refreshCurrentMagicItems(characterId);
         return toResponse(findItem(itemId));
     }
@@ -79,6 +84,7 @@ public class InventoryItemService {
         if (!characterId.equals(item.getCharacterId())) {
             throw new ResourceNotFoundException("找不到物品 ID：" + itemId);
         }
+        movements.save(item, item.getQuantity(), 0, item.getItemType(), "REMOVE", "MANUAL");
         inventoryItemMapper.deleteById(itemId);
         refreshCurrentMagicItems(characterId);
     }

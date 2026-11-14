@@ -47,6 +47,7 @@ class AdventureLedgerServiceTest {
     @Mock StoryAwardMapper storyAwardMapper;
     @Mock CharacterService characterService;
     @Mock InventoryItemMapper inventoryItemMapper;
+    @Mock InventoryMovementService movements;
     @InjectMocks AdventureEntryService service;
 
     private final UUID userId = UUID.randomUUID();

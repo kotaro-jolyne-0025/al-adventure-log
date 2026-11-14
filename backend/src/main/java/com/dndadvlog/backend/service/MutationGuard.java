@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 @Service
 @RequiredArgsConstructor
 public class MutationGuard {
-    public enum Resource { CHARACTER, ENTRY, ITEM, ACTIVITY, GAINED_ITEM, STORY_AWARD }
+    public enum Resource { CHARACTER, ENTRY, ITEM, ACTIVITY, GAINED_ITEM, STORY_AWARD, MOVEMENT }
     private record Target(String table, UUID id, UUID characterId) {}
     private final JdbcTemplate jdbc;
     private static final String NEXT_TIME =
@@ -77,6 +77,7 @@ public class MutationGuard {
             case ACTIVITY -> "downtime_activity";
             case GAINED_ITEM -> "adventure_gained_item";
             case STORY_AWARD -> "adventure_story_award";
+            case MOVEMENT -> "inventory_movement";
         };
         boolean child = resource == Resource.ACTIVITY || resource == Resource.GAINED_ITEM || resource == Resource.STORY_AWARD;
         String sql = resource == Resource.CHARACTER

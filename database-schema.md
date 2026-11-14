@@ -559,3 +559,37 @@ users
 - 舊 SOUL_COIN 分類轉成 true，分類清為 NULL，九種一般分類與 NULL 保持可用；新分類欄位不接受 SOUL_COIN。只將已標記項目的制式名稱「靈魂硬幣」統一為「靈魂幣」，自訂名稱、稀有度、數量、來源、備註、日期及關聯不變。
 - 目前靈魂幣總量改為同角色 CONSUMABLE 且 is_soul_coin 為 true 的 quantity 加總；冒險歷史以快照標記加總。標記不受名稱、分類或稀有度影響，取消勾選不刪除物品，庫存操作不回寫歷史。
 - migration 可重跑，不重複入庫、不復原已取消的標記；未操作正式資料庫。表單勾選不自動填其他欄位，充能不納入資料模型。
+
+## Migration 31（倉庫異動紀錄）
+
+[V31__add_inventory_movements.sql](backend/src/main/resources/db/migration/V31__add_inventory_movements.sql) 新增 `inventory_movement`，既有 `inventory_item.quantity` 仍是目前庫存來源，不由歷史重算第二套餘額。
+
+| 欄位群組 | 語意 |
+| --- | --- |
+| id、character_id、item_id | UUID；角色外鍵 CASCADE，物品 ID 為不受物品刪除影響的歷史識別 |
+| item_name、item_type、previous_item_type | 當時名稱及轉換前後類型快照 |
+| operation、reason | BASELINE／ACQUIRE／ADJUST／CONSUME／REMOVE／REVERSE；區分手動、冒險取得、來源更正及來源刪除 |
+| quantity_before、quantity_delta、quantity_after | 非負前後值及有號差額；資料庫約束 after = before + delta，以 bigint 驗算避免整數溢位 |
+| source_entry_id、source_gained_item_id、source_name、source_code | 取得來源的原始識別與文字快照，不設會刪除歷史的外鍵 |
+| usage_entry_id、usage_original_entry_id、usage_name、usage_code | 使用冒險；可導覽的 usage_entry_id 設 ON DELETE SET NULL，其餘保留歷史；明確清除使用冒險時一起清空 |
+| notes、reversal_of | 備註最多 2000 字；反向紀錄參照原消耗且唯一，不能重複撤銷 |
+
+`notes` 為消耗與事後「編輯紀錄」共用欄位，不新增副本或 migration。未撤銷消耗可依 MOVEMENT 原時間戳編輯備註與使用冒險；只更新明確提供的欄位，省略時保留原內容與已刪冒險歷史快照。編輯不改數量、created_at 或新增 movement。
+| created_at、updated_at | 微秒精度時間；同物品事件至少依前一事件加一微秒，updated_at 沿用單調觸發器 |
+
+- 索引包含角色／時間／ID 倒序分頁、物品／時間、使用冒險及每物品唯一 BASELINE。啟用時以庫存鎖及一次性基準保留現值，初始化重跑不重複記錄或復活已刪物品；異常 null／負數直接失敗，不推測修補。
+- BASELINE 僅供後端保留起始庫存；預設產品查詢在游標分頁前排除，不回傳基準列或占用頁面筆數，不刪除底層基準或更動目前庫存。
+- 倉庫 CRUD、冒險獲得／更正／刪除、消耗及撤銷皆在原交易新增異動。級聯移除前先記每筆庫存；來源更正只記實際套用差額。只改名稱／備註不新增數量事件，類型轉換保留零差額調整。
+- 消耗至零保留物品 row 供安全撤銷，持有清單與計數排除零；來源純名稱／備註更正保留此身份。數量更正或來源刪除移除 row 後，不因撤銷復活。
+- 冒險「本次使用」重用同一張 movement 表，查詢先限制 `character_id`、`usage_entry_id`、`operation = 'CONSUME'`，再以 `reversal_of` 是否存在區別有效／已撤銷並游標分頁。沿用角色時間、使用冒險及反向唯一索引；不新增資料表、欄位、migration 或冒險消耗副本。
+- 新表開啟 RLS、撤銷 PUBLIC／anon／authenticated 權限，沿用後端所有權驗證；不增加公開資料 API 的存取權。
+- 預設產品庫存紀錄在分頁前排除 REVERSE 及已存在反向紀錄的原消耗；冒險畫面只查有效使用。原消耗與反向紀錄保留於資料庫，撤銷唯一限制與資格檢查仍依完整底層歷史判定，不因畫面隱藏而忽略後續異動。
+- MutationGuard 增加 MOVEMENT target，關聯編輯與撤銷檢查原始紀錄時間戳並鎖定角色。撤銷亦推進物品與來源冒險時間戳；失敗時庫存、歷史、角色與所有時間戳一併回滾。
+- 僅完成本機隔離驗證，未套用正式資料庫。部署須先完成下列切換，不能直接讓舊後端持續寫入而宣稱歷史完整。
+
+### 首次啟用與復原程序
+
+1. 由既有 CI/CD 在候選後端啟動前阻擋使用者寫入，排空舊後端進行中的寫入，確認舊 revision 不再接收寫入流量；若 CI/CD 無此能力，發布停在此步，不以人工部署繞過。
+2. 新後端透過 Flyway 執行 V31，庫存鎖內建立基準；migration 失敗保持禁止寫入，修正原因後重試，不能默默把異常數量改為零。
+3. 確認所有可接收寫入的後端均已使用異動記錄流程，完成候選 schema、歷史查詢與來源同步驗證，再透過 CI/CD 開放新前端與寫入。
+4. 啟用後保留異動表並優先向前修復。舊後端可讀寫既有欄位，但不會記新歷史，因此不能在持續寫入下直接回退。復原需重新阻擋／排空寫入，依 VERSIONING.md 另行授權評估；不刪基準或捏造漏記紀錄。
