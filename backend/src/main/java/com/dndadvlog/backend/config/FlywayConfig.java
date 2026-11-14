@@ -15,14 +15,17 @@ public class FlywayConfig {
     @Bean
     public Flyway flyway(DataSource dataSource, Environment environment, DatabaseTargetGuard targetGuard) {
         targetGuard.verifyBeforeDatabaseInitialization();
-        Flyway flyway = Flyway.configure()
+        var configuration = Flyway.configure()
                 .dataSource(dataSource)
                 .baselineOnMigrate(true)
                 .baselineVersion("0")
                 .locations("classpath:db/migration")
                 .connectRetries(5)
-                .connectRetriesInterval(2)
-                .load();
+                .connectRetriesInterval(2);
+        if (environment.matchesProfiles("prod")) {
+            configuration.initSql("SELECT set_config('advlog.install_inventory_guard', 'on', false)");
+        }
+        Flyway flyway = configuration.load();
         migrateIfEnabled(flyway, environment.getProperty("spring.flyway.enabled", Boolean.class, true));
         return flyway;
     }

@@ -29,8 +29,26 @@ CREATE INDEX IF NOT EXISTS idx_inventory_movement_item_time ON inventory_movemen
 CREATE INDEX IF NOT EXISTS idx_inventory_movement_usage ON inventory_movement(usage_entry_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_movement_baseline ON inventory_movement(item_id) WHERE operation = 'BASELINE';
 
--- Run under the deployment write cutover; never infer pre-feature consumption.
-LOCK TABLE inventory_item IN SHARE ROW EXCLUSIVE MODE;
+-- Hold the lock through the baseline and guard installation in the same transaction.
+LOCK TABLE public.inventory_item IN ACCESS EXCLUSIVE MODE;
+CREATE OR REPLACE FUNCTION public.require_inventory_movement_writer()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog AS $$
+BEGIN
+    IF current_setting('advlog.inventory_movements', true) IS DISTINCT FROM 'on' THEN
+        RAISE EXCEPTION 'Inventory writer does not support movement history' USING ERRCODE = '55000';
+    END IF;
+    RETURN NULL;
+END;
+$$;
+DO $$
+BEGIN
+    IF current_setting('advlog.install_inventory_guard', true) = 'on' THEN
+        CREATE OR REPLACE TRIGGER require_inventory_movement_writer
+            BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE ON public.inventory_item
+            FOR EACH STATEMENT EXECUTE FUNCTION public.require_inventory_movement_writer();
+    END IF;
+END;
+$$;
 INSERT INTO inventory_movement(id,character_id,item_id,item_name,item_type,operation,reason,
     quantity_before,quantity_delta,quantity_after,source_entry_id,source_gained_item_id,source_name,source_code)
 SELECT gen_random_uuid(),i.character_id,i.id,i.item_name,i.item_type::text,'BASELINE','BASELINE',
