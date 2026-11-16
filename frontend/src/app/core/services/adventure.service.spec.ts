@@ -35,6 +35,24 @@ describe('Adventure API consistency', () => {
     http.expectNone(request => request.url.includes('gained-items') || request.url.includes('story-awards') || request.url.includes('inventory'));
   });
 
+  it('reuses fresh details for display but reads a new snapshot when entering edit', () => {
+    const url = environment.apiUrl + '/entries/e';
+    api.getDetails('c', 'e', false).subscribe();
+    http.expectOne(url).flush(details);
+    const view = vi.fn();
+    api.getDetails('c', 'e', false).subscribe(view);
+    http.expectNone(url);
+    expect(view).toHaveBeenCalledOnce();
+
+    const edit = vi.fn();
+    api.getDetails('c', 'e').subscribe(edit);
+    const updatedAt = '2026-10-14T01:02:04.123456';
+    http.expectOne(url).flush({ ...details, updatedAt });
+    expect(edit).toHaveBeenCalledWith(expect.objectContaining({
+      entry: expect.objectContaining({ updatedAt }),
+    }));
+  });
+
   it.each([
     { ...details, updatedAt: undefined },
     { ...details, storyAwards: undefined },

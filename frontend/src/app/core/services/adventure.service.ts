@@ -18,6 +18,8 @@ import {
 } from '../models/adventure.model';
 import { CharacterService } from './character.service';
 
+type ReturnTypeOfDetails = { entry: AdventureEntry; gainedItems: AdventureGainedItem[]; storyAwards: StoryAward[]; legacyItems: NonNullable<AdventureEntry['legacyItems']> };
+
 @Injectable({ providedIn: 'root' })
 export class AdventureService {
   private readonly http = inject(HttpClient);
@@ -28,6 +30,8 @@ export class AdventureService {
   private readonly entriesCache = new RequestCache<AdventureEntry[]>();
   private readonly defaultsCache = new RequestCache<EntryDefaults>();
 
+  private readonly detailsCaches = new Map<string, RequestCache<ReturnTypeOfDetails>>();
+
   constructor() {
     this.characterService.cacheInvalidated$.subscribe(id => this.clearCache(id));
   }
@@ -35,6 +39,11 @@ export class AdventureService {
   clearCache(characterId?: string): void {
     this.entriesCache.clear(characterId);
     this.defaultsCache.clear(characterId);
+    for (const [id, cache] of this.detailsCaches) {
+      if (characterId && id !== characterId) continue;
+      cache.clear();
+      this.detailsCaches.delete(id);
+    }
   }
 
   // ── AdventureEntry ───────────────────────────────────────────────────────
@@ -56,8 +65,13 @@ export class AdventureService {
     );
   }
 
-  getDetails(characterId: string, entryId: string) {
-    return this.getById(characterId, entryId).pipe(map(response => {
+  getDetails(characterId: string, entryId: string, refresh = true) {
+    let cache = this.detailsCaches.get(characterId);
+    if (!cache) {
+      cache = new RequestCache<ReturnTypeOfDetails>();
+      this.detailsCaches.set(characterId, cache);
+    }
+    return cache.get(entryId, () => this.getById(characterId, entryId).pipe(map(response => {
       if (response.characterId !== characterId || !Array.isArray(response.storyAwards) || !Array.isArray(response.gainedItems)
           || typeof response.updatedAt !== 'string' || !response.updatedAt) {
         throw new Error('冒險資料或更新時間不完整，請更新網頁後重新載入。');
@@ -68,7 +82,7 @@ export class AdventureService {
         throw new Error('舊倉庫資料未完整載入。');
       }
       return { entry, gainedItems, storyAwards, legacyItems: legacyItems ?? [] };
-    }));
+    })), refresh);
   }
 
   create(characterId: string, req: AdventureEntryRequest): Observable<AdventureEntry> {

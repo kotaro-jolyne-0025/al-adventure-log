@@ -13,10 +13,15 @@ export interface LocalRecord<T = unknown> {
 export class DraftConflict extends Error {}
 
 /** Device storage only. Never holds credentials or sends an API request. */
+const COPY_MAX_BYTES = 2_000_000;
+const COPY_MAX_AGE = 7 * 86400000;
+const copyBytes = (data: unknown) => new TextEncoder().encode(JSON.stringify(data)).length;
+
 @Injectable({ providedIn: 'root' })
 export class LocalStore {
   readonly owner = signal<string | null>(null);
   readonly changes = new Subject<string | undefined>();
+  readonly externalInvalidation = new Subject<void>();
   readonly sessionChanged = new Subject<void>();
   readonly freshCharacters = signal<ReadonlySet<string>>(new Set());
   private db?: Promise<IDBDatabase>;
@@ -32,6 +37,7 @@ export class LocalStore {
       if (event.key === this.EPOCH_KEY) {
         this.cancelWrites(true);
         this.freshCharacters.set(new Set());
+        this.externalInvalidation.next();
         this.changes.next(undefined);
       }
     });
@@ -82,10 +88,10 @@ export class LocalStore {
     });
   }
 
-  private epoch(characterId: string): string {
+  private epoch(characterId: string, owner = this.owner()): string {
     try {
       const all = JSON.parse(localStorage.getItem(this.EPOCH_KEY) ?? '{}');
-      return `${all[`${this.owner()}:*`] ?? ''}/${all[`${this.owner()}:${characterId || 'list'}`] ?? ''}`;
+      return `${all[`${owner}:*`] ?? ''}/${all[`${owner}:${characterId || 'list'}`] ?? ''}`;
     } catch {
       this.copiesBlocked = true;
       return '';
@@ -120,11 +126,51 @@ export class LocalStore {
           reject(new Error('無法使用本機儲存'));
           return;
         }
-        const request = indexedDB.open('dnd-device-data', 1);
-        request.onupgradeneeded = () => {
-          for (const name of ['drafts', 'readCopies']) {
-            const store = request.result.createObjectStore(name, { keyPath: 'key' });
-            store.createIndex('ownerId', 'ownerId');
+        const request = indexedDB.open('dnd-device-data', 2);
+        request.onupgradeneeded = (event) => {
+          if (event.oldVersion === 0) {
+            for (const name of ['drafts', 'readCopies']) {
+              const store = request.result.createObjectStore(name, { keyPath: 'key' });
+              store.createIndex('ownerId', 'ownerId');
+            }
+          }
+          const copies = request.transaction!.objectStore('readCopies');
+          copies.createIndex('ownerSavedAt', ['ownerId', 'savedAt', 'bytes', 'characterId', 'epoch']);
+          if (event.oldVersion === 1) {
+            const migrate = copies.openCursor();
+            migrate.onsuccess = () => {
+              const cursor = migrate.result;
+              if (!cursor) {
+                const budget = new Map<string, { bytes: number; count: number }>();
+                const newest = copies.index('ownerSavedAt').openKeyCursor(null, 'prev');
+                newest.onsuccess = () => {
+                  const copy = newest.result;
+                  if (!copy) return;
+                  const [owner, , bytes] = copy.key as [string, number, number];
+                  const used = budget.get(owner) ?? { bytes: 0, count: 0 };
+                  if (used.bytes + bytes > COPY_MAX_BYTES || used.count >= 100) {
+                    budget.set(owner, { bytes: COPY_MAX_BYTES, count: 100 });
+                    copies.delete(copy.primaryKey);
+                  } else {
+                    budget.set(owner, { bytes: used.bytes + bytes, count: used.count + 1 });
+                  }
+                  copy.continue();
+                };
+                return;
+              }
+              const record = cursor.value;
+              try {
+                const bytes = copyBytes(record.data);
+                if (bytes > COPY_MAX_BYTES || !this.validCopy(record, this.epoch(record.characterId, record.ownerId))) {
+                  cursor.delete();
+                } else {
+                  cursor.update({ ...record, bytes });
+                }
+              } catch {
+                cursor.delete();
+              }
+              cursor.continue();
+            };
           }
         };
         request.onsuccess = () => {
@@ -284,75 +330,58 @@ export class LocalStore {
     });
   }
 
+  private validCopy(record: (LocalRecord & { epoch: string }) | undefined, epoch: string): boolean {
+    return !!record && record.schemaVersion === 1 && record.epoch === epoch &&
+      record.data !== undefined && Number.isFinite(record.savedAt) &&
+      record.savedAt <= Date.now() && Date.now() - record.savedAt < COPY_MAX_AGE;
+  }
+
   async getCopy<T>(characterId: string, target: string): Promise<LocalRecord<T> | undefined> {
     if (this.copiesBlocked || !this.owner()) return undefined;
     const key = this.key(characterId, target);
     const epoch = this.epoch(characterId);
-    const record = await this.transact<LocalRecord<T> | undefined>(
-      'readCopies',
-      false,
-      (store, result) => {
-        const request = store.get(key);
-        request.onsuccess = () => {
-          const record = request.result;
-          if (
-            !record ||
-            record.schemaVersion !== 1 ||
-            record.epoch !== epoch ||
-            !Number.isFinite(record.savedAt) ||
-            record.data === undefined ||
-            record.savedAt > Date.now() ||
-            Date.now() - record.savedAt > 7 * 86400000
-          ) {
-            result(undefined);
-            return;
-          }
-          result(record);
-        };
-      },
-    );
-    // Updating LRU metadata must not make a readable copy fail when storage is full.
-    void this.transact('readCopies', true, (store, result, fail) => {
+    return this.transact<LocalRecord<T> | undefined>('readCopies', false, (store, result) => {
       const request = store.get(key);
-      request.onsuccess = () => {
-        try {
-          if (request.result?.epoch === epoch) {
-            if (record) store.put({ ...request.result, accessedAt: Date.now() });
-            else store.delete(key);
-          }
-          result(undefined);
-        } catch (error) {
-          fail(error as Error);
-        }
-      };
-    }).catch(() => {});
-    return record;
+      request.onsuccess = () => result(this.validCopy(request.result, epoch) ? request.result : undefined);
+    });
   }
 
   async putCopy<T>(characterId: string, target: string, data: T, savedAt: number): Promise<void> {
     const ownerId = this.owner();
     if (!ownerId || this.copiesBlocked) return;
+    const bytes = copyBytes(data);
+    if (bytes > COPY_MAX_BYTES) return;
     const key = this.key(characterId, target);
     const epoch = this.epoch(characterId);
     return this.transact('readCopies', true, (store, result, fail) => {
-      const request = store.index('ownerId').getAll(ownerId);
+      const range = IDBKeyRange.bound([ownerId], [ownerId, []]);
+      const request = store.index('ownerSavedAt').openKeyCursor(range);
+      const others: { key: IDBValidKey; bytes: number }[] = [];
+      let total = bytes;
       request.onsuccess = () => {
         try {
-          const others = (request.result as (LocalRecord & { accessedAt: number })[])
-            .filter((item) => item.key !== key)
-            .sort((a, b) => b.accessedAt - a.accessedAt);
-          for (const item of others.slice(99)) store.delete(item.key);
-          store.put({
-            key,
-            ownerId,
-            characterId,
-            schemaVersion: 1,
-            revision: 0,
-            data,
-            savedAt,
-            accessedAt: Date.now(),
-            epoch,
-          });
+          const cursor = request.result;
+          if (cursor) {
+            const [, at, size, role, recordEpoch] = cursor.key as [string, number, number, string, string];
+            if (cursor.primaryKey !== key) {
+              const expired = at > Date.now() || Date.now() - at >= COPY_MAX_AGE;
+              if (expired || recordEpoch !== this.epoch(role)) store.delete(cursor.primaryKey);
+              else {
+                others.push({ key: cursor.primaryKey, bytes: size });
+                total += size;
+              }
+            }
+            cursor.continue();
+            return;
+          }
+          let count = others.length + 1;
+          for (const item of others) {
+            if (total <= COPY_MAX_BYTES && count <= 100) break;
+            store.delete(item.key);
+            total -= item.bytes;
+            count--;
+          }
+          store.put({ key, ownerId, characterId, schemaVersion: 1, revision: 0, data, savedAt, bytes, epoch });
           result(undefined);
         } catch (error) {
           fail(error as Error);

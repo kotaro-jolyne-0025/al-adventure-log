@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { LocalStore } from './local-store.service';
 import { CharacterService } from './character.service';
 import { AdventureService } from './adventure.service';
 import { InventoryService } from './inventory.service';
@@ -77,6 +78,20 @@ describe('Related data cache invalidation', () => {
     expect(hud).not.toHaveBeenCalled();
     http.expectOne(`${base}/c/inventory`).flush([]);
     expect(hud).toHaveBeenCalledWith([]);
+  });
+
+  it('retires cached and pending child requests on cross-tab invalidation', () => {
+    TestBed.inject(LocalStore).setOwner('a');
+    inventory.getAllByCharacter('c').subscribe();
+    http.expectOne(base + '/c/inventory').flush([{ id: 'old' }]);
+    adventures.getAllByCharacter('c').subscribe();
+    const pending = http.expectOne(base + '/c/entries');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'dnd_read_epochs' }));
+    expect(pending.cancelled).toBe(true);
+    const receive = vi.fn();
+    inventory.getAllByCharacter('c').subscribe(receive);
+    http.expectOne(base + '/c/inventory').flush([]);
+    expect(receive).toHaveBeenCalledWith([]);
   });
 
   it('refreshes adventure defaults after inventory changes', () => {
