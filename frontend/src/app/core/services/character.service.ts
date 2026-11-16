@@ -21,6 +21,11 @@ export class CharacterService {
   private readonly listCache = new RequestCache<Character[]>();
   private readonly itemCache = new RequestCache<Character>();
 
+  constructor() {
+    this.local.externalInvalidation.subscribe(() => this.clearCache());
+    this.local.sessionChanged.subscribe(() => this.clearCache());
+  }
+
   notifyCharacterChanged(characterId?: string): void {
     this.local.invalidate(characterId, this.local.owner(), false);
     this.itemCache.clear(characterId);

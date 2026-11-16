@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { catchError, defaultIfEmpty, defer, EMPTY, finalize, firstValueFrom, from, fromEvent, map, merge, Observable, of, shareReplay, Subject, takeUntil, tap, throttleTime } from 'rxjs';
@@ -100,6 +100,28 @@ export class AuthService {
       this.currentUser.set(nextUser);
       this.local.setOwner(nextUser?.id ?? null);
       this.clearAllCaches();
+    });
+    effect(onCleanup => {
+      const active = this.session();
+      if (!active) return;
+      const delay = Math.max(0, Date.parse(active.expiresAt) - Date.now() - 30_000);
+      const expire = () => {
+        if (navigator.onLine === false && this.session() === active && this.isTokenExpired()) {
+          this.clearLocalAuth(true);
+          const returnUrl = this.router.url;
+          if (returnUrl?.startsWith('/characters')) {
+            void this.router.navigate(['/login'], { queryParams: { returnUrl } });
+          }
+        }
+      };
+      const timer = setTimeout(expire, Math.min(delay, 2_147_483_647));
+      window.addEventListener('offline', expire);
+      document.addEventListener('visibilitychange', expire);
+      onCleanup(() => {
+        clearTimeout(timer);
+        window.removeEventListener('offline', expire);
+        document.removeEventListener('visibilitychange', expire);
+      });
     });
     merge(...['pointerdown', 'keydown', 'input', 'scroll'].map(name =>
       fromEvent(window, name, { capture: true, passive: true }),
