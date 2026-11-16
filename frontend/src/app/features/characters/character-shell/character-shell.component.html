@@ -1,15 +1,14 @@
 @if (loadError()) {
-  <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters']" (retry)="loadCharacterData()" />
+  <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters']" (retry)="loadCharacterData(true)" />
 }
-@if (isLoading()) {
-  <div class="loading-wrapper">
-    <mat-spinner diameter="48"></mat-spinner>
-    <p role="status">正在載入角色資料…</p>
-  </div>
+@if (isLoading() && !isFormRoute()) {
+  <p class="sr-only" role="status">正在載入角色資料…</p>
+  @if (!character()) {
+    <div class="read-skeleton skeleton-box" aria-hidden="true"></div>
+  }
 }
 
   <div class="shell-container" [class.hide-character-card]="hideCharacterCard()" [style.--character-nav-height.px]="bottomNavHeight()" data-resize-focus>
-    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="!!character()" [compact]="true" (refresh)="loadCharacterData()" />
     @if (character()) {
     
       <!-- Hero Portrait + Identity & Actions -->
@@ -49,6 +48,7 @@
         </div>
 
       </div>
+      <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" />
       </ng-template>
 
       <!-- Character HUD Stats Bar (即時數值看板) -->
@@ -123,7 +123,7 @@
     }
     @if (!character() && !isLoading() && !loadError()) { <p>目前無法顯示角色資訊，請連線後再試。</p> }
     <div data-resize-focus>
-    @if (character() && !isFormRoute()) {
+    @if (retryable() && !isFormRoute()) {
       <nav #bottomNav class="character-bottom-nav" aria-label="角色內容">
         <a [routerLink]="['/characters', characterId, 'adventures']" [attr.aria-current]="activeTab() === 0 ? 'page' : null">
           <span class="destination-icon"><svg lucideBookOpen [size]="22" aria-hidden="true"></svg></span>
@@ -141,7 +141,9 @@
     }
     </div>
     <div class="tab-content-area" (focusin)="keepContentFocusVisible($event)">
-      <router-outlet [routerOutletData]="currentCharacterName()" />
+      @if (retryable() || isFormRoute()) {
+        <router-outlet [routerOutletData]="currentCharacterName()" />
+      }
     </div>
 
   </div>

@@ -35,12 +35,12 @@ it('keeps rendered detail mutation buttons disabled during refresh and after cop
   expect(historyMenu().disabled).toBe(false);
   fixture.componentInstance['loadEntry']();
   await fixture.whenStable();
-  expect(button().disabled).toBe(true);
-  expect(historyMenu().disabled).toBe(true);
+  expect(button()).toBeNull();
+  expect(historyMenu()).toBeNull();
   refresh.next({ data, source: 'copy', fetchedAt: 100 });
   refresh.complete();
   await fixture.whenStable();
   expect(button().disabled).toBe(true);
   expect(historyMenu().disabled).toBe(true);
-  expect(fixture.nativeElement.textContent).toContain('目前顯示上次查看的資料');
+  expect(fixture.nativeElement.querySelector('app-cache-notice time')).not.toBeNull();
 });

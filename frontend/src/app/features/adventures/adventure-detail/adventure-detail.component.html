@@ -1,11 +1,11 @@
 @if (loadError()) {
-  <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters', characterId, 'adventures']" (retry)="loadEntry()" />
+  <app-read-error [message]="loadError()!" [retryable]="retryable()" [pending]="isLoading()" [returnTo]="['/characters', characterId, 'adventures']" (retry)="loadEntry(true)" />
 }
 <div class="page-container">
-  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="!!entry()" (refresh)="loadEntry()" />
   <!-- Loading -->
   @if (isLoading()) {
-    <div class="loading-wrapper"><mat-spinner diameter="40"></mat-spinner><p role="status">正在載入冒險資料…</p></div>
+    <p class="sr-only" role="status">正在載入冒險資料…</p>
+    <div class="read-skeleton skeleton-box" aria-hidden="true"></div>
   }
 
   @if (!isLoading() && entry()) {
@@ -30,6 +30,8 @@
         </button>
       </div>
     </div>
+
+    <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" />
 
     <!-- 📋 冒險資訊與等級 -->
     <div class="detail-section-card clean-card">

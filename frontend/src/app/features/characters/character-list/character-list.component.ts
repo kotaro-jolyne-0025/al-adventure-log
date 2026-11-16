@@ -46,7 +46,17 @@ export class CharacterListComponent implements OnInit {
   protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
   protected readonly fetchedAt = signal<number | null>(null);
   protected readonly readOnly = computed(() => this.readSource() !== 'cloud');
-  private readonly refreshWatcher = watchReadPage(() => this.loadCharacters());
+  private readSubscription?: import('rxjs').Subscription;
+  private readGeneration = -1;
+  private readonly refreshWatcher = watchReadPage(reason => {
+    if (reason === 'offline' || reason === 'invalidated' || navigator.onLine !== false) {
+      this.loadCharacters(reason === 'online' && this.readSource() !== 'cloud');
+    }
+  }, {
+    state: () => this.isLoading() ? 'pending' :
+      this.readSource() ?? 'failed',
+    retry: () => this.loadCharacters(true),
+  });
 
   private readonly characterService = inject(CharacterService);
   private readonly router = inject(Router);
@@ -60,19 +70,35 @@ export class CharacterListComponent implements OnInit {
   protected hasLoaded = signal(false);
 
   ngOnInit(): void {
+    this.local.sessionChanged.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => {
+      this.readSubscription?.unsubscribe();
+      this.characters.set([]);
+      this.hasLoaded.set(false);
+      this.readSource.set(null);
+      this.isLoading.set(true);
+    });
     this.loadCharacters();
   }
 
-  protected loadCharacters(): void {
+  protected loadCharacters(refresh = false): void {
+    this.readSubscription?.unsubscribe();
+    if (navigator.onLine === false && this.local.owner() &&
+        this.readGeneration === this.local.currentGeneration() && this.hasLoaded()) {
+      this.readSource.set('copy');
+      this.isRefreshing.set(false);
+      this.isLoading.set(false);
+      this.loadError.set(null);
+      return;
+    }
     this.readSource.set(null);
     this.loadError.set(null);
-    this.isLoading.set(!this.hasLoaded());
+    this.isLoading.set(true);
     this.isRefreshing.set(true);
-    this.reads.read('', 'characters', () => this.characterService.getAll(true)).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+    this.readSubscription = this.reads.read('', 'characters', () => this.characterService.getAll(refresh), refresh).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         const list = result.data;
         this.readSource.set(result.source);
-        if (result.source === 'copy' && this.hasLoaded()) return;
+        this.readGeneration = this.local.currentGeneration();
         this.fetchedAt.set(result.fetchedAt);
         this.characters.set(list);
         this.hasLoaded.set(true);
@@ -122,7 +148,7 @@ export class CharacterListComponent implements OnInit {
           },
           error: error => {
             this.snackBar.open(error.error?.message || '刪除失敗，請稍後再試', '關閉', { duration: 6000 });
-            if ([409, 428, 404].includes(error.status)) this.loadCharacters();
+            if ([409, 428, 404].includes(error.status)) this.loadCharacters(true);
           },
         });
       });

@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   DestroyRef,
   ElementRef,
   inject,
@@ -19,6 +20,7 @@ import { LucideChevronDown, LucideEllipsis } from '@lucide/angular';
 import { InventoryMovement } from '../../../core/models/inventory.model';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { watchReadPage } from '../../../core/services/local-read-cache.service';
+import { requestFetchedAt } from '../../../core/services/request-cache';
 import { LocalStore } from '../../../core/services/local-store.service';
 import {
   ReadErrorComponent,
@@ -44,14 +46,12 @@ import { InventoryConsumeDialogComponent } from '../inventory-consume-dialog/inv
       class="history"
       tabindex="-1"
     >
-      @if (readOnly()) {
-        <p role="status">目前為唯讀資料，連線並更新後才能操作。</p>
-      }
       @if (error()) {
-        <app-read-error [message]="error()!" [pending]="pending()" (retry)="load(failedMore)" />
+        <app-read-error [message]="error()!" [pending]="pending()" (retry)="load(failedMore, true)" />
       }
       @if (pending()) {
-        <p role="status">載入中…</p>
+        <p class="sr-only" role="status">載入中…</p>
+        <div class="read-skeleton skeleton-box" aria-hidden="true"></div>
       }
       @if (!pending() && !error() && !cursor() && rows().length === 0) {
         <p>尚無異動紀錄。</p>
@@ -129,7 +129,7 @@ import { InventoryConsumeDialogComponent } from '../inventory-consume-dialog/inv
                   class="record-menu"
                   [matMenuTriggerFor]="recordActions"
                   [matMenuTriggerData]="{ movement: m }"
-                  [disabled]="readOnly() || busy()"
+                  [disabled]="cannotWrite() || busy()"
                   [attr.aria-label]="m.itemName + '的紀錄操作'"
                 >
                   <svg lucideEllipsis [size]="20" aria-hidden="true"></svg>
@@ -141,12 +141,12 @@ import { InventoryConsumeDialogComponent } from '../inventory-consume-dialog/inv
       </ol>
       <mat-menu #recordActions="matMenu">
         <ng-template matMenuContent let-movement="movement">
-          <button mat-menu-item type="button" (click)="editUsage(movement)" [disabled]="readOnly() || busy()">編輯</button>
-          <button mat-menu-item type="button" (click)="reverse(movement)" [disabled]="readOnly() || busy() || !movement.reversible">撤銷消耗</button>
+          <button mat-menu-item type="button" (click)="editUsage(movement)" [disabled]="cannotWrite() || busy()">編輯</button>
+          <button mat-menu-item type="button" (click)="reverse(movement)" [disabled]="cannotWrite() || busy() || !movement.reversible">撤銷消耗</button>
         </ng-template>
       </mat-menu>
       @if (cursor() && !error()) {
-        <button mat-stroked-button (click)="load(true)" [disabled]="pending()">載入更多</button>
+        <button mat-stroked-button (click)="load(true)" [disabled]="pending() || offline()">載入更多</button>
       }
     </section>
   `,
@@ -313,9 +313,32 @@ export class InventoryHistoryComponent implements OnChanges {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly destroy = inject(DestroyRef);
-  private readonly watcher = watchReadPage(() => {
-    if (this.initialized) this.load();
+  private readonly watcher = watchReadPage(reason => {
+    if (!this.initialized) return;
+    if (reason === 'invalidated') {
+      this.firstPage.set(undefined);
+      this.rows.set([]);
+      this.cursor.set(null);
+    }
+    this.offline.set(navigator.onLine === false);
+    if (reason === 'offline') {
+      ++this.generation;
+      this.request?.unsubscribe();
+      this.pending.set(false);
+      if (!this.firstPage()) this.load();
+      return;
+    }
+    if (reason !== 'visible' || !this.offline()) this.load(false, reason === 'online');
+  }, {
+    state: () => this.pending() ? 'pending' : this.error() && !this.failedMore ? 'failed' :
+      this.firstPage() ? 'cloud' : 'failed',
+    retry: () => this.load(false, true),
   });
+  private request?: import('rxjs').Subscription;
+  private readonly firstPage = signal<import('../../../core/models/inventory.model').InventoryMovementPage | undefined>(undefined);
+  readonly offline = signal(navigator.onLine === false);
+  readonly cannotWrite = computed(() => this.readOnly() || this.offline() || this.pending() || !!this.error() || !this.firstPage());
+
   private initialized = false;
   private generation = 0;
   readonly rows = signal<InventoryMovement[]>([]);
@@ -336,6 +359,8 @@ export class InventoryHistoryComponent implements OnChanges {
   constructor() {
     this.local.sessionChanged.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => {
       ++this.generation;
+      this.request?.unsubscribe();
+      this.firstPage.set(undefined);
       this.rows.set([]);
       this.cursor.set(null);
       this.pending.set(false);
@@ -345,28 +370,46 @@ export class InventoryHistoryComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['characterId'] || changes['usageAdventureEntryId']) {
       this.initialized = true;
+      this.firstPage.set(undefined);
       this.rows.set([]);
       this.cursor.set(null);
       this.load();
     }
   }
 
-  load(more = false): void {
+  load(more = false, refresh = false): void {
+    const cursor = more ? this.cursor() : null;
+    if (more && (!cursor || this.pending())) return;
+    this.request?.unsubscribe();
+    if (this.offline()) {
+      if (!this.firstPage()) this.error.set(readErrorMessage({ status: 0 }, '倉庫'));
+      return;
+    }
     const generation = ++this.generation;
     this.failedMore = more;
-    if (!more) this.cursor.set(null);
-    this.pending.set(true);
+
     this.error.set(null);
     const entryId = this.usageAdventureEntryId();
     const request = entryId
-      ? this.service.movements(this.characterId(), more ? this.cursor() : null, true, {
+      ? this.service.movements(this.characterId(), cursor, refresh, {
           usageAdventureEntryId: entryId,
           reversed: false,
         })
-      : this.service.movements(this.characterId(), more ? this.cursor() : null, true);
-    request.pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      : this.service.movements(this.characterId(), cursor, refresh);
+    if (!more && requestFetchedAt(request) === undefined) {
+      this.firstPage.set(undefined);
+      this.cursor.set(null);
+      this.rows.set([]);
+    }
+    this.pending.set(true);
+    this.request = request.pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (page) => {
         if (generation !== this.generation) return;
+        if (!more && this.firstPage() === page) {
+          this.pending.set(false);
+          return;
+        }
+        if (!more) this.firstPage.set(page);
         const visible = page.items.filter(
           (m) => !m.reversed && m.operation !== 'REVERSE' && m.operation !== 'BASELINE',
         );
@@ -377,6 +420,7 @@ export class InventoryHistoryComponent implements OnChanges {
       error: (error) => {
         if (generation !== this.generation) return;
         if ([401, 403, 404].includes(error.status)) {
+          this.firstPage.set(undefined);
           this.rows.set([]);
           this.cursor.set(null);
         }
@@ -390,7 +434,7 @@ export class InventoryHistoryComponent implements OnChanges {
   }
 
   editUsage(movement: InventoryMovement): void {
-    if (this.readOnly() || this.busy() || movement.reversed) return;
+    if (this.cannotWrite() || this.busy() || movement.reversed) return;
     const characterId = this.characterId(),
       entryId = this.usageAdventureEntryId(),
       owner = this.local.owner();
@@ -403,21 +447,20 @@ export class InventoryHistoryComponent implements OnChanges {
       .open(InventoryConsumeDialogComponent, {
         width: '480px',
         maxWidth: '95vw',
-        data: { characterId, movement, canWrite: () => sameContext() && !this.readOnly() },
+        data: { characterId, movement, canWrite: () => navigator.onLine !== false && sameContext() && !this.cannotWrite() },
       })
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe((saved) => {
         if (saved && sameContext()) {
           this.snack.open('已更新消耗紀錄。', '關閉', { duration: 2500 });
-          this.load();
           this.focusHistory();
         }
       });
   }
 
   reverse(movement: InventoryMovement): void {
-    if (this.readOnly() || this.busy() || !movement.reversible || movement.reversed) return;
+    if (this.cannotWrite() || this.busy() || !movement.reversible || movement.reversed) return;
     const characterId = this.characterId(),
       entryId = this.usageAdventureEntryId(),
       owner = this.local.owner();
@@ -438,7 +481,7 @@ export class InventoryHistoryComponent implements OnChanges {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe((confirmed) => {
-        if (!confirmed || !sameContext() || this.readOnly() || this.busy()) return;
+        if (!confirmed || !sameContext() || this.cannotWrite() || this.busy()) return;
         this.busy.set(true);
         this.error.set(null);
         this.service
@@ -449,7 +492,6 @@ export class InventoryHistoryComponent implements OnChanges {
               if (!sameContext()) return;
               this.busy.set(false);
               this.snack.open('已撤銷消耗。', '關閉', { duration: 2500 });
-              this.load();
               this.focusHistory();
             },
             error: (error) => {

@@ -2,6 +2,7 @@ import { FormFeedbackComponent } from '../../../shared/components/form-feedback/
 import { DraftNoticeComponent } from '../../../shared/components/draft-notice/draft-notice.component';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ConnectionStatus } from '../../../core/services/connection-status.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -553,6 +554,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   }
 
   protected restoreDraft(): void {
+    if (navigator.onLine === false) return;
     const input = this.draft.accept();
     if (!input) return;
     this.recoveredText.set('');
@@ -600,6 +602,10 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   }
 
   protected recoverDraftText(): void {
+    if (navigator.onLine !== false && this.draft.canRestore()) {
+      this.restoreDraft();
+      return;
+    }
     const input = this.draft.offered() ? this.draft.record()?.data?.input ?? this.draft.record()?.data : this.captureInput();
     this.recoveredText.set(draftText(input));
   }
@@ -1088,10 +1094,26 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   protected formError = signal<string | null>(null);
   protected errorTarget = signal('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
 
+  protected readonly offline = signal(navigator.onLine === false);
+  private readonly connectionRead = inject(ConnectionStatus).register({
+    state: () => this.isLoading() ? 'pending' : this.loadFailed() ? 'failed' :
+      !this.draft.isReady() ? 'pending' : this.draft.offered() ? 'cloud' : 'draft',
+    retry: () => this.retryLoad(),
+  }, inject(DestroyRef));
+
+  @HostListener('window:offline')
+  protected onOffline(): void { this.offline.set(true); }
+
+  @HostListener('window:online')
+  protected onOnline(): void {
+    this.offline.set(false);
+    if (this.loadFailed()) this.retryLoad();
+  }
+
   protected onSubmit(): void {
     this.formError.set(null);
     this.writeConflict.set(false);
-    if (this.isSaving() || this.isLoading() || this.loadFailed() || this.draft.offered() ||
+    if (navigator.onLine === false || this.isSaving() || this.isLoading() || this.loadFailed() || this.draft.offered() ||
         (this.isEditMode() && !this.detailsLoaded)) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();

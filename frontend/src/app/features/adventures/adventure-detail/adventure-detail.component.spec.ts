@@ -66,7 +66,7 @@ describe('Adventure consumption history integration', () => {
 
   it('loads only active usage and does not offer a reversed history section', ()=>{
     const f=create();
-    expect(inventory.movements).toHaveBeenCalledExactlyOnceWith('c',null,true,{usageAdventureEntryId:'a',reversed:false});
+    expect(inventory.movements).toHaveBeenCalledExactlyOnceWith('c',null,false,{usageAdventureEntryId:'a',reversed:false});
     expect(f.nativeElement.textContent).toContain('Usage adventure');
     expect(f.nativeElement.querySelector('.reversed-consumption')).toBeNull();
     expect(f.nativeElement.textContent).not.toContain('已撤銷的登記');
@@ -101,7 +101,7 @@ describe('Adventure consumption history integration', () => {
     params.next(convertToParamMap({entryId:'b'}));f.detectChanges();
     old.next({source:'cloud',fetchedAt:1,data:{entry,gainedItems:[],storyAwards:[],legacyItems:[]}});f.detectChanges();
     expect(f.nativeElement.textContent).toContain('New adventure');
-    expect(inventory.movements).toHaveBeenLastCalledWith('c',null,true,{usageAdventureEntryId:'b',reversed:false});
+    expect(inventory.movements).toHaveBeenLastCalledWith('c',null,false,{usageAdventureEntryId:'b',reversed:false});
     reads.read.mockReturnValue(throwError(()=>({status:404})));
     TestBed.inject(LocalStore).changes.next('c');f.detectChanges();
     expect(f.nativeElement.querySelector('app-inventory-history')).toBeNull();old.complete();

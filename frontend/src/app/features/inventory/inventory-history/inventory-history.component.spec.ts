@@ -48,7 +48,7 @@ describe('Inventory history tab', () => {
     expect(fixture.nativeElement.textContent).not.toContain('現在還有');
     service.movements.mockReturnValue(of({items:[{...movement,id:'old'}, {...movement,id:'older',createdAt:'2026-11-06T23:00:00'}],nextCursor:null}));
     fixture.componentInstance.load(true);fixture.detectChanges();
-    expect(service.movements).toHaveBeenLastCalledWith('c','older',true);
+    expect(service.movements).toHaveBeenLastCalledWith('c','older',false);
     expect(fixture.componentInstance.rows().length).toBe(3);
     const items: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('ol > li');
     expect(items.length).toBe(3);
@@ -156,7 +156,7 @@ describe('Inventory history tab', () => {
       {...movement,id:'three',itemId:'j',sourceName:'Source B',reversible:false},
     ],nextCursor:'active-page'}));
     const fixture=create(false,'used-in');
-    expect(service.movements).toHaveBeenLastCalledWith('c',null,true,{usageAdventureEntryId:'used-in',reversed:false});
+    expect(service.movements).toHaveBeenLastCalledWith('c',null,false,{usageAdventureEntryId:'used-in',reversed:false});
     const root:HTMLElement=fixture.nativeElement;
     expect(root.querySelectorAll('li').length).toBe(3);
     expect(root.querySelector('.day-group')).toBeNull();
@@ -170,7 +170,7 @@ describe('Inventory history tab', () => {
     expect(root.textContent).not.toContain('原本有');
     expect(root.textContent).not.toContain('使用冒險：');
     fixture.componentInstance.load(true);
-    expect(service.movements).toHaveBeenLastCalledWith('c','active-page',true,{usageAdventureEntryId:'used-in',reversed:false});
+    expect(service.movements).toHaveBeenLastCalledWith('c','active-page',false,{usageAdventureEntryId:'used-in',reversed:false});
   });
 
   it.each([undefined,'a'])('shows notes only in details and omits blank notes in scope %s', adventure => {
@@ -196,7 +196,7 @@ describe('Inventory history tab', () => {
     const old=new Subject<any>();service.movements.mockReturnValueOnce(old);
     fixture.componentInstance.load(true);
     fixture.componentRef.setInput('usageAdventureEntryId','b');fixture.detectChanges();
-    expect(service.movements).toHaveBeenLastCalledWith('c',null,true,{usageAdventureEntryId:'b',reversed:false});
+    expect(service.movements).toHaveBeenLastCalledWith('c',null,false,{usageAdventureEntryId:'b',reversed:false});
     old.next({items:[{...movement,id:'old-a'}],nextCursor:'wrong'});
     expect(fixture.componentInstance.rows().some(m=>m.id==='old-a')).toBe(false);
     const pending=new Subject<any>();service.movements.mockReturnValueOnce(pending);fixture.componentInstance.load();
@@ -214,7 +214,7 @@ describe('Inventory history tab', () => {
     expect(data.movement).toBe(movement);
     fixture.componentRef.setInput('readOnly',true);fixture.detectChanges();expect(data.canWrite()).toBe(false);
     fixture.componentRef.setInput('readOnly',false);fixture.detectChanges();
-    service.movements.mockReturnValue(of({items:[],nextCursor:null}));close.next(true);fixture.detectChanges();
+    service.movements.mockReturnValue(of({items:[],nextCursor:null}));TestBed.inject(LocalStore).changes.next('c');close.next(true);fixture.detectChanges();
     expect(fixture.componentInstance.rows()).toEqual([]);
     expect(document.activeElement).toBe(fixture.nativeElement.querySelector('section'));
     close.complete();
@@ -227,7 +227,7 @@ describe('Inventory history tab', () => {
     fixture.componentInstance.reverse(movement);fixture.componentInstance.reverse(movement);
     expect(dialog.open.mock.calls[0][1].data.message).toBe('撤銷後會補回本次消耗數量，並從畫面移除這次登記。是否繼續？');
     expect(service.reverse).toHaveBeenCalledExactlyOnceWith('c',movement);
-    service.movements.mockReturnValue(of({items:[],nextCursor:null}));response.next(movement);fixture.detectChanges();
+    service.movements.mockReturnValue(of({items:[],nextCursor:null}));TestBed.inject(LocalStore).changes.next('c');response.next(movement);fixture.detectChanges();
     expect(fixture.componentInstance.rows()).toEqual([]);expect(fixture.componentInstance.busy()).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('尚無異動紀錄。');
     expect(fixture.nativeElement.textContent).not.toContain('已撤銷的登記');

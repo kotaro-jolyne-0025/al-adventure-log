@@ -12,11 +12,12 @@
   </div>
 
   <div class="form-card clean-card">
-    @if (isLoading()) { <p role="status">正在載入物品…</p> }
-    @if (loadError()) {
+    @if (isLoading()) {
+      <div class="read-skeleton skeleton-box" role="progressbar" aria-label="載入物品資料"></div>
+    } @else if (loadError()) {
       <app-read-error [message]="loadError()!" [pending]="isLoading()" [retryable]="retryable()"
         [returnTo]="['/characters', characterId, 'inventory']" (retry)="retryLoad()" />
-    }
+    } @else if (!isEditMode() || itemLoaded()) {
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
     <p class="sr-only" role="status">{{ isSaving() ? '正在儲存，請稍候。' : '' }}</p>
 
@@ -136,5 +137,6 @@
       </div>
 
     </form>
+    }
   </div>
 </div>
