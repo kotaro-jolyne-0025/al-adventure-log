@@ -26,7 +26,7 @@ const pages = [
   { name: 'inventory', create: () => new InventoryListComponent(), refresh: 'loadItems', value: 'allItems', data: [item], updated: [{ ...item, itemName: 'Updated' }] },
 ];
 
-describe.each(pages)('Background refresh: $name', page => {
+describe.each(pages)('Cloud refresh: $name', page => {
   function setup() {
     const refresh = new Subject<ReadResult<unknown>>();
     const read = vi.fn().mockReturnValueOnce(of({ data: page.data, source: 'cloud', fetchedAt: 200 }))
@@ -48,17 +48,13 @@ describe.each(pages)('Background refresh: $name', page => {
     return { refresh, value, load: () => Reflect.get(component, page.refresh).call(component) };
   }
 
-  it('keeps displayed content while blocking writes, then accepts the latest cloud data', () => {
+  it('shows loading while blocking writes, then accepts the cloud response', () => {
     const { refresh, value, load } = setup();
     const original = value(page.value);
     load();
-    expect(value(page.value)).toEqual(original);
-    expect(value('isLoading')).toBe(false);
+    expect(value('isLoading')).toBe(true);
     expect(value('isRefreshing')).toBe(true);
     expect(value('readOnly')).toBe(true);
-    refresh.next({ data: null, source: 'copy', fetchedAt: 100 });
-    expect(value(page.value)).toEqual(original);
-    expect(value('fetchedAt')).toBe(200);
     refresh.next({ data: page.updated, source: 'cloud', fetchedAt: 300 });
     refresh.complete();
     expect(value(page.value)).not.toEqual(original);

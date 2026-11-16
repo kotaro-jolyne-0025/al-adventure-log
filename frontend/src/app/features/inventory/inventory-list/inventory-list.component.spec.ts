@@ -10,7 +10,7 @@ import { InventoryListComponent } from './inventory-list.component';
 import { LocalStore } from '../../../core/services/local-store.service';
 
 describe('Inventory delete recovery', () => {
-  it('restores the item when deletion and refresh both fail, retaining search and filters', () => {
+  it('shows an error rather than stale inventory when deletion and refresh fail, retaining filters', () => {
     const item = {id:'i',characterId:'c',itemName:'test item',itemType:'PERMANENT',rarity:'RARE',quantity:1} as InventoryItem;
     const getAllByCharacter = vi.fn().mockReturnValueOnce(of([item]))
       .mockReturnValueOnce(throwError(() => ({status:500}))).mockReturnValue(of([item]));
@@ -28,10 +28,9 @@ describe('Inventory delete recovery', () => {
     component['searchQuery'].set('test');
     component['selectedRarities'].set(new Set(['RARE']));
     component['onDeleteItem'](new Event('click'),item);
-    expect(component['allItems']()).toEqual([item]);
+    expect(component['allItems']()).toEqual([]);
     expect(component['loadError']()).toContain('重試');
-    expect(component['hasLoaded']()).toBe(true);
-    expect(component['permanentItems']()).toEqual([item]);
+    expect(component['hasLoaded']()).toBe(false);
     component['loadItems']();
     expect(component['loadError']()).toBeNull();
     expect(component['searchQuery']()).toBe('test');

@@ -8,7 +8,6 @@ import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -51,7 +50,6 @@ import {
     DecimalPipe,
     MatCardModule,
     MatButtonModule,
-    MatProgressSpinner,
     MatTooltipModule,
     LucideCoins,
     LucideTent,
@@ -79,7 +77,17 @@ export class AdventureDetailComponent implements OnInit {
   protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
   protected readonly fetchedAt = signal<number | null>(null);
   protected readonly readOnly = computed(() => this.readSource() !== 'cloud' || !this.local.freshCharacters().has(this.characterId));
-  private readonly refreshWatcher = watchReadPage(() => this.loadEntry());
+  private readSubscription?: import('rxjs').Subscription;
+  private readGeneration = -1;
+  private readonly refreshWatcher = watchReadPage(reason => {
+    if (reason === 'offline' || reason === 'invalidated' || navigator.onLine !== false) {
+      this.loadEntry(reason === 'online' && this.readSource() !== 'cloud');
+    }
+  }, {
+    state: () => this.isLoading() ? 'pending' :
+      this.readSource() ?? 'failed',
+    retry: () => this.loadEntry(true),
+  });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly adventureService = inject(AdventureService);
@@ -121,18 +129,27 @@ export class AdventureDetailComponent implements OnInit {
     });
   }
 
-  protected loadEntry(): void {
+  protected loadEntry(refresh = false): void {
+    this.readSubscription?.unsubscribe();
+    if (navigator.onLine === false && this.local.owner() &&
+        this.readGeneration === this.local.currentGeneration() && this.entry()) {
+      this.readSource.set('copy');
+      this.isRefreshing.set(false);
+      this.isLoading.set(false);
+      this.loadError.set(null);
+      return;
+    }
     const generation = ++this.loadGeneration;
     this.readSource.set(null);
     this.loadError.set(null);
-    this.isLoading.set(!this.entry());
+    this.isLoading.set(true);
     this.isRefreshing.set(true);
-    this.reads.read(this.characterId, `adventure:${this.entryId}`, () => this.adventureService.getDetails(this.characterId, this.entryId))
+    this.readSubscription = this.reads.read(this.characterId, `adventure:${this.entryId}`, () => this.adventureService.getDetails(this.characterId, this.entryId, refresh), refresh)
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         if (generation !== this.loadGeneration) return;
         this.readSource.set(result.source);
-        if (result.source === 'copy' && this.entry()) return;
+        this.readGeneration = this.local.currentGeneration();
         this.fetchedAt.set(result.fetchedAt);
         const { entry, gainedItems, storyAwards, legacyItems } = result.data;
         this.entry.set(entry);
@@ -255,7 +272,7 @@ export class AdventureDetailComponent implements OnInit {
           },
           error: error => {
             this.snackBar.open(error.error?.message || '刪除失敗', '關閉', { duration: 6000 });
-            if ([409, 428, 404].includes(error.status)) this.loadEntry();
+            if ([409, 428, 404].includes(error.status)) this.loadEntry(true);
           },
         });
       });

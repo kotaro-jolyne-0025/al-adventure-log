@@ -121,4 +121,12 @@
 <main class="app-content" id="main-content" tabindex="-1" [attr.aria-busy]="navigationPending()">
   <router-outlet #mainOutlet="outlet" />
 </main>
+@let connectionState = connection.status();
+<div class="connection-status" [class.visible]="connectionState" [class.failed]="connectionState === 'failed'"
+  [style.--connection-nav-height.px]="toolbarCharacter(mainOutlet)?.bottomNavHeight()">
+  <span role="status">{{ connectionState ? connectionMessages[connectionState] : '' }}</span>
+  @if (connectionState === 'failed') {
+    <button type="button" mat-button (click)="connection.retry()">重試</button>
+  }
+</div>
 

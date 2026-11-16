@@ -1,5 +1,5 @@
 <div class="page-container">
-  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" [hasContent]="hasLoaded()" (refresh)="loadCharacters()" />
+  <app-cache-notice [source]="readSource()" [fetchedAt]="fetchedAt()" [pending]="isRefreshing()" />
   <!-- Header -->
   <div class="page-header">
     <div>
@@ -7,7 +7,8 @@
         <svg lucideUsers [size]="20" class="title-icon"></svg>
         我的角色
       </h1>
-      <p class="page-subtitle" role="status">{{ isLoading() ? '正在載入角色…' : '管理角色、冒險紀錄表與倉庫' }}</p>
+      <p class="page-subtitle">管理角色、冒險紀錄表與倉庫</p>
+      @if (isLoading()) { <p class="sr-only" role="status">正在載入角色…</p> }
     </div>
     <button mat-flat-button color="primary" class="btn-create-char" (click)="onCreateCharacter()" [disabled]="readOnly()">
       <svg lucidePlus [size]="20"></svg>
@@ -17,7 +18,7 @@
 
 
   @if (loadError()) {
-    <app-read-error [message]="(hasLoaded() ? '資料尚未更新。' : '') + loadError()!" [pending]="isLoading()" (retry)="loadCharacters()" />
+    <app-read-error [message]="(hasLoaded() ? '資料尚未更新。' : '') + loadError()!" [pending]="isLoading()" (retry)="loadCharacters(true)" />
   }
 
   <!-- Loading Skeletons -->

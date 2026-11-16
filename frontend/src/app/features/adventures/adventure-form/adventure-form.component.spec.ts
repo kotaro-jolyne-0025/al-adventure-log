@@ -16,14 +16,14 @@ describe('Adventure form complete loading', () => {
   let entry: Subject<AdventureEntry>;
   let items: Subject<AdventureGainedItem[]>;
   let warehouse: Subject<InventoryItem[]>;
-  let api: { getById: ReturnType<typeof vi.fn>; getGainedItems: ReturnType<typeof vi.fn>;
+  let api: { detailsCaches: Map<string, unknown>; getById: ReturnType<typeof vi.fn>; getGainedItems: ReturnType<typeof vi.fn>;
     getDetails: AdventureService['getDetails']; updateWithDetails: ReturnType<typeof vi.fn> };
   const data: AdventureEntry = { id: 'e', characterId: 'c', playDate: '2026-09-17',
     adventureName: 'A', startingLevel: 1, endingLevel: 1, magicItemsLost: 0, magicItemsDowntimeLost: 0, downtimeActivities: [], storyAwards: [], gainedItems: [], legacyItems: [], updatedAt: '2026-10-14T00:00:00.123456' };
 
   beforeEach(() => {
     entry = new Subject(); items = new Subject(); warehouse = new Subject();
-    api = { getById: vi.fn(() => forkJoin({ value: entry, gainedItems: items }).pipe(
+    api = { detailsCaches: new Map(), getById: vi.fn(() => forkJoin({ value: entry, gainedItems: items }).pipe(
       switchMap(({ value, gainedItems }) => gainedItems.length
         ? of({ ...value, gainedItems, legacyItems: [] } as AdventureEntry)
         : warehouse.pipe(map(legacyItems => ({ ...value, gainedItems, legacyItems } as AdventureEntry)))))), getGainedItems: vi.fn(() => items),
@@ -116,7 +116,11 @@ describe('Adventure form complete loading', () => {
     component['form'].patchValue({ adventureName: '不應殘留', dmName: '不應殘留', goldChange: 999 });
     vi.spyOn(component['draft'], 'accept').mockReturnValue(saved);
 
-    component['restoreDraft']();
+    vi.spyOn(component['draft'], 'canRestore').mockReturnValue(true);
+
+    component['recoverDraftText']();
+
+    expect(api.updateWithDetails).not.toHaveBeenCalled();
 
     expect(component['form'].getRawValue()).toMatchObject({
       adventureName: '原草稿冒險', dmName: '', goldChange: null,

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
+import { LocalStore } from '../../../core/services/local-store.service';
 import { CharacterService } from '../../../core/services/character.service';
 import { CharacterShellComponent } from './character-shell.component';
 
@@ -28,9 +29,8 @@ describe('CharacterShellComponent', () => {
     expect(component['parseTotalLevel']()).toBe(3);
     expect(component['character']()?.soulCoins).toBe(3);
     getById.mockReturnValue(of({ ...character, soulCoins: 2 }));
-    changed.next('c');
+    TestBed.inject(LocalStore).changes.next('c');
     expect(getById).toHaveBeenCalledTimes(2);
     expect(component['character']()?.soulCoins).toBe(2);
-    component.ngOnDestroy();
   });
 });

@@ -1,5 +1,6 @@
 import { FormFeedbackComponent } from '../../../shared/components/form-feedback/form-feedback.component';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ActivatedRoute, Router, ROUTER_OUTLET_DATA } from '@angular/router';
 import type { Signal } from '@angular/core';
@@ -77,12 +78,13 @@ export class CharacterFormComponent implements OnInit {
   protected readonly CLASS_OPTIONS = DND_CLASSES;
 
   protected isEditMode = signal(false);
+  protected isLoading = signal(false);
   protected isSaving = signal(false);
   protected writeConflict = signal(false);
   protected isProcessingAvatar = signal(false);
   protected avatarUrl = signal<string | null>(null);
   protected hasAdventureEntries = signal(false);
-  private loadedCharacter: Character | null = null;
+  protected loadedCharacter: Character | null = null;
   private characterId: string | null = null;
 
   protected form: FormGroup = this.fb.group({
@@ -142,7 +144,8 @@ export class CharacterFormComponent implements OnInit {
   }
 
   private loadCharacter(id: string): void {
-    this.characterService.getById(id).subscribe({
+    this.isLoading.set(true);
+    this.characterService.getById(id, true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (character) => {
         this.form.patchValue({
           characterName: character.characterName,
@@ -163,8 +166,10 @@ export class CharacterFormComponent implements OnInit {
           const parsed = parseClassLevels(openingClasses);
           if (parsed.length > 0) this.classEntries.set(parsed);
         }
+        this.isLoading.set(false);
       },
       error: () => {
+        this.isLoading.set(false);
         this.snackBar.open('載入角色資料失敗', '關閉', { duration: 3000 });
         this.router.navigate(['/characters']);
       },
@@ -255,7 +260,7 @@ export class CharacterFormComponent implements OnInit {
 
   protected onSubmit(): void {
     this.formError.set(null);
-    if (this.isSaving()) return;
+    if (this.isSaving() || (this.isEditMode() && !this.loadedCharacter)) return;
 
     if (this.isEditMode()) {
       // 編輯模式下僅驗證基本欄位

@@ -10,9 +10,6 @@ import { MatButtonModule } from '@angular/material/button';
       <section class="notice" aria-label="未完成的草稿">
         <p>這台裝置有一份草稿，上次保存：{{ savedAt() | date: 'yyyy/MM/dd HH:mm' }}。</p>
         <div class="actions">
-          <button type="button" mat-flat-button [disabled]="pending() || !canRestore()" (click)="restore.emit()">
-            繼續填寫
-          </button>
           <button type="button" mat-button [disabled]="pending()" (click)="recover.emit()">查看草稿</button>
           <button type="button" mat-button [disabled]="pending()" (click)="discard.emit()">
             {{ pending() ? '正在捨棄…' : '捨棄草稿' }}
@@ -118,13 +115,11 @@ import { MatButtonModule } from '@angular/material/button';
 export class DraftNoticeComponent {
   offered = input(false);
   savedAt = input<number | null>(null);
-  canRestore = input(false);
   status = input('');
   error = input<string | null>(null);
   retryable = input(true);
   pending = input(false);
   text = input('');
-  restore = output<void>();
   discard = output<void>();
   recover = output<void>();
   retry = output<void>();
