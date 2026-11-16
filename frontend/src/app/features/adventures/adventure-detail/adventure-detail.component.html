@@ -73,6 +73,9 @@
               <span class="level-box-value">{{ formatClassesDisplay(entry()!.endingClassesString, entry()!.endingLevel) }}</span>
             </div>
           </div>
+          @if ((entry()!.linkedCatchupCount ?? 0) > 0) {
+            <p class="catchup-summary">迎頭趕上：升 {{ entry()!.linkedCatchupCount }} 級，休整期 −{{ entry()!.linkedCatchupCount! * 10 }} 天</p>
+          }
         </div>
       </div>
     </div>

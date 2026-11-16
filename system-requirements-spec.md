@@ -184,15 +184,17 @@ Google ID token 依 Google 官方 `GoogleIdTokenVerifier`／`GooglePublicKeysMan
 
 **升級與職業配置規則（靈活配置）：**
 
-1. **升級觸發**：當勾選「是否升級：是」（`ending_level = starting_level + 1`）或選擇「迎頭趕上」（依等級規則增加結束等級）。
+1. **升級與迎頭趕上**：迎頭趕上次數由升級區控制，每次增加 1 級並扣除 10 天休整期；一般升級最多 1 級且保持獨立。`linked_catchup_count` 為 null 表示舊模式，0 表示已連動但未迎頭趕上，正整數為連動次數。
 2. **職業等級分配選單**：表單即時展開「職業與等級配置列表」（預設帶入角色當前職業陣列），玩家可自由增減兼職與調整各職業等級。
-3. **驗證規則**：各職業等級加總必須等於升級後的結束總等級（`SUM(classLevels.level) === ending_level`）。
-4. **角色狀態同步**：新增套用本次變化，修改只套用新舊差額，刪除只撤回最後保存的變化，結果保存至 `character`。
+3. **驗證規則**：新模式 `level_change - linked_catchup_count` 必須為 0 或 1；各職業等級加總必須等於升級後的結束總等級（`SUM(classLevels.level) === ending_level`），角色總等級不得超過 20。
+4. **舊紀錄回填**：V32 只在等級差大於 1 且休整期變化恰為 `−10 × (等級差 − 1)` 時回填連動次數；只寫入原因標記，不改休整期、活動文字或其他歷史快照。不符合條件的舊列保持 null 舊模式。
+5. **角色狀態同步**：新增套用本次變化，修改只套用新舊差額，刪除只撤回最後保存的變化，結果保存至 `character`。
 
 **合計計算邏輯（前端即時 computed 反應，後端儲存時嚴格驗算）：**
 
 - `gold_total = starting_gold + gold_change + gold_downtime_change`
-- `downtime_total = starting_downtime + downtime_change + downtime_downtime_change`
+- 新模式請求中的 `downtime_downtime_change` 為其他休整期活動合計；儲存值在此基礎上再減去 `10 × linked_catchup_count`。
+- `downtime_total = starting_downtime + downtime_change + downtime_downtime_change`（資料庫欄位保存含迎頭趕上扣除的完整變化）
 - `magic_items_total = starting_magic_items + magic_items_change + magic_items_downtime_change`
 
 #### 2.2.2 休整期活動欄位

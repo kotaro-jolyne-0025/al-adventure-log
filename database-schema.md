@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
     level_up_class_name VARCHAR(100),
     catchup_class_name VARCHAR(100),
     catchup_count INTEGER DEFAULT 0,
+    linked_catchup_count INTEGER CHECK (linked_catchup_count BETWEEN 0 AND 19), -- NULL 舊模式；0 為新模式未迎頭趕上；正整數為連動次數
     adventure_notes TEXT,
     soul_coin_charges_used VARCHAR(255),
     recording_model_version INTEGER NOT NULL DEFAULT 1,
@@ -127,6 +128,10 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
 >     ADD COLUMN IF NOT EXISTS catchup_class_name VARCHAR(100),
 >     ADD COLUMN IF NOT EXISTS catchup_count INTEGER DEFAULT 0;
 > ```
+>
+> **Migration 5（V32：迎頭趕上連動）：**
+>
+> 正式資料庫由 Flyway migration 增加 `linked_catchup_count`。只在等級差大於 1 且 `downtime_downtime_change` 恰為 `-10 × (ending_level - starting_level - 1)` 時回填連動次數；回填不修改休整期總值、活動文字或其他歷史快照。不符合條件的資料保持 `NULL` 舊模式。
 
 ---
 

@@ -210,6 +210,12 @@
   }
 }
 
+.catchup-summary {
+  margin: 8px 0 0;
+  color: var(--color-info);
+  font-size: 0.875rem;
+}
+
 /* Resource Cards Grid */
 .resource-cards-grid {
   display: grid;

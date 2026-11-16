@@ -45,6 +45,29 @@ describe('Adventure form complete loading', () => {
   function submit(): void { component['onSubmit'](); }
   function emitEntry(): void { entry.next(data); entry.complete(); }
 
+  it('reopens a linked level as catching up and only sends the other activity costs', () => {
+    entry.next({ ...data, startingClassesString: 'Fighter1', endingClassesString: 'Fighter2',
+      endingLevel: 2, linkedCatchupCount: 1, startingDowntime: 25, downtimeDowntimeChange: -13,
+      downtimeActivities: [
+        { id: 'catchup', description: '迎頭趕上（升等） (休整期 -10天)' },
+        { id: 'other', description: '訓練 (休整期 -3天)' },
+      ] });
+    entry.complete();
+    items.next([]); items.complete(); warehouse.next([]); warehouse.complete();
+
+    expect(component['levelUp']()).toBe(false);
+    expect(component['linkedCatchupCount']()).toBe(1);
+    expect(component['downtimeNetChange']()).toBe(-13);
+    expect(component['downtimePresets']().some(preset => preset.name === '迎頭趕上')).toBe(false);
+    expect(component['downtimeActivities']()[0]).toMatchObject({ description: '迎頭趕上（升等）', downtime: null });
+    component['recalculateDowntimeTotals']();
+    expect(component['form'].getRawValue().downtimeDowntimeChange).toBe(-3);
+    submit();
+    expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
+      entry: expect.objectContaining({ levelChange: 1, linkedCatchupCount: 1, downtimeDowntimeChange: -3 }),
+    }));
+  });
+
   it('blocks submit while item loading is pending and allows it after successful completion', () => {
     emitEntry(); submit();
     expect(api.updateWithDetails).not.toHaveBeenCalled();

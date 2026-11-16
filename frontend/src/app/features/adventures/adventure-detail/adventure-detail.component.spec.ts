@@ -94,6 +94,13 @@ describe('Adventure consumption history integration', () => {
     expect(menu.disabled).toBe(true);
   });
 
+  it('shows the linked catchup level and downtime summary', ()=>{
+    reads.read.mockReturnValue(of({source:'cloud',fetchedAt:1,data:{entry:{...entry,linkedCatchupCount:2},gainedItems:[],storyAwards:[],legacyItems:[]}}));
+    const f=create();
+    expect(f.nativeElement.querySelector('.catchup-summary').textContent.trim())
+      .toBe('迎頭趕上：升 2 級，休整期 −20 天');
+  });
+
   it('ignores late details after navigation and removes history when the adventure is deleted', ()=>{
     const old=new Subject<any>();reads.read.mockReturnValueOnce(old);
     const f=create();

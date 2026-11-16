@@ -26,7 +26,6 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -49,7 +48,6 @@ import {
   LucideArrowLeft,
   LucidePlus,
   LucideTrash2,
-  LucideCircleCheck,
   LucideCircleAlert,
   LucideSave,
 } from '@lucide/angular';
@@ -89,7 +87,6 @@ type MobileOptionalSection = 'magic-items' | 'consumables' | 'story-awards' | 'd
     MatButtonModule,
     MatProgressSpinner,
     MatSelectModule,
-    MatSlideToggleModule,
     MatCheckboxModule,
     MatTooltipModule,
     TextFieldModule,
@@ -104,7 +101,6 @@ type MobileOptionalSection = 'magic-items' | 'consumables' | 'story-awards' | 'd
     LucideArrowLeft,
     LucidePlus,
     LucideTrash2,
-    LucideCircleCheck,
     LucideCircleAlert,
     LucideSave,
   ],
@@ -167,13 +163,25 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   protected levelUp = signal(false);
   protected catchup = signal(false);
   protected catchupCount = signal(1);
+  protected readonly linkedCatchup = signal(true);
+  protected readonly catchupLevels = computed(() => this.catchup() ? this.catchupCount() : 0);
+  protected readonly maxCatchupLevels = computed(() =>
+    this.linkedCatchup() ? Math.max(0, Math.min(19, 20 - this._startingLevel() - Number(this.levelUp()))) : 19
+  );
+  private readonly validCatchupLevels = computed(() => {
+    const levels = this.catchupLevels();
+    return Number.isInteger(levels) && levels >= 0 && levels <= 19 ? levels : 0;
+  });
+  protected readonly linkedCatchupCount = computed(() =>
+    this.linkedCatchup() ? this.validCatchupLevels() : 0
+  );
 
   // 結束等級（純衍生）
   protected readonly endingLevel = computed(() => {
     let lvl = this._startingLevel();
     if (this.levelUp()) lvl += 1;
-    if (this.catchup()) lvl += this.catchupCount();
-    return Math.min(20, Math.max(1, lvl));
+    lvl += this.validCatchupLevels();
+    return this.linkedCatchup() ? lvl : Math.min(20, Math.max(1, lvl));
   });
 
   // 結束職業與等級配置列表
@@ -214,8 +222,16 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   protected readonly goldNetChange = computed(() =>
     Math.round(((this._goldChange() ?? 0) + (this._goldDowntimeChange() ?? 0)) * 100) / 100
   );
+  protected readonly catchupDowntimeCost = computed(() => 10 * this.linkedCatchupCount());
+  protected readonly catchupInputTouched = signal(false);
+  protected readonly catchupDowntimeInvalid = computed(() =>
+    this.catchupDowntimeCost() > 0 && (this.downtimeTotal() ?? 0) < 0
+  );
+  protected readonly downtimeActivityNetChange = computed(() =>
+    (this._downtimeDowntimeChange() ?? 0) - this.catchupDowntimeCost()
+  );
   protected readonly downtimeNetChange = computed(() =>
-    (this._downtimeChange() ?? 0) + (this._downtimeDowntimeChange() ?? 0)
+    (this._downtimeChange() ?? 0) + this.downtimeActivityNetChange()
   );
   protected readonly magicItemsNetChange = computed(() =>
     (this._magicItemsChange() ?? 0) + (this._magicItemsDowntimeChange() ?? 0)
@@ -230,10 +246,9 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   });
   protected readonly downtimeTotal = computed(() => {
     const s = this._startingDowntime();
-    const c = this._downtimeChange();
-    const d = this._downtimeDowntimeChange();
-    if (s == null && c == null && d == null) return null;
-    return (s ?? 0) + (c ?? 0) + (d ?? 0);
+    if (s == null && this._downtimeChange() == null && this._downtimeDowntimeChange() == null
+        && !this.linkedCatchupCount()) return null;
+    return (s ?? 0) + this.downtimeNetChange();
   });
   protected readonly magicItemsTotal = computed(() => {
     const s = this._startingMagicItems();
@@ -265,13 +280,16 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
   protected readonly DOWNTIME_PRESETS = [
     { label: '迎頭趕上（升等）', name: '迎頭趕上', downtime: -10, gold: null, magicItems: null },
     { label: '魔法物品交易', name: '魔法物品交易', downtime: -5, gold: null, magicItems: null },
-    { label: '抄寫法術（0~4 環）', name: '抄寫法術', downtime: -1, gold: -50, magicItems: null },
+    { label: '抄寫法術（1~4 環）', name: '抄寫法術', downtime: -1, gold: -50, magicItems: null },
     { label: '抄寫高階法術（5 環以上）', name: '抄寫高階法術', downtime: -2, gold: -250, magicItems: null },
     { label: '釀造治療藥水', name: '釀造治療藥水', downtime: -5, gold: -25, magicItems: null },
     { label: '製作法術卷軸', name: '製作法術卷軸', downtime: -5, gold: -25, magicItems: null },
     { label: '交換傳送法陣座標', name: '交換傳送法陣座標', downtime: -10, gold: null, magicItems: null },
     { label: '學習語言或工具', name: '學習語言或工具', downtime: -10, gold: -10, magicItems: null },
   ];
+  protected readonly downtimePresets = computed(() => this.linkedCatchup()
+    ? this.DOWNTIME_PRESETS.filter(preset => preset.name !== '迎頭趕上')
+    : this.DOWNTIME_PRESETS);
 
   // ── 本次獲得的永久性魔法物品清單 ──────────────────────────────────────────
   readonly rarities: (ItemRarity | '')[] = ['', 'COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY', 'ARTIFACT'];
@@ -460,13 +478,12 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
 
         // 如果 endingLevel 大於 startingLevel，還原 toggle 狀態
         const diff = (entry.endingLevel ?? 1) - (entry.startingLevel ?? 1);
-        if (diff > 0) {
-          this.levelUp.set(true);
-          if (diff > 1) {
-            this.catchup.set(true);
-            this.catchupCount.set(diff - 1);
-          }
-        }
+        const linkedCount = entry.linkedCatchupCount;
+        this.linkedCatchup.set(linkedCount != null);
+        const catchupCount = linkedCount ?? Math.max(0, diff - 1);
+        this.levelUp.set(diff > catchupCount);
+        this.catchup.set(catchupCount > 0);
+        this.catchupCount.set(catchupCount || 1);
 
         // 解析已儲存的休整期活動
         const items: DowntimeActivityItem[] = (entry.downtimeActivities ?? []).map(act => {
@@ -489,13 +506,14 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
           }
 
           const matchedPreset = this.DOWNTIME_PRESETS.find(p => p.name === mainDesc || p.label.startsWith(mainDesc));
+          const linkedCatchupActivity = (linkedCount ?? 0) > 0 && matchedPreset?.name === '迎頭趕上';
 
           return {
             id: act.id,
-            presetLabel: matchedPreset?.label ?? '',
+            presetLabel: linkedCatchupActivity ? '' : matchedPreset?.label ?? '',
             description: mainDesc,
             gold,
-            downtime,
+            downtime: linkedCatchupActivity ? null : downtime,
             magicItems,
           };
         });
@@ -511,7 +529,9 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
           goldDowntimeChange: entry.goldDowntimeChange ?? null,
           startingDowntime: entry.startingDowntime ?? null,
           downtimeChange: entry.downtimeChange ?? null,
-          downtimeDowntimeChange: entry.downtimeDowntimeChange ?? null,
+          downtimeDowntimeChange: linkedCount
+            ? (entry.downtimeDowntimeChange ?? 0) + 10 * linkedCount
+            : entry.downtimeDowntimeChange ?? null,
           startingMagicItems: entry.startingMagicItems ?? null,
           adventureNotes: entry.adventureNotes ?? '',
           soulCoinChargesUsed: entry.soulCoinChargesUsed ?? '',
@@ -548,7 +568,8 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     const form = draftFormValues(this.form.getRawValue());
     if (!form['playDate'] && this.dateText()) form['playDateText'] = this.dateText();
     return structuredClone({ form, expectedUpdatedAt: this.expectedUpdatedAt,
-      levelUp: this.levelUp(), catchup: this.catchup(), catchupCount: this.catchupCount(), classes: this.classEntries(),
+      levelUp: this.levelUp(), catchup: this.catchup(), catchupCount: this.catchupCount(),
+      linkedCatchup: this.linkedCatchup(), classes: this.classEntries(),
       magicItems: this.gainedMagicItems(), consumables: this.gainedConsumableItems(),
       awards: this.storyAwards(), activities: this.downtimeActivities() });
   }
@@ -575,6 +596,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
       if (dateInput) dateInput.value = this.dateText();
     });
     this.levelUp.set(input.levelUp); this.catchup.set(input.catchup); this.catchupCount.set(input.catchupCount);
+    this.linkedCatchup.set(input.linkedCatchup ?? false);
     this.classEntries.set(input.classes);
     this.gainedMagicItems.set(input.magicItems as ReturnType<typeof this.gainedMagicItems>);
     this.gainedConsumableItems.set(input.consumables as ReturnType<typeof this.gainedConsumableItems>);
@@ -719,14 +741,11 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     this.autoAdjustClassLevels();
   }
 
-  protected onCatchupToggle(checked: boolean): void {
-    this.catchup.set(checked);
-    this.autoAdjustClassLevels();
-  }
-
   protected onCatchupCountChange(event: Event): void {
-    const val = parseInt((event.target as HTMLInputElement).value, 10);
-    this.catchupCount.set(isNaN(val) ? 1 : Math.max(1, Math.min(19, val)));
+    const value = (event.target as HTMLInputElement).valueAsNumber;
+    const count = Number.isFinite(value) ? value : 0;
+    this.catchup.set(count !== 0);
+    this.catchupCount.set(count || 1);
     this.autoAdjustClassLevels();
   }
 
@@ -1038,6 +1057,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
       playDate: toDateStr(raw.playDate),
       dmName: raw.dmName?.trim() || null,
       levelChange,
+      linkedCatchupCount: this.linkedCatchup() ? this.linkedCatchupCount() : null,
       classChanges,
       goldChange: toDecimal(raw.goldChange),
       goldDowntimeChange: toDecimal(raw.goldDowntimeChange),
@@ -1115,6 +1135,9 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     this.writeConflict.set(false);
     if (navigator.onLine === false || this.isSaving() || this.isLoading() || this.loadFailed() || this.draft.offered() ||
         (this.isEditMode() && !this.detailsLoaded)) return;
+    this.catchupInputTouched.set(true);
+    const catchupInput = this.host.nativeElement.querySelector('#adventure-catchup-levels') as HTMLInputElement | null;
+    if (catchupInput && !catchupInput.reportValidity()) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.formError.set('請填寫必填欄位且確認起始數值不可為負數');
@@ -1126,6 +1149,11 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
       this.errorTarget.set('.level-management-card');
       return;
     }
+    if (this.endingLevel() > 20) {
+      this.formError.set('角色總等級必須介於 0 與 20 之間');
+      this.errorTarget.set('.level-management-card');
+      return;
+    }
     if (!this.isClassProgressionValid()) {
       this.formError.set('既有職業等級不可降低，請只分配本次增加的等級');
       this.errorTarget.set('.level-management-card');
@@ -1133,7 +1161,7 @@ export class AdventureFormComponent implements OnInit, OnDestroy {
     }
     if (!this.isResourceValid()) {
       this.formError.set('資源起始值與合計皆不得為負值，請調整後再儲存');
-      this.errorTarget.set('.resource-blocks-grid');
+      this.errorTarget.set(this.catchupDowntimeInvalid() ? '#adventure-catchup-levels' : '.resource-blocks-grid');
       return;
     }
 

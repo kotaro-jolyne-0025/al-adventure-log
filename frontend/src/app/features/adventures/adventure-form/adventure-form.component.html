@@ -61,39 +61,31 @@
 
         <!-- 等級與升級機制 -->
         <div class="level-management-card">
-          <div class="level-controls-grid">
-            <div class="level-display">
-              <span class="level-label">起始等級</span>
-              <span class="level-value">Lv.{{ _startingLevel() }}</span>
-            </div>
-
-            <div class="level-toggles-container">
-              <div class="level-toggle-item">
-                <mat-slide-toggle [checked]="levelUp()" (change)="onLevelUpToggle($event.checked)" color="primary">
-                  本次升級 (+1)
-                </mat-slide-toggle>
-              </div>
-
-              <div class="level-toggle-item catchup-item">
-                <mat-slide-toggle [checked]="catchup()" (change)="onCatchupToggle($event.checked)" color="accent">
-                  迎頭趕上 (升級)
-                </mat-slide-toggle>
-
-                @if (catchup()) {
-                <mat-form-field appearance="outline" class="catchup-count-field" subscriptSizing="dynamic">
-                  <mat-label>升幾等</mat-label>
-                  <input matInput type="number" min="1" max="19" [value]="catchupCount()"
-                    (change)="onCatchupCountChange($event)" />
-                </mat-form-field>
-                }
-              </div>
-            </div>
-
-            <div class="level-display" [class.level-increased]="endingLevel() > _startingLevel()"
-              aria-live="polite" aria-atomic="true">
-              <span class="level-label">結束等級</span>
-              <span class="level-value">Lv.{{ endingLevel() }}</span>
-            </div>
+          <div class="level-summary" aria-live="polite" aria-atomic="true">
+            <span>起始 <strong>Lv.{{ _startingLevel() }}</strong></span>
+            <span aria-hidden="true">→</span>
+            <span>結束 <strong>Lv.{{ endingLevel() }}</strong></span>
+          </div>
+          <mat-checkbox [checked]="levelUp()" (change)="onLevelUpToggle($event.checked)">
+            本次冒險升級（+1）
+          </mat-checkbox>
+          <div class="catchup-field">
+            <label for="adventure-catchup-levels">迎頭趕上（升幾級）</label>
+            <mat-form-field appearance="outline" class="catchup-count-field" subscriptSizing="dynamic">
+              <input matInput id="adventure-catchup-levels" type="number" inputmode="numeric"
+                min="0" [max]="maxCatchupLevels()" step="1" [value]="catchupLevels()"
+                (input)="onCatchupCountChange($event)" (blur)="catchupInputTouched.set(true)"
+                [attr.aria-invalid]="catchupInputTouched() && catchupDowntimeInvalid() ? 'true' : null" />
+              @if (linkedCatchup()) {
+                <mat-hint>
+                  <span>每升 1 級，花費 10 天休整期。</span>
+                  <span aria-live="polite">休整期 {{ catchupDowntimeCost() ? '−' + catchupDowntimeCost() : 0 }} 天</span>
+                  @if (catchupInputTouched() && catchupDowntimeInvalid()) {
+                    <span class="catchup-error">休整期天數初始值及合計不得為負數</span>
+                  }
+                </mat-hint>
+              }
+            </mat-form-field>
           </div>
         </div>
 
@@ -107,16 +99,12 @@
           </div>
 
           <!-- 核對狀態條 -->
-          <div class="level-match-status" [class.status-match]="isLevelBalanced()"
-            [class.status-mismatch]="!isLevelBalanced()">
-            @if (isLevelBalanced()) {
-            <svg lucideCheckCircle2 [size]="16" class="status-icon"></svg>
-            <span>等級加總 ({{ classesTotalLevel() }}) 與結束等級 ({{ endingLevel() }}) 一致</span>
-            } @else {
+          @if (!isLevelBalanced()) {
+          <div class="level-match-status status-mismatch">
             <svg lucideAlertCircle [size]="16" class="status-icon"></svg>
             <span>等級加總 ({{ classesTotalLevel() }}) 與結束等級 ({{ endingLevel() }}) 不符，請調整職業等級</span>
-            }
           </div>
+          }
           @if (!isClassProgressionValid()) {
           <div class="level-match-status status-mismatch">
             <span>既有職業等級不可降低；只能分配本次增加的等級</span>
@@ -515,7 +503,7 @@
                 <mat-label>常用快捷預設</mat-label>
                 <mat-select [value]="act.presetLabel" (selectionChange)="onActivityPresetSelect(i, $event.value)">
                   <mat-option value="">— 自訂活動 —</mat-option>
-                  @for (preset of DOWNTIME_PRESETS; track preset.label) {
+                  @for (preset of downtimePresets(); track preset.label) {
                   <mat-option [value]="preset.label">{{ preset.label }}</mat-option>
                   }
                 </mat-select>
@@ -602,7 +590,7 @@
             <div class="badge-formula-line">
               <span class="f-part">冒險 {{ form.get('downtimeChange')?.value ?? 0 }}</span>
               <span class="f-op">+</span>
-              <span class="f-part">休整 {{ form.get('downtimeDowntimeChange')?.value ?? 0 }}</span>
+              <span class="f-part">休整 {{ downtimeActivityNetChange() }}</span>
             </div>
           </div>
 

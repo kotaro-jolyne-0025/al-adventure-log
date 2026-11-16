@@ -29,6 +29,7 @@ public class AdventureEntryRequest {
     @PositiveOrZero(message = "等級變化不得為負數")
     @Max(value = 20, message = "等級變化不得超過 20")
     private Integer levelChange;
+    private BigDecimal linkedCatchupCount;
 
     private List<@Valid ClassLevelChangeRequest> classChanges;
 
