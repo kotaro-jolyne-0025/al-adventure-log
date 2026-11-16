@@ -21,8 +21,6 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Verifies a released-schema database with synthetic data can advance to the candidate schema. */
@@ -33,9 +31,6 @@ class MigrationUpgradeCompatibilityTest {
         UUID userId = UUID.randomUUID();
         UUID characterId = UUID.randomUUID();
         UUID entryId = UUID.randomUUID();
-        UUID inferredEntryId = UUID.randomUUID();
-        UUID inferredMultiCatchupEntryId = UUID.randomUUID();
-        UUID ambiguousEntryId = UUID.randomUUID();
 
         try (EmbeddedPostgres postgres = EmbeddedPostgres.builder().start()) {
             var dataSource = postgres.getPostgresDatabase();
@@ -55,41 +50,7 @@ class MigrationUpgradeCompatibilityTest {
                     VALUES (?, ?, 'Upgrade fixture', 'CI player', 'Human', 'Fighter1', 'Fighter1')
                     """, characterId, userId);
 
-            jdbc.update("""
-                    INSERT INTO adventure_entry (id, character_id, adventure_name, downtime_downtime_change)
-                    VALUES (?, ?, 'Upgrade fixture entry', -10)
-                    """, entryId, characterId);
-            jdbc.update("""
-                    INSERT INTO adventure_entry (id, character_id, starting_level, ending_level, downtime_downtime_change)
-                    VALUES (?, ?, 1, 3, -10)
-                    """, inferredEntryId, characterId);
-            jdbc.update("""
-                    INSERT INTO adventure_entry (id, character_id, starting_level, ending_level, downtime_downtime_change)
-                    VALUES (?, ?, 2, 5, -20)
-                    """, inferredMultiCatchupEntryId, characterId);
-            jdbc.update("""
-                    INSERT INTO adventure_entry (id, character_id, starting_level, ending_level, downtime_downtime_change)
-                    VALUES (?, ?, 1, 3, 0)
-                    """, ambiguousEntryId, characterId);
-
             Flyway.configure().dataSource(dataSource).locations("classpath:db/migration").load().migrate();
-
-            jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V32__add_linked_catchup_count.sql")));
-            assertNull(jdbc.queryForObject(
-                    "SELECT linked_catchup_count FROM adventure_entry WHERE id = ?", Integer.class, entryId));
-            assertEquals(1, jdbc.queryForObject(
-                    "SELECT linked_catchup_count FROM adventure_entry WHERE id = ?", Integer.class, inferredEntryId));
-            assertEquals(2, jdbc.queryForObject(
-                    "SELECT linked_catchup_count FROM adventure_entry WHERE id = ?", Integer.class, inferredMultiCatchupEntryId));
-            assertNull(jdbc.queryForObject(
-                    "SELECT linked_catchup_count FROM adventure_entry WHERE id = ?", Integer.class, ambiguousEntryId));
-            assertEquals(-10, jdbc.queryForObject(
-                    "SELECT downtime_downtime_change FROM adventure_entry WHERE id = ?", Integer.class, entryId));
-            assertEquals(-10, jdbc.queryForObject(
-                    "SELECT downtime_downtime_change FROM adventure_entry WHERE id = ?", Integer.class, inferredEntryId));
-            assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
-                    () -> jdbc.update("UPDATE adventure_entry SET linked_catchup_count = 20 WHERE id = ?", entryId));
-            assertEquals(1, jdbc.update("UPDATE adventure_entry SET linked_catchup_count = 0 WHERE id = ?", entryId));
 
             assertEquals(0L, jdbc.queryForObject("SELECT token_version FROM users WHERE id = ?", Long.class, userId));
             jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V30__add_user_token_version.sql")));
@@ -129,6 +90,10 @@ class MigrationUpgradeCompatibilityTest {
                         "SELECT current_magic_items FROM \"character\" WHERE id = ?", Integer.class, characterId));
             }
 
+            jdbc.update("""
+                    INSERT INTO adventure_entry (id, character_id, adventure_name)
+                    VALUES (?, ?, 'Upgrade fixture entry')
+                    """, entryId, characterId);
             assertTrue(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM adventure_entry WHERE id = ? AND character_id = ?)", Boolean.class, entryId, characterId));
         }
     }

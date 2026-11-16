@@ -154,7 +154,6 @@ public class AdventureEntryService {
     private AdventureEntryResponse updateEntryInternal(
             UUID entryId, AdventureEntryRequest request, UUID userId, boolean validateExistingDetails) {
         AdventureEntry entry = findOwnedEntry(entryId, userId);
-        requireLinkedCatchupInput(entry, request);
         if (validateExistingDetails && hasLedgerInput(request)) {
             deriveMagicChanges(request, gainedItemMapper.findByAdventureEntryId(entryId).stream()
                     .map(this::snapshotRequest).toList(), entry);
@@ -197,7 +196,6 @@ public class AdventureEntryService {
     public AdventureEntryResponse updateEntryWithDetails(
             UUID entryId, AdventureEntrySaveRequest request, UUID userId) {
         AdventureEntry original = findOwnedEntry(entryId, userId);
-        requireLinkedCatchupInput(original, request.getEntry());
         boolean ledgerInput = hasLedgerInput(request.getEntry());
         deriveMagicChanges(request.getEntry(), request.getGainedItems(), original);
         // Resolve unlinked legacy provenance against the original title/code before
@@ -752,12 +750,6 @@ public class AdventureEntryService {
         entry.setSoulCoinChargesUsed(request.getSoulCoinChargesUsed());
     }
 
-    private void requireLinkedCatchupInput(AdventureEntry existing, AdventureEntryRequest request) {
-        if (existing.getLinkedCatchupCount() != null && request.getLinkedCatchupCount() == null) {
-            throw MutationGuard.conflict();
-        }
-    }
-
     private boolean hasLedgerInput(AdventureEntryRequest request) {
         return request.getLevelChange() != null
                 || request.getLinkedCatchupCount() != null
@@ -786,7 +778,7 @@ public class AdventureEntryService {
                 : parseTotalLevelFromClassesString(startingClasses);
         int levelChange = orZero(request.getLevelChange());
         BigDecimal requestedCatchup = request.getLinkedCatchupCount();
-        int catchupCount = 0;
+        Integer catchupCount = null;
         if (requestedCatchup != null) {
             if (requestedCatchup.stripTrailingZeros().scale() > 0
                     || requestedCatchup.signum() < 0
@@ -797,8 +789,11 @@ public class AdventureEntryService {
             if (levelChange < catchupCount || levelChange > catchupCount + 1) {
                 throw new BusinessException("請求內容包含無效或不允許的欄位");
             }
+        } else if (entry.getStartingLevel() != null && entry.getEndingLevel() != null
+                && entry.getEndingLevel() - entry.getStartingLevel() == levelChange) {
+            catchupCount = entry.getCatchupCount();
         }
-        entry.setLinkedCatchupCount(requestedCatchup == null ? null : catchupCount);
+        entry.setCatchupCount(catchupCount);
 
         Map<String, Integer> endingClasses = parseClasses(startingClasses);
         List<ClassLevelChangeRequest> classChanges = request.getClassChanges() != null
@@ -832,12 +827,12 @@ public class AdventureEntryService {
 
         entry.setStartingDowntime(previous != null ? orZero(previous.getDowntimeTotal()) : orZero(character.getInitialDowntime()));
         entry.setDowntimeChange(orZero(request.getDowntimeChange()));
-        long downtimeActivityChange = (long) orZero(request.getDowntimeDowntimeChange()) - 10L * catchupCount;
+        int downtimeActivityChange = orZero(request.getDowntimeDowntimeChange());
         long downtimeTotal = (long) entry.getStartingDowntime() + entry.getDowntimeChange() + downtimeActivityChange;
-        if (downtimeActivityChange < Integer.MIN_VALUE || downtimeTotal < 0 || downtimeTotal > Integer.MAX_VALUE) {
+        if (downtimeTotal < 0 || downtimeTotal > Integer.MAX_VALUE) {
             throw new BusinessException(downtimeTotal < 0 ? "休整期天數初始值及合計不得為負數" : "請求內容包含無效或不允許的欄位");
         }
-        entry.setDowntimeDowntimeChange((int) downtimeActivityChange);
+        entry.setDowntimeDowntimeChange(downtimeActivityChange);
         entry.setDowntimeTotal((int) downtimeTotal);
 
         entry.setStartingMagicItems(previous != null ? orZero(previous.getMagicItemsTotal())
@@ -1065,6 +1060,15 @@ public class AdventureEntryService {
         return response;
     }
 
+    private Integer savedCatchupCount(AdventureEntry entry) {
+        Integer count = entry.getCatchupCount();
+        if (count == null || count < 0 || count > 19 || entry.getStartingLevel() == null || entry.getEndingLevel() == null) {
+            return null;
+        }
+        int levels = entry.getEndingLevel() - entry.getStartingLevel();
+        return levels == count || levels == count + 1 ? count : null;
+    }
+
     private AdventureEntryResponse toResponse(AdventureEntry entry) {
         AdventureEntryResponse response = new AdventureEntryResponse();
         response.setId(entry.getId());
@@ -1075,7 +1079,7 @@ public class AdventureEntryService {
         response.setDmName(entry.getDmName());
         response.setStartingLevel(entry.getStartingLevel());
         response.setEndingLevel(entry.getEndingLevel());
-        response.setLinkedCatchupCount(entry.getLinkedCatchupCount());
+        response.setLinkedCatchupCount(savedCatchupCount(entry));
         response.setStartingGold(entry.getStartingGold());
         response.setGoldChange(entry.getGoldChange());
         response.setGoldDowntimeChange(entry.getGoldDowntimeChange());

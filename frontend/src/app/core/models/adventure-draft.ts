@@ -9,6 +9,7 @@ export interface AdventureDraftInput {
   catchup: boolean;
   catchupCount: number;
   linkedCatchup?: boolean;
+  catchupPrefillEdited?: boolean;
   classes: { className: string; level: number }[];
   magicItems: {
     id?: string;
@@ -33,6 +34,7 @@ export interface AdventureDraftInput {
   activities: {
     id?: string;
     presetLabel?: string;
+    autoCatchup?: boolean;
     description: string;
     gold: number | null;
     downtime: number | null;

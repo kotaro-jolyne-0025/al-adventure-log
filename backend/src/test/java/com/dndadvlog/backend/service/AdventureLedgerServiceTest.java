@@ -1,4 +1,4 @@
-package com.dndadvlog.backend.service;
+﻿package com.dndadvlog.backend.service;
 
 import com.dndadvlog.backend.dto.AdventureEntryRequest;
 import com.dndadvlog.backend.dto.AdventureEntryResponse;
@@ -18,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -86,21 +86,20 @@ class AdventureLedgerServiceTest {
     }
 
     @Test
-    void linkedCatchupChargesTenDaysAlongsideOtherActivities() {
+    void linkedCatchupUsesTheActualActivityTotal() {
         Character character = character("Fighter1", "Fighter1", "0", 25);
         character.setInitialDowntime(25);
         arrangeCreate(character);
         AdventureEntryRequest request = request(LocalDate.of(2026, 9, 18), 1, "Fighter", 1, "0", 0);
         request.setLinkedCatchupCount(BigDecimal.ONE);
-        request.setDowntimeDowntimeChange(-3);
+        request.setDowntimeDowntimeChange(-15);
 
         AdventureEntryResponse response = service.createEntry(characterId, request, userId);
 
         assertEquals(1, response.getLinkedCatchupCount());
         assertEquals(2, response.getEndingLevel());
-        assertEquals(-13, response.getDowntimeDowntimeChange());
-        assertEquals(12, character.getCurrentDowntime());
-        assertEquals(-3, request.getDowntimeDowntimeChange());
+        assertEquals(-15, response.getDowntimeDowntimeChange());
+        assertEquals(10, character.getCurrentDowntime());
     }
 
     @Test
@@ -110,6 +109,7 @@ class AdventureLedgerServiceTest {
         AtomicReference<AdventureEntry> stored = arrangeCreate(character);
         AdventureEntryRequest request = request(LocalDate.of(2026, 9, 18), 2, "Fighter", 2, "0", 0);
         request.setLinkedCatchupCount(BigDecimal.ONE);
+        request.setDowntimeDowntimeChange(-10);
 
         AdventureEntryResponse response = service.createEntry(characterId, request, userId);
 
@@ -133,6 +133,7 @@ class AdventureLedgerServiceTest {
         assertThrows(BusinessException.class, () -> service.createEntry(characterId, request, userId));
 
         request.setLinkedCatchupCount(BigDecimal.ONE);
+        request.setDowntimeDowntimeChange(-10);
         assertThrows(BusinessException.class, () -> service.createEntry(characterId, request, userId));
         verify(entryMapper, never()).insert(any());
         verify(characterMapper, never()).update(any());
@@ -145,13 +146,13 @@ class AdventureLedgerServiceTest {
         AdventureEntry entry = snapshot(LocalDate.of(2026, 9, 18), "Fighter2", 2, "0", 12, 0);
         entry.setStartingClassesString("Fighter1");
         entry.setStartingLevel(1);
-        entry.setLinkedCatchupCount(1);
+        entry.setCatchupCount(1);
         entry.setDowntimeChange(0);
         entry.setDowntimeDowntimeChange(-13);
         arrangeUpdate(character, entry);
         AdventureEntryRequest request = request(entry.getPlayDate(), 1, "Fighter", 1, "0", 0);
         request.setLinkedCatchupCount(BigDecimal.ONE);
-        request.setDowntimeDowntimeChange(-3);
+        request.setDowntimeDowntimeChange(-13);
 
         service.updateEntry(entry.getId(), request, userId);
         service.updateEntry(entry.getId(), request, userId);
@@ -162,17 +163,25 @@ class AdventureLedgerServiceTest {
     }
 
     @Test
-    void legacyUpdatesCannotDropAnExistingLinkedCount() {
+    void legacyUpdateRetainsCountOnlyWhileTheLevelChangeMatches() {
+        Character character = character("Fighter1", "Fighter2", "0", 10);
+        character.setInitialDowntime(25);
         AdventureEntry entry = snapshot(LocalDate.of(2026, 9, 18), "Fighter2", 2, "0", 10, 0);
-        entry.setLinkedCatchupCount(1);
-        when(entryMapper.findByIdAndUserId(entry.getId(), userId)).thenReturn(entry);
-        var request = new AdventureEntryRequest();
+        entry.setStartingClassesString("Fighter1");
+        entry.setStartingLevel(1);
+        entry.setDowntimeChange(0);
+        entry.setDowntimeDowntimeChange(-15);
+        entry.setCatchupCount(1);
+        arrangeUpdate(character, entry);
+        AdventureEntryRequest request = request(entry.getPlayDate(), 1, "Fighter", 1, "0", 0);
+        request.setDowntimeDowntimeChange(-15);
 
-        var error = assertThrows(ResponseStatusException.class, () -> service.updateEntry(entry.getId(), request, userId));
-
-        assertEquals(409, error.getStatusCode().value());
-        assertEquals(1, entry.getLinkedCatchupCount());
-        verify(entryMapper, never()).update(any());
+        assertEquals(1, service.updateEntry(entry.getId(), request, userId).getLinkedCatchupCount());
+        assertEquals(10, character.getCurrentDowntime());
+        AdventureEntryRequest changed = request(entry.getPlayDate(), 2, "Fighter", 2, "0", 0);
+        changed.setDowntimeDowntimeChange(-15);
+        assertNull(service.updateEntry(entry.getId(), changed, userId).getLinkedCatchupCount());
+        assertEquals(10, character.getCurrentDowntime());
     }
 
     @Test
@@ -375,7 +384,7 @@ class AdventureLedgerServiceTest {
                 "0.00", 15, 0);
         entry.setStartingClassesString("Fighter1");
         entry.setStartingLevel(1);
-        entry.setLinkedCatchupCount(1);
+        entry.setCatchupCount(1);
         entry.setStartingDowntime(25);
         entry.setDowntimeChange(0);
         entry.setDowntimeDowntimeChange(-10);

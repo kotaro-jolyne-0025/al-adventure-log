@@ -114,7 +114,7 @@ public class MutationGuard {
         }
     }
 
-    static ResponseStatusException conflict() {
+    private ResponseStatusException conflict() {
         return new ResponseStatusException(HttpStatus.CONFLICT, "資料已在其他視窗或裝置更新。你的輸入尚未儲存且仍保留，請查看新版後再決定如何修改。");
     }
 }
