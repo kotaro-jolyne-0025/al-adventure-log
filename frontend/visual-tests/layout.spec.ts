@@ -34,16 +34,24 @@ const screens = [
     ({ name, path: `/characters/${character.id}/inventory`, host: 'app-inventory-list' })),
 ];
 
+const phoneReferenceHeights: Partial<Record<number, number>> = {
+  402: 874, // iPhone 18 Pro / iPhone 17
+  412: 891, // Galaxy S26 Ultra reference viewport
+};
+const mobileSweepWidths = [...Array.from({ length: 15 }, (_, i) => 320 + i * 20), 359, 599, 601]
+  .sort((a, b) => a - b);
+
 for (const theme of ['light', 'dark']) {
   for (const empty of [false, true]) {
-    for (const width of empty ? [390, 1440] : [320, 360, 390, 600, 601, 768, 769, 1280, 1440]) {
+    for (const width of empty ? [390, 1440] : [320, 360, 390, 402, 412, 600, 601, 768, 769, 1280, 1440]) {
       for (const screen of screens) {
-        if (!['characters', 'adventures', 'permanent', 'consumable', 'movement-history'].includes(screen.name)
-          && (empty || ![390, 1440].includes(width))) continue;
+        const isList = ['characters', 'adventures', 'permanent', 'consumable', 'movement-history'].includes(screen.name);
+        const coversFlow = [390, 1440].includes(width) || (phoneReferenceHeights[width] && screen.name === 'item-edit');
+        if (!isList && (empty || !coversFlow)) continue;
         test(`${screen.name}-${theme}-${width}-${empty ? 'empty' : 'populated'}`, async ({ page }) => {
           const unexpected: string[] = [];
           page.on('pageerror', error => unexpected.push(error.message));
-          await page.setViewportSize({ width, height: 900 });
+          await page.setViewportSize({ width, height: phoneReferenceHeights[width] ?? 900 });
           await page.clock.setFixedTime(new Date(date));
           await page.addInitScript(theme => localStorage.setItem('dnd_theme', theme), theme);
           // Bundle the application's font families so network/font updates cannot change baselines.
@@ -166,7 +174,7 @@ for (const theme of ['light', 'dark']) {
           }
           if (screen.name === 'item-edit') {
             await page.getByRole('link', { name: /編輯物品/ }).first().click();
-            await expect(page.locator('app-inventory-form')).toBeVisible();
+            await expect(page.locator('app-inventory-form form')).toBeVisible();
             await expect(page.locator('.character-bottom-nav, .character-top-nav')).toHaveCount(0);
           }
           await page.evaluate(() => document.fonts.ready);
@@ -174,6 +182,19 @@ for (const theme of ['light', 'dark']) {
           await expect(page.locator('app-read-error')).toHaveCount(0);
           await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));
           expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+          if (screen.name === 'permanent' && (width === 390 || phoneReferenceHeights[width]) && !empty) {
+            const sameLine = await host.locator('.inventory-tab-label').first().evaluate(label => {
+              const count = label.querySelector('.inventory-tab-count') as HTMLElement;
+              const original = count.textContent;
+              count.textContent = '（16）';
+              const text = document.createRange();
+              text.selectNodeContents(label.firstChild!);
+              const aligned = Math.abs(text.getBoundingClientRect().top - count.getBoundingClientRect().top) <= 2;
+              count.textContent = original;
+              return aligned;
+            });
+            expect(sameLine).toBe(true);
+          }
           const capsule = host.locator('.sort-toolbar-capsule:visible');
           if (await capsule.count()) {
             const box = await capsule.boundingBox();
@@ -213,6 +234,48 @@ for (const theme of ['light', 'dark']) {
             await expect(capsule).toHaveScreenshot('sort.png');
           }
           await expect(page).toHaveScreenshot('page.png', { fullPage: true });
+          if (!empty && [320, 402, 412, 600, 601, 1440].includes(width) &&
+              ['adventures', 'permanent', 'consumable'].includes(screen.name)) {
+            const bar = host.locator('.search-bar:visible');
+            const bounds = await bar.boundingBox();
+            const sortBounds = await capsule.boundingBox();
+            await bar.locator('.search-input').focus();
+            await expect(bar).toHaveCSS('outline-style', 'solid');
+            const outlineBleed = await bar.evaluate(element => {
+              const style = getComputedStyle(element);
+              return parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+            });
+            expect(outlineBleed).toBeLessThanOrEqual(0);
+            expect(await bar.boundingBox()).toEqual(bounds);
+            expect(await capsule.boundingBox()).toEqual(sortBounds);
+          }
+          if (!empty && width === 390 && ['adventures', 'permanent', 'consumable'].includes(screen.name)) {
+            const container = host.locator(screen.name === 'adventures' ? '.list-tools' : '.filter-panel:visible');
+            const search = host.locator('.search-input:visible');
+            await search.focus();
+            for (const sampleWidth of mobileSweepWidths) {
+              await test.step(`寬度掃描 ${sampleWidth}px`, async () => {
+                await page.setViewportSize({ width: sampleWidth, height: 900 });
+                const isCompact = sampleWidth <= 600;
+                const nav = page.locator(isCompact ? '.character-bottom-nav' : '.character-top-nav');
+                await expect(nav.locator('[aria-current="page"]')).toBeVisible();
+                await expect(search).toBeFocused();
+                expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(2);
+                const sortBox = (await capsule.boundingBox())!;
+                const searchBox = (await host.locator('.search-bar:visible').boundingBox())!;
+                for (const box of [searchBox, sortBox]) {
+                  expect(box.x).toBeGreaterThanOrEqual(0);
+                  expect(box.x + box.width).toBeLessThanOrEqual(sampleWidth + 2);
+                }
+                if (isCompact) {
+                  const bounds = (await container.boundingBox())!;
+                  expect(Math.abs(sortBox.x - bounds.x)).toBeLessThanOrEqual(2);
+                  expect(Math.abs(sortBox.x + sortBox.width - bounds.x - bounds.width)).toBeLessThanOrEqual(2);
+                  expect(searchBox.y + searchBox.height).toBeLessThanOrEqual(sortBox.y);
+                }
+              });
+            }
+          }
           expect(unexpected).toEqual([]);
         });
       }
