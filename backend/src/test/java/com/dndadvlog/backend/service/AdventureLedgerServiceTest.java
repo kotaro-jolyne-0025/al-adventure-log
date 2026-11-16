@@ -1,4 +1,4 @@
-﻿package com.dndadvlog.backend.service;
+package com.dndadvlog.backend.service;
 
 import com.dndadvlog.backend.dto.AdventureEntryRequest;
 import com.dndadvlog.backend.dto.AdventureEntryResponse;

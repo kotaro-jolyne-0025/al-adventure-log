@@ -1,4 +1,4 @@
-﻿# adventure-log Specification
+# adventure-log Specification
 
 ## Purpose
 
