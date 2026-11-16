@@ -45,7 +45,6 @@
   .filter-chip,
   .filter-chip-clear,
   .sort-toolbar-capsule {
-    box-sizing: border-box;
     min-height: 32px;
   }
 
@@ -55,7 +54,6 @@
 }
 
 .sort-toolbar-capsule {
-  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   height: 40px;
@@ -194,6 +192,16 @@
     }
   }
 
+  @media (min-width: 360px) and (max-width: 600px) {
+    &.mat-mdc-tab-group.mat-mdc-tab-group-stretch-tabs ::ng-deep .mat-mdc-tab:first-child {
+      flex-grow: 3;
+    }
+
+    &.mat-mdc-tab-group.mat-mdc-tab-group-stretch-tabs ::ng-deep .mat-mdc-tab:nth-child(2) {
+      flex-grow: 2;
+    }
+  }
+
   .inventory-tab-label {
     min-width: 0;
     white-space: normal;
@@ -303,18 +311,22 @@
   gap: 6px;
 }
 
-.filter-chip {
+.filter-chip,
+.filter-chip-clear {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 11px;
   border-radius: var(--radius-full);
-  border: 1.5px solid var(--chip-color, var(--border-medium));
   background: transparent;
-  color: var(--chip-color, var(--text-secondary));
   font-size: 0.8rem;
-  font-weight: 600;
   cursor: pointer;
+}
+
+.filter-chip {
+  padding: 3px 11px;
+  border: 1.5px solid var(--chip-color, var(--border-medium));
+  color: var(--chip-color, var(--text-secondary));
+  font-weight: 600;
   transition:
     background 0.15s,
     color 0.15s,
@@ -338,16 +350,9 @@
 }
 
 .filter-chip-clear {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   padding: 3px 10px;
-  border-radius: var(--radius-full);
   border: 1.5px solid var(--border-medium);
-  background: transparent;
   color: var(--text-muted);
-  font-size: 0.8rem;
-  cursor: pointer;
   transition:
     background 0.15s,
     color 0.15s;
@@ -521,7 +526,6 @@
   user-select: none;
 
   &:hover {
-    background: var(--color-info-bg);
     border-color: var(--color-info);
   }
 

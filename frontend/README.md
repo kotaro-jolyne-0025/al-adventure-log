@@ -68,7 +68,11 @@ npm run test:visual
 npm run test:visual:report
 ```
 
-134 組案例涵蓋角色、冒險、倉庫兩類分頁及共用導覽，包含明暗主題、320／390／600／601／768／769／1440px、長名稱與空資料。消耗品另涵蓋消耗視窗、庫存紀錄展開、操作選單、編輯與撤銷確認、物品編輯，使用 390／1440px 及雙主題。另量測水平溢出、手機排序滿寬與桌機倉庫排序靠右。基準存於 `visual-tests/snapshots`。
+158 組案例涵蓋角色、冒險、倉庫兩類分頁、物品異動紀錄及共用導覽，包含明暗主題、長名稱與空資料。消耗品另涵蓋消耗視窗、庫存紀錄展開、操作選單、編輯與撤銷確認、物品編輯，使用 390／1440px 及雙主題。另量測水平溢出、手機排序滿寬與桌機倉庫排序靠右。基準存於 `visual-tests/snapshots`。
+
+手機直向版面以 402 × 874 CSS px 代表 [iPhone 18 Pro](https://www.apple.com/iphone-18-pro/specs/) 與 [iPhone 17 標準版](https://support.apple.com/en-us/125089)，以 412 × 891 CSS px 代表 [Galaxy S26 Ultra](https://www.samsung.com/tw/business/smartphones/galaxy-s/galaxy-s26-ultra-black-256gb-sm-s9480zkibri/)。兩組尺寸皆檢查清單、異動紀錄與物品編輯的明暗主題，斷線流程也檢查提示位置。這些是固定的模擬視窗尺寸，實機可見高度會隨工具列及顯示設定變動。
+
+冒險清單與倉庫兩類分頁的 390px 非空案例另做寬度掃描。從 320 到 600 CSS px 每 20px 取樣，加驗 359／360、599／600／601 的邊界。掃描檢查水平溢出、搜尋焦點、排序滿寬與導覽選取，只在固定基準尺寸保存截圖。
 
 確認畫面調整符合需求後，可用 `npm run test:visual:update -- --grep <案例名稱>` 更新指定基準。逐張檢查差異後再納入版本控制，避免直接接受意外回歸。一般測試遇到差異或缺少基準會失敗，報告在 `playwright-report`，失敗 trace 在 `test-results`。
 
