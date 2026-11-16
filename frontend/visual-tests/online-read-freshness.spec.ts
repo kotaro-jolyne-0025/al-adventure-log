@@ -143,4 +143,3 @@ test('reads character sections on demand and retains a loaded list when saving a
   await page.clock.fastForward(24 * 60 * 60 * 1000);
   await expect(page.getByText('測試角色', { exact: true })).toHaveCount(0);
 });
-
