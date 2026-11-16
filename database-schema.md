@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
     magic_items_downtime_change INTEGER,
     level_up_class_name VARCHAR(100),
     catchup_class_name VARCHAR(100),
-    catchup_count INTEGER DEFAULT 0,
+    catchup_count INTEGER DEFAULT 0, -- 迎頭趕上的級數，休整期合計另按實填入帳
     adventure_notes TEXT,
     soul_coin_charges_used VARCHAR(255),
     recording_model_version INTEGER NOT NULL DEFAULT 1,
@@ -127,6 +127,8 @@ CREATE TABLE IF NOT EXISTS adventure_entry (
 >     ADD COLUMN IF NOT EXISTS catchup_class_name VARCHAR(100),
 >     ADD COLUMN IF NOT EXISTS catchup_count INTEGER DEFAULT 0;
 > ```
+>
+> 新紀錄沿用現有 `catchup_count`。讀取舊紀錄時，僅在該值與等級差相容時採用，不執行資料回填。
 
 ---
 

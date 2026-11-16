@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, Subject, throwError } from 'rxjs';
 import { LocalStore } from './local-store.service';
+import { RequestCache } from './request-cache';
 import { LocalReadCache } from './local-read-cache.service';
 
 describe('Reading-page fallback', () => {
@@ -36,10 +37,10 @@ describe('Reading-page fallback', () => {
     await expect(
       firstValueFrom(cache.read('c', 'items', () => throwError(() => ({ status })))),
     ).rejects.toMatchObject({ status });
-    expect(local.getCopy).toHaveBeenCalledTimes(1);
-    if ([403, 404].includes(status)) expect(local.invalidate).toHaveBeenCalled();
+    expect(local.getCopy).not.toHaveBeenCalled();
+    if ([401, 403, 404].includes(status)) expect(local.invalidate).toHaveBeenCalled();
   });
-  it('shows an available copy before cloud data, then replaces it with the complete response', async () => {
+  it('waits for cloud success without touching device copies upfront', async () => {
     const network = new Subject<string[]>();
     const values: string[][] = [];
     let completed = false;
@@ -48,12 +49,35 @@ describe('Reading-page fallback', () => {
       complete: () => { completed = true; },
     });
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(values).toEqual([['previous']]);
+    expect(values).toEqual([]);
+    expect(local.getCopy).not.toHaveBeenCalled();
     expect(completed).toBe(false);
     network.next(['latest']);
     network.complete();
-    expect(values).toEqual([['previous'], ['latest']]);
+    expect(values).toEqual([['latest']]);
     expect(completed).toBe(true);
+  });
+  it('does not read or rewrite device copies for a memory hit', () => {
+    const requests = new RequestCache<string[]>();
+    const network = vi.fn(() => of(['latest']));
+    const fetch = () => requests.get('items', network);
+    cache.read('c', 'items', fetch).subscribe();
+    vi.mocked(local.putCopy).mockClear();
+    cache.read('c', 'items', fetch).subscribe();
+    expect(network).toHaveBeenCalledTimes(1);
+    expect(local.getCopy).not.toHaveBeenCalled();
+    expect(local.putCopy).not.toHaveBeenCalled();
+  });
+  it('fails without requesting the server when reopening offline without a saved copy', async () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    try {
+      vi.mocked(local.getCopy).mockResolvedValue(undefined);
+      const fetch = vi.fn(() => of(['latest']));
+      await expect(firstValueFrom(cache.read('c', 'items', fetch))).rejects.toMatchObject({ status: 0 });
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      online.mockRestore();
+    }
   });
   it('keeps the displayed copy when refresh fails temporarily', async () => {
     const values: string[][] = [];

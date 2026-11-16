@@ -32,6 +32,11 @@ describe('Adventure draft adapter', () => {
       adventureBaseline({ ...before, entry: { ...before.entry, goldChange: 2 } }),
     );
   });
+  it('treats an absent catchup marker as legacy but detects conversion to linked mode', () => {
+    const legacy = { entry: { id: 'e' } };
+    expect(adventureBaseline(legacy)).toBe(adventureBaseline({ entry: { id: 'e', linkedCatchupCount: null } }));
+    expect(adventureBaseline(legacy)).not.toBe(adventureBaseline({ entry: { id: 'e', linkedCatchupCount: 0 } }));
+  });
   it('requires the complete draft structure rather than treating malformed content as empty', () => {
     expect(
       isDraftInput({

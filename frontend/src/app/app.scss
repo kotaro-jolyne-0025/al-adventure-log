@@ -306,6 +306,44 @@
   overflow-x: clip;
 }
 
+.connection-status {
+  position: sticky;
+  bottom: var(--safe-area-bottom);
+  z-index: 29;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-inline-size: min(440px, calc(100% - 24px));
+  overflow-wrap: anywhere;
+
+  &.visible {
+    margin-block: 8px;
+    padding: 8px 16px;
+    min-block-size: 48px;
+    border-radius: 4px;
+    background: var(--mat-sys-surface-container);
+    color: var(--mat-sys-on-surface);
+  }
+
+  &.failed {
+    background: var(--connection-status-surface);
+    color: var(--connection-status-text);
+  }
+
+  button {
+    color: inherit;
+    flex: none;
+    min-block-size: 44px;
+  }
+}
+
+@media (max-width: 600px) {
+  .connection-status {
+    bottom: var(--connection-nav-height, var(--safe-area-bottom));
+  }
+}
+
 .more-menu-btn {
   flex: 0 0 44px;
   width: 44px;

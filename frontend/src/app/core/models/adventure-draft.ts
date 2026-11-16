@@ -8,6 +8,8 @@ export interface AdventureDraftInput {
   levelUp: boolean;
   catchup: boolean;
   catchupCount: number;
+  linkedCatchup?: boolean;
+  catchupPrefillEdited?: boolean;
   classes: { className: string; level: number }[];
   magicItems: {
     id?: string;
@@ -32,6 +34,7 @@ export interface AdventureDraftInput {
   activities: {
     id?: string;
     presetLabel?: string;
+    autoCatchup?: boolean;
     description: string;
     gold: number | null;
     downtime: number | null;
@@ -63,7 +66,8 @@ export function adventureBaseline(value: unknown): string {
     if (item && typeof item === 'object')
       return Object.fromEntries(
         Object.entries(item)
-          .filter(([key]) => !['createdAt', 'updatedAt'].includes(key))
+          .filter(([key, child]) =>
+            !['createdAt', 'updatedAt'].includes(key) && !(key === 'linkedCatchupCount' && child == null))
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([key, child]) => [
             key,
@@ -94,6 +98,8 @@ export function isDraftInput(value: unknown): value is AdventureDraftInput {
     ) &&
     typeof input.levelUp === 'boolean' &&
     typeof input.catchup === 'boolean' &&
+    (input.linkedCatchup === undefined ||
+      (typeof input.linkedCatchup === 'boolean' && Number.isFinite(input.catchupCount))) &&
     input.classes.every((item) => record(item) && typeof item.className === 'string') &&
     [...input.magicItems, ...input.consumables].every(
       (item) => record(item) && typeof item.itemName === 'string' && typeof item.notes === 'string',

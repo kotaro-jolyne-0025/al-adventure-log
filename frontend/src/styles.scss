@@ -66,6 +66,8 @@ body.theme-light {
   --scrollbar-thumb: #cbd5e1;
 
   --character-page-max-width: 1080px;
+  --connection-status-surface: #242426;
+  --connection-status-text: #fff;
 
   // Safe Area Insets (for mobile notches & gesture bars)
   --safe-area-top: env(safe-area-inset-top, 0px);
@@ -310,6 +312,7 @@ a.navigation-card {
     outline-offset: 2px;
   }
 
+  .search-bar:has(.search-input:focus-visible),
   .select-section:has(.invisible-native-select:focus-visible),
   .capsule-section.button-section:focus-visible,
   .search-clear-btn:focus-visible {
@@ -426,6 +429,13 @@ a.navigation-card {
   background-color: var(--bg-surface-elevated);
   border-radius: var(--radius-sm);
   animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+.read-skeleton {
+  block-size: 72px;
+  max-inline-size: var(--character-page-max-width);
+  margin: 12px auto;
+  width: calc(100% - 24px);
 }
 
 @media (prefers-reduced-motion: reduce) {

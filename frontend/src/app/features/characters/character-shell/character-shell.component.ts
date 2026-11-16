@@ -1,5 +1,5 @@
 import { ReadErrorComponent, readErrorMessage } from '../../../shared/components/read-error/read-error.component';
-import { Component, DestroyRef, ElementRef, computed, effect, inject, OnInit, OnDestroy, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CacheNoticeComponent } from '../../../shared/components/cache-notice/cache-notice.component';
 import { LocalReadCache, watchReadPage } from '../../../core/services/local-read-cache.service';
 import { LocalStore } from '../../../core/services/local-store.service';
@@ -8,12 +8,10 @@ import { ActivatedRoute, NavigationEnd, Router, RouterOutlet, RouterLink } from 
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CharacterService } from '../../../core/services/character.service';
 import { formatClassLevels } from '../../../core/models/dnd-classes';
 import { Character } from '../../../core/models/character.model';
-import { Subject, takeUntil } from 'rxjs';
 
 import { CommonModule } from '@angular/common';
 
@@ -30,7 +28,6 @@ import { LucideCoins, LucideTent, LucideSparkles, LucideGhost, LucidePencil, Luc
     RouterLink,
     MatButtonModule,
     MatTooltipModule,
-    MatProgressSpinner,
     LucideCoins,
     LucideTent,
     LucideSparkles,
@@ -40,14 +37,24 @@ import { LucideCoins, LucideTent, LucideSparkles, LucideGhost, LucidePencil, Luc
   templateUrl: './character-shell.component.html',
   styleUrl: './character-shell.component.scss',
 })
-export class CharacterShellComponent implements OnInit, OnDestroy {
+export class CharacterShellComponent implements OnInit {
   private readonly local = inject(LocalStore);
   private readonly reads = inject(LocalReadCache);
   private readonly destroy = inject(DestroyRef);
   protected readonly readSource = signal<'cloud' | 'copy' | null>(null);
   protected readonly fetchedAt = signal<number | null>(null);
   protected readonly readOnly = computed(() => this.readSource() !== 'cloud');
-  private readonly refreshWatcher = watchReadPage(() => this.loadCharacterData());
+  private readSubscription?: import('rxjs').Subscription;
+  private readGeneration = -1;
+  private readonly refreshWatcher = watchReadPage(reason => {
+    if (reason === 'offline' || reason === 'invalidated' || navigator.onLine !== false) {
+      this.loadCharacterData(reason === 'online' && this.readSource() !== 'cloud');
+    }
+  }, {
+    state: () => this.isLoading() ? 'pending' :
+      this.readSource() ?? 'failed',
+    retry: () => this.loadCharacterData(true),
+  });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly characterService = inject(CharacterService);
@@ -62,16 +69,17 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
   protected characterId!: string;
   readonly activeTab = signal(0);
   private readonly bottomNav = viewChild<ElementRef<HTMLElement>>('bottomNav');
-  protected readonly bottomNavHeight = signal<number | null>(null);
+  readonly bottomNavHeight = signal<number | null>(null);
   private readonly trackBottomNav = effect(onCleanup => {
     const nav = this.bottomNav()?.nativeElement;
-    if (!nav) return;
+    if (!nav) {
+      this.bottomNavHeight.set(null);
+      return;
+    }
     const observer = new ResizeObserver(() => this.bottomNavHeight.set(nav.offsetHeight || null));
     observer.observe(nav, { box: 'border-box' });
     onCleanup(() => observer.disconnect());
   });
-
-  private readonly destroy$ = new Subject<void>();
 
   ngOnInit(): void {
     this.characterId = this.route.snapshot.paramMap.get('id')!;
@@ -84,39 +92,44 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
       const id = params.get('id');
       if (!id || id === this.characterId) return;
       this.characterId = id;
+      this.retryable.set(true);
       this.character.set(null);
       this.loadCharacterData();
     });
 
-    // 🌟 即時響應所有資料異動（新增/編輯/刪除冒險記錄、消耗品使用、道具增刪），即時更新頂部 HUD
-    this.characterService.characterChanged$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((id) => {
-        if (!id || id === this.characterId) {
-          this.refreshHud();
-        }
-      });
+    this.local.sessionChanged.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => {
+      this.readSubscription?.unsubscribe();
+      this.character.set(null);
+      this.readSource.set(null);
+    });
+
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  protected loadCharacterData(): void {
+  protected loadCharacterData(refresh = false): void {
+    this.readSubscription?.unsubscribe();
+    if (navigator.onLine === false && this.local.owner() &&
+        this.readGeneration === this.local.currentGeneration() && this.character()) {
+      this.readSource.set('copy');
+      this.isRefreshing.set(false);
+      this.isLoading.set(false);
+      this.loadError.set(null);
+      this.local.markFresh(this.characterId, false);
+      return;
+    }
     const id = this.characterId;
     this.local.markFresh(id, false);
     this.readSource.set(null);
     this.loadError.set(null);
-    this.isLoading.set(!this.character());
+    this.isLoading.set(true);
     this.isRefreshing.set(true);
-    this.reads.read(id, 'character', () => this.characterService.getById(id, true))
+    this.readSubscription = this.reads.read(id, 'character', () => this.characterService.getById(id, refresh), refresh)
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (result) => {
         if (id !== this.characterId) return;
+        this.retryable.set(true);
         this.readSource.set(result.source);
         this.local.markFresh(this.characterId, result.source === 'cloud');
-        if (result.source === 'copy' && this.character()) return;
+        this.readGeneration = this.local.currentGeneration();
         this.fetchedAt.set(result.fetchedAt);
         this.characterOwner = this.local.owner();
         this.character.set(result.data);
@@ -135,9 +148,6 @@ export class CharacterShellComponent implements OnInit, OnDestroy {
     });
   }
 
-  private refreshHud(): void {
-    this.loadCharacterData();
-  }
 
   protected formatClasses(character: Character): string {
     return formatClassLevels(character.currentClassesString) || '無職業紀錄';

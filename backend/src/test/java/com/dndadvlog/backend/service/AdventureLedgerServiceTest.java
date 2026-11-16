@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -82,6 +83,105 @@ class AdventureLedgerServiceTest {
         assertMoney("50.00", character.getCurrentGold());
         assertEquals(2, character.getCurrentDowntime());
         assertEquals(stored.get().getId(), response.getId());
+    }
+
+    @Test
+    void linkedCatchupUsesTheActualActivityTotal() {
+        Character character = character("Fighter1", "Fighter1", "0", 25);
+        character.setInitialDowntime(25);
+        arrangeCreate(character);
+        AdventureEntryRequest request = request(LocalDate.of(2026, 9, 18), 1, "Fighter", 1, "0", 0);
+        request.setLinkedCatchupCount(BigDecimal.ONE);
+        request.setDowntimeDowntimeChange(-15);
+
+        AdventureEntryResponse response = service.createEntry(characterId, request, userId);
+
+        assertEquals(1, response.getLinkedCatchupCount());
+        assertEquals(2, response.getEndingLevel());
+        assertEquals(-15, response.getDowntimeDowntimeChange());
+        assertEquals(10, character.getCurrentDowntime());
+    }
+
+    @Test
+    void regularUpgradeAndCatchupTogetherApplyTwoLevelsAndOneCatchupCost() {
+        Character character = character("Fighter1", "Fighter1", "0", 25);
+        character.setInitialDowntime(25);
+        AtomicReference<AdventureEntry> stored = arrangeCreate(character);
+        AdventureEntryRequest request = request(LocalDate.of(2026, 9, 18), 2, "Fighter", 2, "0", 0);
+        request.setLinkedCatchupCount(BigDecimal.ONE);
+        request.setDowntimeDowntimeChange(-10);
+
+        AdventureEntryResponse response = service.createEntry(characterId, request, userId);
+
+        assertEquals(1, response.getLinkedCatchupCount());
+        assertEquals(1, response.getStartingLevel());
+        assertEquals(3, response.getEndingLevel());
+        assertEquals("Fighter3", response.getEndingClassesString());
+        assertEquals(-10, response.getDowntimeDowntimeChange());
+        assertEquals(15, character.getCurrentDowntime());
+        assertEquals("Fighter3", character.getCurrentClassesString());
+        assertEquals(stored.get().getId(), response.getId());
+    }
+
+    @Test
+    void linkedCatchupRejectsFractionalCountsAndInsufficientDowntime() {
+        Character character = character("Fighter1", "Fighter1", "0", 9);
+        character.setInitialDowntime(9);
+        when(characterService.findCharacter(characterId, userId)).thenReturn(character);
+        AdventureEntryRequest request = request(LocalDate.of(2026, 9, 18), 1, "Fighter", 1, "0", 0);
+        request.setLinkedCatchupCount(new BigDecimal("0.5"));
+        assertThrows(BusinessException.class, () -> service.createEntry(characterId, request, userId));
+
+        request.setLinkedCatchupCount(BigDecimal.ONE);
+        request.setDowntimeDowntimeChange(-10);
+        assertThrows(BusinessException.class, () -> service.createEntry(characterId, request, userId));
+        verify(entryMapper, never()).insert(any());
+        verify(characterMapper, never()).update(any());
+    }
+
+    @Test
+    void resavingLinkedCatchupDoesNotChargeItAgain() {
+        Character character = character("Fighter1", "Fighter2", "0", 12);
+        character.setInitialDowntime(25);
+        AdventureEntry entry = snapshot(LocalDate.of(2026, 9, 18), "Fighter2", 2, "0", 12, 0);
+        entry.setStartingClassesString("Fighter1");
+        entry.setStartingLevel(1);
+        entry.setCatchupCount(1);
+        entry.setDowntimeChange(0);
+        entry.setDowntimeDowntimeChange(-13);
+        arrangeUpdate(character, entry);
+        AdventureEntryRequest request = request(entry.getPlayDate(), 1, "Fighter", 1, "0", 0);
+        request.setLinkedCatchupCount(BigDecimal.ONE);
+        request.setDowntimeDowntimeChange(-13);
+
+        service.updateEntry(entry.getId(), request, userId);
+        service.updateEntry(entry.getId(), request, userId);
+
+        assertEquals(12, character.getCurrentDowntime());
+        assertEquals("Fighter2", character.getCurrentClassesString());
+        assertEquals(-13, entry.getDowntimeDowntimeChange());
+    }
+
+    @Test
+    void legacyUpdateRetainsCountOnlyWhileTheLevelChangeMatches() {
+        Character character = character("Fighter1", "Fighter2", "0", 10);
+        character.setInitialDowntime(25);
+        AdventureEntry entry = snapshot(LocalDate.of(2026, 9, 18), "Fighter2", 2, "0", 10, 0);
+        entry.setStartingClassesString("Fighter1");
+        entry.setStartingLevel(1);
+        entry.setDowntimeChange(0);
+        entry.setDowntimeDowntimeChange(-15);
+        entry.setCatchupCount(1);
+        arrangeUpdate(character, entry);
+        AdventureEntryRequest request = request(entry.getPlayDate(), 1, "Fighter", 1, "0", 0);
+        request.setDowntimeDowntimeChange(-15);
+
+        assertEquals(1, service.updateEntry(entry.getId(), request, userId).getLinkedCatchupCount());
+        assertEquals(10, character.getCurrentDowntime());
+        AdventureEntryRequest changed = request(entry.getPlayDate(), 2, "Fighter", 2, "0", 0);
+        changed.setDowntimeDowntimeChange(-15);
+        assertNull(service.updateEntry(entry.getId(), changed, userId).getLinkedCatchupCount());
+        assertEquals(10, character.getCurrentDowntime());
     }
 
     @Test
@@ -273,6 +373,28 @@ class AdventureLedgerServiceTest {
         assertEquals("Fighter1", character.getCurrentClassesString());
         assertMoney("-80.00", character.getCurrentGold());
         assertEquals(-8, character.getCurrentDowntime());
+        verify(entryMapper).deleteById(entry.getId());
+        verify(characterMapper).update(character);
+    }
+
+    @Test
+    void deletingAdventureReversesRegularAndCatchupLevelsTogether() {
+        Character character = character("Fighter1", "Fighter3", "0.00", 15);
+        AdventureEntry entry = snapshot(LocalDate.of(2026, 9, 1), "Fighter3", 3,
+                "0.00", 15, 0);
+        entry.setStartingClassesString("Fighter1");
+        entry.setStartingLevel(1);
+        entry.setCatchupCount(1);
+        entry.setStartingDowntime(25);
+        entry.setDowntimeChange(0);
+        entry.setDowntimeDowntimeChange(-10);
+        when(entryMapper.findByIdAndUserId(entry.getId(), userId)).thenReturn(entry);
+        when(characterService.findCharacter(characterId, userId)).thenReturn(character);
+
+        service.deleteEntry(entry.getId(), userId);
+
+        assertEquals("Fighter1", character.getCurrentClassesString());
+        assertEquals(25, character.getCurrentDowntime());
         verify(entryMapper).deleteById(entry.getId());
         verify(characterMapper).update(character);
     }

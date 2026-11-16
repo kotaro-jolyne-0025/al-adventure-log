@@ -21,6 +21,7 @@ import { ViewportService } from './core/services/viewport.service';
 import { AppInstallService } from './core/services/app-install.service';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
 import { DraftUpdateCoordinator } from './core/services/draft-update-coordinator.service';
+import { ConnectionStatus } from './core/services/connection-status.service';
 import type { CharacterShellComponent } from './features/characters/character-shell/character-shell.component';
 import {
   LucideSun,
@@ -79,6 +80,13 @@ export class App {
   readonly appUpdate = inject(AppUpdateService);
   readonly appInstall = inject(AppInstallService);
   private readonly draftUpdate = inject(DraftUpdateCoordinator);
+  protected readonly connection = inject(ConnectionStatus);
+  protected readonly connectionMessages = {
+    'offline-copy': '已離線，目前僅供查看。',
+    'offline-empty': '已離線，連線後才能載入資料。',
+    'offline-draft': '已離線，可繼續填寫草稿，連線後才能提交。',
+    failed: '無法更新資料，請重試。',
+  };
   readonly version = version;
   private updateDialogOpen = false;
 

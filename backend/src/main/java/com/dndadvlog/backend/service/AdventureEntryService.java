@@ -752,6 +752,7 @@ public class AdventureEntryService {
 
     private boolean hasLedgerInput(AdventureEntryRequest request) {
         return request.getLevelChange() != null
+                || request.getLinkedCatchupCount() != null
                 || request.getClassChanges() != null
                 || request.getGoldChange() != null
                 || request.getGoldDowntimeChange() != null
@@ -776,6 +777,23 @@ public class AdventureEntryService {
                 ? previous.getEndingLevel()
                 : parseTotalLevelFromClassesString(startingClasses);
         int levelChange = orZero(request.getLevelChange());
+        BigDecimal requestedCatchup = request.getLinkedCatchupCount();
+        Integer catchupCount = null;
+        if (requestedCatchup != null) {
+            if (requestedCatchup.stripTrailingZeros().scale() > 0
+                    || requestedCatchup.signum() < 0
+                    || requestedCatchup.compareTo(BigDecimal.valueOf(19)) > 0) {
+                throw new BusinessException("請求內容包含無效或不允許的欄位");
+            }
+            catchupCount = requestedCatchup.intValueExact();
+            if (levelChange < catchupCount || levelChange > catchupCount + 1) {
+                throw new BusinessException("請求內容包含無效或不允許的欄位");
+            }
+        } else if (entry.getStartingLevel() != null && entry.getEndingLevel() != null
+                && entry.getEndingLevel() - entry.getStartingLevel() == levelChange) {
+            catchupCount = entry.getCatchupCount();
+        }
+        entry.setCatchupCount(catchupCount);
 
         Map<String, Integer> endingClasses = parseClasses(startingClasses);
         List<ClassLevelChangeRequest> classChanges = request.getClassChanges() != null
@@ -809,9 +827,13 @@ public class AdventureEntryService {
 
         entry.setStartingDowntime(previous != null ? orZero(previous.getDowntimeTotal()) : orZero(character.getInitialDowntime()));
         entry.setDowntimeChange(orZero(request.getDowntimeChange()));
-        entry.setDowntimeDowntimeChange(orZero(request.getDowntimeDowntimeChange()));
-        entry.setDowntimeTotal(entry.getStartingDowntime()
-                + entry.getDowntimeChange() + entry.getDowntimeDowntimeChange());
+        int downtimeActivityChange = orZero(request.getDowntimeDowntimeChange());
+        long downtimeTotal = (long) entry.getStartingDowntime() + entry.getDowntimeChange() + downtimeActivityChange;
+        if (downtimeTotal < 0 || downtimeTotal > Integer.MAX_VALUE) {
+            throw new BusinessException(downtimeTotal < 0 ? "休整期天數初始值及合計不得為負數" : "請求內容包含無效或不允許的欄位");
+        }
+        entry.setDowntimeDowntimeChange(downtimeActivityChange);
+        entry.setDowntimeTotal((int) downtimeTotal);
 
         entry.setStartingMagicItems(previous != null ? orZero(previous.getMagicItemsTotal())
                 : inventoryItemMapper.sumUnlinkedPermanentQuantityByCharacterId(character.getId()));
@@ -1038,6 +1060,15 @@ public class AdventureEntryService {
         return response;
     }
 
+    private Integer savedCatchupCount(AdventureEntry entry) {
+        Integer count = entry.getCatchupCount();
+        if (count == null || count < 0 || count > 19 || entry.getStartingLevel() == null || entry.getEndingLevel() == null) {
+            return null;
+        }
+        int levels = entry.getEndingLevel() - entry.getStartingLevel();
+        return levels == count || levels == count + 1 ? count : null;
+    }
+
     private AdventureEntryResponse toResponse(AdventureEntry entry) {
         AdventureEntryResponse response = new AdventureEntryResponse();
         response.setId(entry.getId());
@@ -1048,6 +1079,7 @@ public class AdventureEntryService {
         response.setDmName(entry.getDmName());
         response.setStartingLevel(entry.getStartingLevel());
         response.setEndingLevel(entry.getEndingLevel());
+        response.setLinkedCatchupCount(savedCatchupCount(entry));
         response.setStartingGold(entry.getStartingGold());
         response.setGoldChange(entry.getGoldChange());
         response.setGoldDowntimeChange(entry.getGoldDowntimeChange());

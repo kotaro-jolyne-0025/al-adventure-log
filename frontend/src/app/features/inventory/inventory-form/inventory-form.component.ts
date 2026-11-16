@@ -172,7 +172,7 @@ export class InventoryFormComponent implements OnInit {
     this.itemLoaded.set(false);
     this.loadError.set(null);
     this.form.disable();
-    this.inventoryService.getAllByCharacter(this.characterId).subscribe({
+    this.inventoryService.getAllByCharacter(this.characterId, true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (items) => {
         const item = items.find((i) => i.id === id);
         if (!item) {

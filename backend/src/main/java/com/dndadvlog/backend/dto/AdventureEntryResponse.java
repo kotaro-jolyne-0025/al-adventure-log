@@ -18,6 +18,7 @@ public class AdventureEntryResponse {
     private String dmName;
     private Integer startingLevel;
     private Integer endingLevel;
+    private Integer linkedCatchupCount;
     private BigDecimal startingGold;
     private BigDecimal goldChange;
     private BigDecimal goldTotal;

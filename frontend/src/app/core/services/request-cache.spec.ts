@@ -40,15 +40,33 @@ describe('RequestCache', () => {
     expect(receiver).not.toHaveBeenCalled();
   });
 
-  it('force refresh replaces an in-flight request', () => {
+  it('force refresh joins an in-flight request', () => {
     const cache = new RequestCache<number>();
     const old = new Subject<number>();
     const oldReceiver = vi.fn(), fresh = vi.fn();
     cache.get('key', () => old).subscribe(oldReceiver);
     cache.get('key', () => of(2), true).subscribe(fresh);
     old.next(1);
-    expect(oldReceiver).not.toHaveBeenCalled();
-    expect(fresh).toHaveBeenCalledWith(2);
+    old.complete();
+    expect(oldReceiver).toHaveBeenCalledWith(1);
+    expect(fresh).toHaveBeenCalledWith(1);
+  });
+
+  it('expires exactly 30 seconds after success, even when an empty result was reused', () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(100);
+    try {
+      const cache = new RequestCache<string[]>();
+      const fetch = vi.fn(() => of([]));
+      cache.get('items', fetch).subscribe();
+      now.mockReturnValue(30_099.999);
+      cache.get('items', fetch).subscribe();
+      expect(fetch).toHaveBeenCalledTimes(1);
+      now.mockReturnValue(30_100);
+      cache.get('items', fetch).subscribe();
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it('retries after errors and after all subscribers leave a pending request', () => {

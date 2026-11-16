@@ -116,8 +116,6 @@
 }
 
 /* Level Management Card */
-.level-management-card,
-.class-allocation-section,
 .gained-item-card,
 .resource-block-card,
 .settlement-badge-card {
@@ -125,94 +123,40 @@
   border: 1px solid var(--border-subtle);
 }
 
-.level-management-card,
-.class-allocation-section,
 .gained-item-card {
   padding: 16px;
 }
 
-.level-management-card,
-.class-allocation-section {
-  border-radius: var(--radius-sm);
-}
-
 .level-management-card {
-  margin-top: 12px;
-  margin-bottom: 6px;
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
 }
 
-.level-toggle-item {
+.level-summary {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 36px;
+  align-items: baseline;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
 
-  &.catchup-item {
-    justify-content: space-between;
-  }
+.level-summary strong {
+  font-size: 1.25rem;
+}
+
+.catchup-field {
+  display: grid;
+  gap: 4px;
+  max-width: 24rem;
+  min-width: 0;
 }
 
 .catchup-count-field {
-  width: 80px;
-  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
   margin-bottom: 0;
-}
-
-.level-toggles-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  justify-content: center;
-  min-width: 190px;
-}
-
-.level-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.level-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.level-display {
-  display: flex;
-  flex: 1;
-  box-sizing: border-box;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 18px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface-elevated);
-  color: #334155;
-  border: 1px solid var(--border-medium);
-  min-width: 90px;
-
-  &.level-increased {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border-color: #bfdbfe;
-  }
-
-  :host-context(.theme-dark) & {
-    color: var(--text-primary);
-
-    &.level-increased {
-      background: var(--color-info-bg);
-      color: var(--color-info);
-      border-color: var(--color-info);
-    }
-  }
-}
-
-.level-controls-grid {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
 }
 
 /* 🎯 結束職業與等級配置 */
@@ -235,6 +179,8 @@
 
 .class-allocation-section {
   margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .status-icon {
@@ -256,12 +202,6 @@
   margin-bottom: 14px;
   font-size: 0.86rem;
   font-weight: 500;
-
-  &.status-match {
-    background: var(--color-positive-bg);
-    color: var(--color-positive);
-    border: 1px solid rgba(5, 150, 105, 0.3);
-  }
 }
 
 .level-match-status.status-mismatch,
@@ -635,8 +575,6 @@
     max-width: 100%;
   }
 
-  .level-management-card,
-  .class-allocation-section,
   .gained-item-card {
     padding: 12px;
   }
@@ -678,48 +616,6 @@
       font-size: 0.95rem;
       justify-content: center;
     }
-  }
-}
-@media (max-width: 680px) {
-  .level-controls-grid {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  .level-toggles-container,
-  .level-display {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .level-toggles-container {
-    background: var(--bg-surface);
-    padding: 10px 14px;
-    border-radius: var(--radius-xs);
-    border: 1px solid var(--border-subtle);
-  }
-
-  .level-toggle-item {
-    justify-content: space-between;
-    width: 100%;
-
-    &.catchup-item {
-      border-top: 1px dashed var(--border-subtle);
-      padding-top: 8px;
-      margin-top: 2px;
-      gap: 8px;
-
-      mat-slide-toggle {
-        flex: 1;
-        min-width: 0;
-      }
-    }
-  }
-
-  .level-display {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 10px 16px;
   }
 }
 @media (max-width: 768px) {

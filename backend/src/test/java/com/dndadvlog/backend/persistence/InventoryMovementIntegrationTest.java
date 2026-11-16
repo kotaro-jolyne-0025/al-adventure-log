@@ -86,6 +86,50 @@ class InventoryMovementIntegrationTest {
     InventoryConsumeRequest consumeRequest(int n){return new InventoryConsumeRequest(BigDecimal.valueOf(n),"Used",null);}
     void consume(int n){movements.consume(character,item,user,time("inventory_item",item),consumeRequest(n));}
 
+    @Test void deletingEarlierCatchupReversesStoredAmountAndRollsBackOnCharacterFailure() {
+        jdbc.update("""
+                UPDATE adventure_entry SET play_date = '2026-08-01', starting_level = 1, ending_level = 4,
+                    starting_classes_string = 'Fighter1', ending_classes_string = 'Fighter4',
+                    catchup_count = 2, downtime_change = 10, downtime_downtime_change = -15
+                WHERE id = ?
+                """, entry);
+        UUID later = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO adventure_entry (id, character_id, adventure_name, play_date, starting_level, ending_level,
+                    starting_classes_string, ending_classes_string, downtime_change, downtime_total)
+                VALUES (?, ?, 'Later adventure', '2026-08-02', 4, 5, 'Fighter4', 'Fighter5', 7, 12)
+                """, later, character);
+        jdbc.update("INSERT INTO downtime_activity (adventure_entry_id, description) VALUES (?, '迎頭趕上 (休整期 -15 天)')", entry);
+        jdbc.update("UPDATE \"character\" SET current_classes_string = 'Fighter5', current_downtime = 12 WHERE id = ?", character);
+        assertEquals(2, adventures.getEntry(entry, user).getLinkedCatchupCount());
+        String expected = time("adventure_entry", entry);
+        String laterTime = time("adventure_entry", later);
+        Runnable deleteEntry = () -> guard.mutate(MutationGuard.Resource.ENTRY, entry, user, expected, () -> {
+            adventures.deleteEntry(entry, user);
+            return null;
+        });
+
+        jdbc.execute("ALTER TABLE \"character\" ADD CONSTRAINT fail_catchup_rollback CHECK (current_downtime <> 17) NOT VALID");
+        try {
+            assertThrows(org.springframework.dao.DataIntegrityViolationException.class, deleteEntry::run);
+        } finally {
+            jdbc.execute("ALTER TABLE \"character\" DROP CONSTRAINT fail_catchup_rollback");
+        }
+        assertEquals(expected, time("adventure_entry", entry));
+        assertEquals(laterTime, time("adventure_entry", later));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM downtime_activity WHERE adventure_entry_id = ?", Integer.class, entry));
+        assertEquals(12, jdbc.queryForObject("SELECT current_downtime FROM \"character\" WHERE id = ?", Integer.class, character));
+
+        deleteEntry.run();
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM adventure_entry WHERE id = ?", Integer.class, entry));
+        assertEquals(17, jdbc.queryForObject("SELECT current_downtime FROM \"character\" WHERE id = ?", Integer.class, character));
+        assertEquals("Fighter2", jdbc.queryForObject("SELECT current_classes_string FROM \"character\" WHERE id = ?", String.class, character));
+        assertEquals(1, jdbc.queryForObject("""
+                SELECT count(*) FROM adventure_entry
+                WHERE id = ? AND starting_level = 4 AND ending_level = 5 AND downtime_change = 7 AND downtime_total = 12
+                """, Integer.class, later));
+    }
+
     @Test void consumeAssociateClearReverseAndDeletePreserveHistory() {
         consume(5);assertEquals(0,quantity());
         var m=latest();assertTrue(m.isReversible());assertEquals(-5,m.getQuantityDelta());

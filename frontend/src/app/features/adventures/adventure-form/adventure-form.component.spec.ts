@@ -16,14 +16,14 @@ describe('Adventure form complete loading', () => {
   let entry: Subject<AdventureEntry>;
   let items: Subject<AdventureGainedItem[]>;
   let warehouse: Subject<InventoryItem[]>;
-  let api: { getById: ReturnType<typeof vi.fn>; getGainedItems: ReturnType<typeof vi.fn>;
+  let api: { detailsCaches: Map<string, unknown>; getById: ReturnType<typeof vi.fn>; getGainedItems: ReturnType<typeof vi.fn>;
     getDetails: AdventureService['getDetails']; updateWithDetails: ReturnType<typeof vi.fn> };
   const data: AdventureEntry = { id: 'e', characterId: 'c', playDate: '2026-09-17',
     adventureName: 'A', startingLevel: 1, endingLevel: 1, magicItemsLost: 0, magicItemsDowntimeLost: 0, downtimeActivities: [], storyAwards: [], gainedItems: [], legacyItems: [], updatedAt: '2026-10-14T00:00:00.123456' };
 
   beforeEach(() => {
     entry = new Subject(); items = new Subject(); warehouse = new Subject();
-    api = { getById: vi.fn(() => forkJoin({ value: entry, gainedItems: items }).pipe(
+    api = { detailsCaches: new Map(), getById: vi.fn(() => forkJoin({ value: entry, gainedItems: items }).pipe(
       switchMap(({ value, gainedItems }) => gainedItems.length
         ? of({ ...value, gainedItems, legacyItems: [] } as AdventureEntry)
         : warehouse.pipe(map(legacyItems => ({ ...value, gainedItems, legacyItems } as AdventureEntry)))))), getGainedItems: vi.fn(() => items),
@@ -44,6 +44,83 @@ describe('Adventure form complete loading', () => {
 
   function submit(): void { component['onSubmit'](); }
   function emitEntry(): void { entry.next(data); entry.complete(); }
+
+  it('reopens an edited catchup cost and sends the complete activity total', () => {
+    entry.next({ ...data, startingClassesString: 'Fighter1', endingClassesString: 'Fighter2',
+      endingLevel: 2, linkedCatchupCount: 1, startingDowntime: 25, downtimeDowntimeChange: -18,
+      downtimeActivities: [
+        { id: 'catchup', description: '迎頭趕上（升等） (休整期 -15天)' },
+        { id: 'other', description: '訓練 (休整期 -3天)' },
+      ] });
+    entry.complete();
+    items.next([]); items.complete(); warehouse.next([]); warehouse.complete();
+
+    expect(component['levelUp']()).toBe(false);
+    expect(component['linkedCatchupCount']()).toBe(1);
+    expect(component['downtimeNetChange']()).toBe(-18);
+    expect(component['DOWNTIME_PRESETS'].some(preset => preset.name === '迎頭趕上')).toBe(false);
+    expect(component['downtimeActivities']()[0]).toMatchObject({ description: '迎頭趕上（升等）', downtime: -15 });
+    component['updateActivityDowntime'](1, -5);
+    expect(component['form'].getRawValue().downtimeDowntimeChange).toBe(-20);
+    submit();
+    expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
+      entry: expect.objectContaining({ levelChange: 1, linkedCatchupCount: 1, downtimeDowntimeChange: -20 }),
+    }));
+  });
+
+  function changeCatchup(levels: number): void {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.valueAsNumber = levels;
+    input.addEventListener('input', event => component['onCatchupCountChange'](event));
+    input.dispatchEvent(new Event('input'));
+  }
+
+  it('prefills and updates one activity, preserving an override and manual removal', () => {
+    entry.next({ ...data, startingClassesString: 'Fighter1', endingClassesString: 'Fighter1', startingDowntime: 25 });
+    entry.complete(); items.next([]); items.complete(); warehouse.next([]); warehouse.complete();
+    component['onLevelUpToggle'](true);
+    changeCatchup(2);
+    expect(component['endingLevel']()).toBe(4);
+    expect(component['downtimeActivities']()).toMatchObject([{ description: '迎頭趕上', downtime: -20 }]);
+    changeCatchup(1);
+    expect(component['downtimeActivities']()).toMatchObject([{ downtime: -10 }]);
+    changeCatchup(0);
+    expect(component['downtimeActivities']()).toEqual([]);
+    changeCatchup(2);
+    component['updateActivityDowntime'](0, -15);
+    changeCatchup(1);
+    expect(component['downtimeActivities']()).toMatchObject([{ downtime: -15 }]);
+    const draft = component['captureInput']();
+    expect(draft.catchupPrefillEdited).toBe(true);
+    component['removeDowntimeActivity'](0);
+    vi.spyOn(component['draft'], 'accept').mockReturnValue(draft);
+    component['restoreDraft']();
+    expect(component['downtimeActivities']()).toMatchObject([{ downtime: -15 }]);
+    submit();
+    expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
+      entry: expect.objectContaining({ levelChange: 2, downtimeDowntimeChange: -15 }),
+    }));
+    component['removeDowntimeActivity'](0);
+    changeCatchup(2);
+    expect(component['downtimeActivities']()).toEqual([]);
+  });
+
+  it.each([
+    { level: 3, days: null, activities: [] },
+    { level: 1, days: -10, activities: [{ id: 'old', description: '迎頭趕上 (休整期 -10 天)' }] },
+  ])('preserves unconverted level $level and activity total $days when editing notes', ({ level, days, activities }) => {
+    entry.next({ ...data, startingClassesString: 'Fighter1', endingClassesString: `Fighter${level}`,
+      endingLevel: level, startingDowntime: 25, downtimeDowntimeChange: days ?? undefined, downtimeActivities: activities });
+    entry.complete(); items.next([]); items.complete(); warehouse.next([]); warehouse.complete();
+    component['form'].patchValue({ adventureNotes: '補記' });
+    submit();
+    expect(api.updateWithDetails).toHaveBeenCalledWith('c', 'e', expect.objectContaining({
+      entry: expect.objectContaining({ levelChange: level - 1, linkedCatchupCount: null, downtimeDowntimeChange: days }),
+      downtimeActivities: expect.any(Array),
+    }));
+    expect(api.updateWithDetails.mock.calls[0][2].downtimeActivities).toHaveLength(activities.length);
+  });
 
   it('blocks submit while item loading is pending and allows it after successful completion', () => {
     emitEntry(); submit();
@@ -116,7 +193,11 @@ describe('Adventure form complete loading', () => {
     component['form'].patchValue({ adventureName: '不應殘留', dmName: '不應殘留', goldChange: 999 });
     vi.spyOn(component['draft'], 'accept').mockReturnValue(saved);
 
-    component['restoreDraft']();
+    vi.spyOn(component['draft'], 'canRestore').mockReturnValue(true);
+
+    component['recoverDraftText']();
+
+    expect(api.updateWithDetails).not.toHaveBeenCalled();
 
     expect(component['form'].getRawValue()).toMatchObject({
       adventureName: '原草稿冒險', dmName: '', goldChange: null,

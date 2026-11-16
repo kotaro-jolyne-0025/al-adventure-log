@@ -89,6 +89,7 @@ export interface AdventureEntry {
   startingDowntime?: number;
   downtimeChange?: number;
   downtimeDowntimeChange?: number;
+  linkedCatchupCount?: number | null;
   downtimeTotal?: number;
   startingMagicItems?: number;
   magicItemsChange?: number;
@@ -114,6 +115,7 @@ export interface AdventureEntryRequest extends WritePrecondition {
   playDate?: string | null;
   dmName?: string | null;
   levelChange?: number | null;
+  linkedCatchupCount?: number | null;
   classChanges?: { className: string; levelChange: number }[] | null;
   goldChange?: number | null;
   goldDowntimeChange?: number | null;

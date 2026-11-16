@@ -66,7 +66,7 @@ describe('Adventure consumption history integration', () => {
 
   it('loads only active usage and does not offer a reversed history section', ()=>{
     const f=create();
-    expect(inventory.movements).toHaveBeenCalledExactlyOnceWith('c',null,true,{usageAdventureEntryId:'a',reversed:false});
+    expect(inventory.movements).toHaveBeenCalledExactlyOnceWith('c',null,false,{usageAdventureEntryId:'a',reversed:false});
     expect(f.nativeElement.textContent).toContain('Usage adventure');
     expect(f.nativeElement.querySelector('.reversed-consumption')).toBeNull();
     expect(f.nativeElement.textContent).not.toContain('已撤銷的登記');
@@ -94,6 +94,13 @@ describe('Adventure consumption history integration', () => {
     expect(menu.disabled).toBe(true);
   });
 
+  it('shows the saved catchup levels without inferring the activity cost', ()=>{
+    reads.read.mockReturnValue(of({source:'cloud',fetchedAt:1,data:{entry:{...entry,linkedCatchupCount:2},gainedItems:[],storyAwards:[],legacyItems:[]}}));
+    const f=create();
+    expect(f.nativeElement.querySelector('.catchup-summary').textContent.trim())
+      .toBe('迎頭趕上：升 2 級');
+  });
+
   it('ignores late details after navigation and removes history when the adventure is deleted', ()=>{
     const old=new Subject<any>();reads.read.mockReturnValueOnce(old);
     const f=create();
@@ -101,7 +108,7 @@ describe('Adventure consumption history integration', () => {
     params.next(convertToParamMap({entryId:'b'}));f.detectChanges();
     old.next({source:'cloud',fetchedAt:1,data:{entry,gainedItems:[],storyAwards:[],legacyItems:[]}});f.detectChanges();
     expect(f.nativeElement.textContent).toContain('New adventure');
-    expect(inventory.movements).toHaveBeenLastCalledWith('c',null,true,{usageAdventureEntryId:'b',reversed:false});
+    expect(inventory.movements).toHaveBeenLastCalledWith('c',null,false,{usageAdventureEntryId:'b',reversed:false});
     reads.read.mockReturnValue(throwError(()=>({status:404})));
     TestBed.inject(LocalStore).changes.next('c');f.detectChanges();
     expect(f.nativeElement.querySelector('app-inventory-history')).toBeNull();old.complete();

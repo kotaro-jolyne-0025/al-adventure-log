@@ -12,6 +12,9 @@
     </div>
   </div>
 
+  @if (isLoading()) {
+    <div class="read-skeleton skeleton-box" role="progressbar" aria-label="載入角色資料"></div>
+  } @else if (!isEditMode() || loadedCharacter) {
   <mat-card class="form-card">
     <mat-card-content>
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
@@ -172,4 +175,5 @@
       </form>
     </mat-card-content>
   </mat-card>
+  }
 </div>
